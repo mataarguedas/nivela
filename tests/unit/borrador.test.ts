@@ -132,11 +132,49 @@ describe("estadoParticipante", () => {
     expect(estadoParticipante(editada, INDICADORES)).toBe("completado");
   });
 
-  it("combina la fecha de envío del servidor (punto de extensión M4)", async () => {
+  it("sin registro local de envío usa la fecha del servidor", async () => {
     const { estadoParticipante } = await cargar();
+    // Sent from another device, or drafts cleared with Borrar todo.
     expect(estadoParticipante(undefined, INDICADORES, "2026-10-25T09:00:00.000Z")).toBe("enviado");
     expect(estadoParticipante(entrada([2, 3, 1, 4]), INDICADORES, "2026-10-25T11:00:00.000Z")).toBe("enviado");
     expect(estadoParticipante(entrada([2, 3, 1, 4]), INDICADORES, "2026-10-25T09:00:00.000Z")).toBe("completado");
+    expect(estadoParticipante(entrada([2]), INDICADORES, "2026-10-25T09:00:00.000Z")).toBe("enProgreso");
+  });
+
+  it("con registro local de envío, la hora del servidor no lo contradice (desfase de relojes)", async () => {
+    const { estadoParticipante } = await cargar();
+    // Edited at 10:05 device time after a send at 10:00; the server clock runs ahead.
+    const editada = entrada([2, 3, 1, 4], { enviadoEn: "2026-10-25T10:00:00.000Z", modificadoEn: "2026-10-25T10:05:00.000Z" });
+    expect(estadoParticipante(editada, INDICADORES, "2026-10-25T10:10:00.000Z")).toBe("completado");
+    // Sent at 10:00 device time; the server clock runs behind.
+    const enviada = entrada([2, 3, 1, 4], { enviadoEn: "2026-10-25T10:00:00.000Z" });
+    expect(estadoParticipante(enviada, INDICADORES, "2026-10-25T09:55:00.000Z")).toBe("enviado");
+  });
+});
+
+describe("marcarEnviado", () => {
+  it("registra enviadoEn sin tocar modificadoEn ni las calificaciones", async () => {
+    const { marcarEnviado, estadoParticipante } = await cargar();
+    const original = borradorCon({ P01: entrada([1, 2, 3, 4]), P02: entrada([1]) });
+    const enviado = marcarEnviado(original, "P01", "2026-10-25T10:00:00.000Z", new Date("2026-10-25T10:00:03.000Z"));
+    expect(enviado.participantes.P01).toEqual({ ...original.participantes.P01, enviadoEn: "2026-10-25T10:00:03.000Z" });
+    expect(enviado.participantes.P02).toBe(original.participantes.P02);
+    expect(original.participantes.P01.enviadoEn).toBeUndefined();
+    expect(estadoParticipante(enviado.participantes.P01, INDICADORES)).toBe("enviado");
+  });
+
+  it("un cambio durante el envío deja la evaluación en Completado (hay que reenviar)", async () => {
+    const { marcarEnviado, estadoParticipante } = await cargar();
+    const editada = borradorCon({ P01: entrada([1, 2, 3, 4], { modificadoEn: "2026-10-25T10:00:02.000Z" }) });
+    const resultado = marcarEnviado(editada, "P01", "2026-10-25T10:00:00.000Z", new Date("2026-10-25T10:00:03.000Z"));
+    expect(resultado.participantes.P01.enviadoEn).toBe("2026-10-25T10:00:00.000Z");
+    expect(estadoParticipante(resultado.participantes.P01, INDICADORES)).toBe("completado");
+  });
+
+  it("no hace nada si el participante ya no está en el borrador", async () => {
+    const { marcarEnviado } = await cargar();
+    const vacio = borradorCon({});
+    expect(marcarEnviado(vacio, "P01", "2026-10-25T10:00:00.000Z")).toBe(vacio);
   });
 });
 
@@ -372,5 +410,64 @@ describe("sin window (servidor)", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("sugerencia de Jev aplicada (PRD §5.6)", () => {
+  const AHORA = new Date("2026-10-25T12:00:00.000Z");
+  const IA = { nivelSugerido: 3, probabilidades: { "1": 0.05, "2": 0.17, "3": 0.78, "4": 0 }, confianza: 0.71, modelo: "jev-1.13.0" };
+
+  it("aplicar guarda nivel, origen ia y los metadatos; sin texto no toca la observación", async () => {
+    const { conCalificacion, aplicarSugerencia } = await cargar();
+    const inicial = borradorCon({
+      P01: { calificaciones: { i1: { observacion: "Previa" } }, modificadoEn: "2026-10-25T10:00:00.000Z" },
+    });
+    const resultado = conCalificacion(inicial, "P01", "i1", aplicarSugerencia(3, IA), AHORA);
+    expect(resultado.participantes.P01.calificaciones.i1).toEqual({ nivel: 3, origen: "ia", ia: IA, observacion: "Previa" });
+    expect(resultado.participantes.P01.modificadoEn).toBe(AHORA.toISOString());
+  });
+
+  it("aplicar la alternativa conserva el nivel que sugirió Jev en los metadatos", async () => {
+    const { conCalificacion, aplicarSugerencia, borradorVacio } = await cargar();
+    const resultado = conCalificacion(borradorVacio(), "P01", "i1", aplicarSugerencia(4, IA, "Texto analizado"), AHORA);
+    expect(resultado.participantes.P01.calificaciones.i1).toEqual({
+      nivel: 4,
+      origen: "ia",
+      ia: IA,
+      observacion: "Texto analizado",
+    });
+  });
+
+  it("aplicar y luego elegir a mano: origen manual, metadatos de IA conservados", async () => {
+    const { conCalificacion, aplicarSugerencia, nivelManual, borradorVacio } = await cargar();
+    const aplicado = conCalificacion(borradorVacio(), "P01", "i1", aplicarSugerencia(3, IA), AHORA);
+    const manual = conCalificacion(aplicado, "P01", "i1", nivelManual(2), AHORA);
+    expect(manual.participantes.P01.calificaciones.i1).toEqual({ nivel: 2, origen: "manual", ia: IA });
+  });
+
+  describe("observacionConTexto", () => {
+    it("sin observación previa usa el texto", async () => {
+      const { observacionConTexto } = await cargar();
+      expect(observacionConTexto(undefined, "  Texto nuevo  ", 1000)).toBe("Texto nuevo");
+      expect(observacionConTexto("   ", "Texto nuevo", 1000)).toBe("Texto nuevo");
+    });
+
+    it("con observación previa agrega el texto tras una línea en blanco", async () => {
+      const { observacionConTexto } = await cargar();
+      expect(observacionConTexto("Nota previa.\n", "Texto nuevo", 1000)).toBe("Nota previa.\n\nTexto nuevo");
+    });
+
+    it("no duplica un texto que ya está en la observación (aplicar dos veces)", async () => {
+      const { observacionConTexto } = await cargar();
+      const una = observacionConTexto("Nota previa.", "Texto nuevo", 1000)!;
+      expect(observacionConTexto(una, "Texto nuevo", 1000)).toBe(una);
+    });
+
+    it("es null cuando el resultado pasaría del máximo: nunca se recorta", async () => {
+      const { observacionConTexto } = await cargar();
+      expect(observacionConTexto(undefined, "a".repeat(1001), 1000)).toBeNull();
+      expect(observacionConTexto("a".repeat(990), "b".repeat(20), 1000)).toBeNull();
+      expect(observacionConTexto(undefined, "a".repeat(1000), 1000)).toBe("a".repeat(1000));
+    });
   });
 });

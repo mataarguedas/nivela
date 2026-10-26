@@ -29,6 +29,22 @@ describe("BarraEnvio", () => {
     expect(alEnviar).toHaveBeenCalledTimes(1);
   });
 
+  it("mientras envía muestra Enviando… y no se puede pulsar de nuevo", () => {
+    render(<BarraEnvio faltan={0} enviando />);
+    expect(screen.getByRole("button", { name: "Enviando…" })).toBeDisabled();
+  });
+
+  it("tras un fallo anuncia el error y ofrece Reintentar como único botón primario", () => {
+    const alEnviar = vi.fn();
+    render(<BarraEnvio faltan={0} alEnviar={alEnviar} error />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "No se pudo enviar. Sus respuestas siguen guardadas en este dispositivo.",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(alEnviar).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll(".bg-primary")).toHaveLength(1);
+  });
+
   it("es una región con nombre y anuncia el progreso", () => {
     render(<BarraEnvio faltan={2} />);
     const region = screen.getByRole("region", { name: "Envío" });
@@ -46,6 +62,7 @@ describe("IndicadorSeccion", () => {
         calificacion={undefined}
         alCambiarNivel={alCambiarNivel}
         alCambiarObservacion={alCambiarObservacion}
+        panelSugerencia={null}
         {...props}
       />,
     );
@@ -91,5 +108,38 @@ describe("IndicadorSeccion", () => {
     fireEvent.click(boton);
     expect(boton).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Panel de Jev")).toBeVisible();
+  });
+
+  it("controlado, el panel solo se abre o cierra a través de la pantalla", () => {
+    const alAlternarPanel = vi.fn();
+    const { rerender } = render(
+      <IndicadorSeccion
+        indicador={indicador}
+        calificacion={undefined}
+        alCambiarNivel={vi.fn()}
+        alCambiarObservacion={vi.fn()}
+        panelSugerencia={<p>Panel de Jev</p>}
+        panelAbierto={false}
+        alAlternarPanel={alAlternarPanel}
+      />,
+    );
+    const boton = screen.getByRole("button", { name: "¿No está seguro del nivel?" });
+    fireEvent.click(boton);
+    expect(alAlternarPanel).toHaveBeenCalledWith(true);
+    expect(boton).toHaveAttribute("aria-expanded", "false"); // still closed until the parent says so
+    rerender(
+      <IndicadorSeccion
+        indicador={indicador}
+        calificacion={undefined}
+        alCambiarNivel={vi.fn()}
+        alCambiarObservacion={vi.fn()}
+        panelSugerencia={<p>Panel de Jev</p>}
+        panelAbierto
+        alAlternarPanel={alAlternarPanel}
+      />,
+    );
+    expect(screen.getByText("Panel de Jev")).toBeVisible();
+    fireEvent.click(boton);
+    expect(alAlternarPanel).toHaveBeenLastCalledWith(false);
   });
 });

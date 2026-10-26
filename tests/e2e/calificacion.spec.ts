@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { esperarHidratacion } from "./hidratacion";
+import { esperarCalificacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
+import { sinEnviosEnServidor } from "./servidor";
 
 // Rating screen (PRD §5.5, FR-5, FR-6, §15.3–§15.4).
 
@@ -32,11 +33,12 @@ async function abrir(page: Page, participante = "P01") {
   await page.goto("/");
   await page.evaluate((clave) => localStorage.setItem(clave, "jimena-salgado"), CLAVE_EVALUADOR);
   await page.goto(`/adaptabilidad/${participante}`);
-  await esperarHidratacion(page);
+  await esperarCalificacion(page);
 }
 
 test.beforeEach(async ({ page }) => {
   await iniciarSesion(page);
+  await sinEnviosEnServidor(page);
 });
 
 test("calificar 3 de 4, recargar, conservar y habilitar el envío con el 4.º", async ({ page }) => {
@@ -58,7 +60,7 @@ test("calificar 3 de 4, recargar, conservar y habilitar el envío con el 4.º", 
     "Adaptó su método al recibir el nuevo procedimiento.",
   );
   await page.reload();
-  await esperarHidratacion(page);
+  await esperarCalificacion(page);
 
   await expect(radio(page, 1, "Avanzado")).toHaveAttribute("aria-checked", "true");
   await expect(radio(page, 2, "Básico")).toHaveAttribute("aria-checked", "true");

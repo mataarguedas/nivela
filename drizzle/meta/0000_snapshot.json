@@ -1,0 +1,233 @@
+{
+  "id": "c9d2b9c2-7bcd-4480-98b4-3168a1aed1c7",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.calificaciones": {
+      "name": "calificaciones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "evaluacion_id": {
+          "name": "evaluacion_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indicador_id": {
+          "name": "indicador_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nivel": {
+          "name": "nivel",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacion": {
+          "name": "observacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origen": {
+          "name": "origen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ia_nivel_sugerido": {
+          "name": "ia_nivel_sugerido",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_probabilidades": {
+          "name": "ia_probabilidades",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_confianza": {
+          "name": "ia_confianza",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_modelo": {
+          "name": "ia_modelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "calificaciones_evaluacion_id_evaluaciones_id_fk": {
+          "name": "calificaciones_evaluacion_id_evaluaciones_id_fk",
+          "tableFrom": "calificaciones",
+          "tableTo": "evaluaciones",
+          "columnsFrom": [
+            "evaluacion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calificaciones_evaluacion_id_indicador_id_unique": {
+          "name": "calificaciones_evaluacion_id_indicador_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "evaluacion_id",
+            "indicador_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "calificaciones_nivel_check": {
+          "name": "calificaciones_nivel_check",
+          "value": "\"calificaciones\".\"nivel\" between 1 and 4"
+        },
+        "calificaciones_origen_check": {
+          "name": "calificaciones_origen_check",
+          "value": "\"calificaciones\".\"origen\" in ('manual', 'ia')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.evaluaciones": {
+      "name": "evaluaciones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "competencia_id": {
+          "name": "competencia_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evaluador_id": {
+          "name": "evaluador_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participante_id": {
+          "name": "participante_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "puntaje": {
+          "name": "puntaje",
+          "type": "numeric(3, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "evaluaciones_competencia_id_evaluador_id_participante_id_unique": {
+          "name": "evaluaciones_competencia_id_evaluador_id_participante_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "competencia_id",
+            "evaluador_id",
+            "participante_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.uso_jev": {
+      "name": "uso_jev",
+      "schema": "",
+      "columns": {
+        "sesion_id": {
+          "name": "sesion_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ventana": {
+          "name": "ventana",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conteo": {
+          "name": "conteo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "uso_jev_sesion_id_ventana_pk": {
+          "name": "uso_jev_sesion_id_ventana_pk",
+          "columns": [
+            "sesion_id",
+            "ventana"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

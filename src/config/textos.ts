@@ -85,13 +85,27 @@ export const TEXTOS = {
       "La descripción no parece relacionarse con este indicador. Agregue comportamientos observables.",
     error:
       "No fue posible analizar el texto en este momento. Intente de nuevo o seleccione el nivel manualmente.",
-    // Not in PRD Appendix C: placeholder until the Jev panel lands (M5).
-    proximamente: "La sugerencia de nivel con IA estará disponible próximamente. Mientras tanto, seleccione el nivel manualmente.",
+    // Not in PRD Appendix C: the panel's validation, the per-level list, the
+    // applied confirmation, and /api/jev error bodies (PRD §8.3).
+    /** `n` comes formatted. */
+    minimo: (n: string) => `Escriba al menos ${n} caracteres para analizar.`,
+    probabilidades: "Probabilidad por nivel",
+    aplicarNivel: (nivel: string) => `Aplicar ${nivel}`,
+    aplicado: (nivel: string) => `Nivel aplicado: ${nivel}.`,
+    /** `max` comes formatted. */
+    textoMuyLargo: (max: string) =>
+      `El texto no cabe en Observaciones (máximo ${max} caracteres). Puede copiar lo esencial a mano.`,
+    tiempoAgotado: "El análisis tardó demasiado. Intente de nuevo o seleccione el nivel manualmente.",
+    limite: "Alcanzó el límite de análisis por hora. Seleccione el nivel manualmente o intente más tarde.",
   },
   envio: {
     exito: "Evaluación enviada",
     error: "No se pudo enviar. Sus respuestas siguen guardadas en este dispositivo.",
     reintentar: "Reintentar",
+    // Not in PRD Appendix C: the button while sending, and /api/evaluaciones 500 bodies.
+    enviando: "Enviando…",
+    errorGuardar: "No se pudo guardar la evaluación. Intente de nuevo.",
+    errorConsulta: "No se pudieron consultar las evaluaciones enviadas. Intente de nuevo.",
   },
   reportes: {
     enlace: "Reportes",

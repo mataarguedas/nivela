@@ -129,7 +129,7 @@ Tests: e2e — rate 3 of 4 indicators, reload, values persist, button disabled; 
 
 ---
 
-## Prompt 7 — Database and submission (M4)
+## Prompt 7 — Database and submission (M4) - DONE
 
 > **⚠ Before this prompt:** create the Vercel project, add the **Neon** integration from the Vercel Marketplace, then run `vercel link` and `vercel env pull .env.local`. Add `CODIGO_ACCESO`, `CODIGO_DOCENTE` and `SESSION_SECRET` to `.env.local`.
 

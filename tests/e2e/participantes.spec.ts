@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
+import { sinEnviosEnServidor } from "./servidor";
 
 // Inicio → evaluator step → participant list, local drafts and Borrar todo
 // (PRD §5.2–§5.4, §5.8, §9.3).
@@ -30,6 +31,7 @@ async function clavesNivela(page: Page): Promise<string[]> {
 
 test.beforeEach(async ({ page }) => {
   await iniciarSesion(page);
+  await sinEnviosEnServidor(page);
 });
 
 test("las competencias deshabilitadas se ven pero no se pueden abrir", async ({ page }) => {

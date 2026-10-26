@@ -175,6 +175,35 @@ export function nivelManual(nivel: NivelValor): CambioCalificacion {
   return (actual) => ({ ...actual, nivel, origen: "manual" });
 }
 
+export type MetadatosIa = NonNullable<CalificacionBorrador["ia"]>;
+
+/**
+ * A level applied from a Jev suggestion, only ever on the evaluator's tap
+ * (PRD §5.6.3). `ia` keeps what Jev suggested, so `ia.nivelSugerido` can
+ * differ from `nivel` when the evaluator applies the low-confidence
+ * alternative. `observacion`, when given, replaces the observation (build it
+ * with observacionConTexto).
+ */
+export function aplicarSugerencia(nivel: NivelValor, ia: MetadatosIa, observacion?: string): CambioCalificacion {
+  return (actual) => ({ ...actual, nivel, origen: "ia", ia, ...(observacion !== undefined ? { observacion } : {}) });
+}
+
+/**
+ * The observation after copying the analyzed text into it: the text alone
+ * when the observation is empty, appended after a blank line otherwise, or
+ * unchanged when it already contains the text. Null when the result would
+ * exceed `maximo`: the copy is then not offered, so nothing is ever cut.
+ */
+export function observacionConTexto(actual: string | undefined, texto: string, maximo: number): string | null {
+  const limpio = texto.trim();
+  const previa = actual?.trim() ?? "";
+  let resultado: string;
+  if (previa === "") resultado = limpio;
+  else if (previa.includes(limpio)) resultado = actual!;
+  else resultado = `${actual!.trimEnd()}\n\n${limpio}`;
+  return resultado.length <= maximo ? resultado : null;
+}
+
 /** Sets the observation; an empty text removes it. */
 export function conObservacion(texto: string): CambioCalificacion {
   return (actual) => {
@@ -182,6 +211,31 @@ export function conObservacion(texto: string): CambioCalificacion {
     if (texto === "") delete siguiente.observacion;
     else siguiente.observacion = texto;
     return siguiente;
+  };
+}
+
+/**
+ * Records a successful submit (PRD §5.7) without bumping `modificadoEn`.
+ * `modificadoEnEnviado` is the entry's `modificadoEn` when the request left.
+ * If the user changed something while it was in flight, the server has the
+ * older version: `enviadoEn` is set to that version's time, so the entry
+ * reads "completado" (needs re-sending) instead of "enviado".
+ */
+export function marcarEnviado(
+  borrador: Borrador,
+  participanteId: string,
+  modificadoEnEnviado: string,
+  ahora: Date = new Date(),
+): Borrador {
+  const entrada = borrador.participantes[participanteId];
+  if (!entrada) return borrador;
+  const sinCambios = entrada.modificadoEn === modificadoEnEnviado;
+  return {
+    ...borrador,
+    participantes: {
+      ...borrador.participantes,
+      [participanteId]: { ...entrada, enviadoEn: sinCambios ? ahora.toISOString() : modificadoEnEnviado },
+    },
   };
 }
 
@@ -197,28 +251,28 @@ export type EstadoParticipante = "pendiente" | "enProgreso" | "completado" | "en
 
 /**
  * Status of one participant for the list. `enviadoEnServidor` is the
- * server's `updated_at` for this participant, from GET /api/evaluaciones
- * (wired in M4); until then only the local `enviadoEn` counts. A local change
- * after the latest send means "completado" again: it needs re-sending.
+ * server's `updated_at` for this participant, from GET /api/evaluaciones. A
+ * local change after the latest send means "completado" again: it needs
+ * re-sending.
+ *
+ * The local `enviadoEn` wins when there is one: it and `modificadoEn` come
+ * from the same device clock, while comparing a device time with the server's
+ * time would let clock skew mark freshly edited work as sent. The server time
+ * is used only without a local send record (sent from another device, or the
+ * drafts were cleared with "Borrar todo").
  */
 export function estadoParticipante(
   entrada: EntradaParticipante | undefined,
   indicadorIds: readonly string[],
   enviadoEnServidor?: string,
 ): EstadoParticipante {
-  const enviadoEn = masReciente(entrada?.enviadoEn, enviadoEnServidor);
+  const enviadoEn = entrada?.enviadoEn ?? enviadoEnServidor;
   if (enviadoEn && (!entrada || Date.parse(entrada.modificadoEn) <= Date.parse(enviadoEn))) return "enviado";
 
   const calificados = contarCalificados(entrada, indicadorIds);
   if (calificados === 0) return "pendiente";
   if (calificados < indicadorIds.length) return "enProgreso";
   return "completado";
-}
-
-function masReciente(a: string | undefined, b: string | undefined): string | undefined {
-  if (!a) return b;
-  if (!b) return a;
-  return Date.parse(a) >= Date.parse(b) ? a : b;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,124 @@
+{
+  "descripcion": "Golden set de Jev para Adaptabilidad (PRD §8.5). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "competenciaId": "adaptabilidad",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "adaptabilidad-1",
+      "nivelEsperado": 1,
+      "texto": "Cuando la facilitadora anunció que el informe se entregaría como presentación y no por escrito, siguió redactando párrafos hasta que una compañera le mostró qué hacer. Durante el resto del ejercicio preguntó varias veces si lo estaba haciendo bien y solo avanzaba cuando alguien revisaba su trabajo."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "adaptabilidad-1",
+      "nivelEsperado": 2,
+      "texto": "Al cambiar la plantilla de registro a mitad del ejercicio, empezó a usarla después de leer las instrucciones. Consultó una vez a la facilitadora cómo llenar la última sección y luego terminó el formulario sin más ayuda."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "adaptabilidad-1",
+      "nivelEsperado": 3,
+      "texto": "Apenas recibió el nuevo procedimiento para clasificar las solicitudes, reorganizó por su cuenta la forma en que las revisaba y lo aplicó sin pedir aclaraciones. No necesitó que nadie le confirmara los pasos."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "adaptabilidad-1",
+      "nivelEsperado": 4,
+      "texto": "Cuando se cambió la herramienta de trabajo, fue de las primeras personas en usarla y luego se acercó a quienes tenían dudas para mostrarles paso a paso cómo funcionaba. Escribió una guía breve en la pizarra para que todo el grupo adoptara el nuevo método."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "adaptabilidad-2",
+      "nivelEsperado": 1,
+      "texto": "Cuando se le asignó una tarea nueva de último momento, dijo que entendía el cambio pero no supo cómo empezar. Esperó varios minutos sin avanzar hasta que un compañero le indicó qué hacer primero."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "adaptabilidad-2",
+      "nivelEsperado": 2,
+      "texto": "Recibió las nuevas instrucciones para la segunda ronda y las puso en práctica casi de inmediato; solo pidió una pequeña aclaración sobre el orden de los pasos."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "adaptabilidad-2",
+      "nivelEsperado": 3,
+      "texto": "Ante la situación nueva del ejercicio, un cliente simulado que cambió su pedido, respondió de inmediato siguiendo exactamente las indicaciones que había dado la facilitadora y resolvió el caso dentro del tiempo."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "adaptabilidad-2",
+      "nivelEsperado": 4,
+      "texto": "En el caso más complicado del ejercicio, con tres cambios simultáneos y poco tiempo, tomó decisiones rápidas y acertadas, distinguió con buen criterio lo urgente de lo secundario y su equipo terminó antes que los demás."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "adaptabilidad-3",
+      "nivelEsperado": 1,
+      "texto": "Notó que la entrega se había adelantado, pero siguió con las tareas en el mismo orden y necesitó que una compañera le ayudara a decidir qué hacer primero."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "adaptabilidad-3",
+      "nivelEsperado": 2,
+      "texto": "Cuando se agregó una tarea pequeña, la puso al inicio de su lista y la resolvió, aunque dejó sin terminar una de las actividades del objetivo original."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "adaptabilidad-3",
+      "nivelEsperado": 3,
+      "texto": "Al cambiar las prioridades del proyecto, reorganizó por sí misma su lista de actividades, estableció un nuevo orden y cumplió todos los objetivos establecidos dentro del plazo."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "adaptabilidad-3",
+      "nivelEsperado": 4,
+      "texto": "Ante el cambio de prioridades, rehízo por iniciativa propia el plan de trabajo del equipo, explicó a cada persona por qué cambiaba el orden y se aseguró de que todos entendieran el nuevo plan."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "adaptabilidad-4",
+      "nivelEsperado": 1,
+      "texto": "Cuando se cayó la conexión y no se podía usar la plataforma, avisó del problema pero se quedó esperando a que la facilitadora dijera cómo resolverlo."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "adaptabilidad-4",
+      "nivelEsperado": 2,
+      "texto": "Ante el imprevisto de que faltaba un material, y después de que la facilitadora preguntara qué podían hacer, sugirió usar hojas en blanco en lugar del formulario impreso."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "adaptabilidad-4",
+      "nivelEsperado": 3,
+      "texto": "Antes de empezar revisó que todos los equipos tuvieran acceso al documento y, al ver que dos no podían abrirlo, propuso compartir una copia impresa para evitar retrasos durante el ejercicio."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "adaptabilidad-4",
+      "nivelEsperado": 4,
+      "texto": "Previó que el tiempo no iba a alcanzar y propuso un sistema de turnos que nadie había considerado. Cuando surgió un problema inesperado con los materiales, guió al equipo para resolverlo entre todos."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "adaptabilidad-1",
+      "texto": "Llegó con una camisa azul muy bonita y comentó que el fin de semana fue a la playa con su familia."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "adaptabilidad-2",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "adaptabilidad-3",
+      "texto": "Tiene una letra muy ordenada y siempre se sienta en la primera fila del aula."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "adaptabilidad-4",
+      "texto": "Comentó que le gusta mucho el café de la soda de la universidad y que prefiere las clases por la mañana."
+    }
+  ]
+}

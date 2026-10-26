@@ -20,6 +20,7 @@ const RUTAS = [
   "/ruta-inexistente",
   "/pensamiento-critico",
   "/adaptabilidad/P99",
+  "/api/evaluaciones?competencia=adaptabilidad&evaluador=jimena-salgado",
 ];
 
 export default async function precalentar(config: FullConfig) {

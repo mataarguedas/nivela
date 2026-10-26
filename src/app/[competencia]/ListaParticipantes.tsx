@@ -9,6 +9,7 @@ import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
 import { TEXTOS } from "@/config/textos";
 import { borrarTodo, estadoParticipante, useBorrador, useEvaluadorSeleccionado } from "@/lib/borrador";
+import { consultarEnviadas } from "@/lib/envio";
 
 type ListaParticipantesProps = {
   competenciaId: string;
@@ -20,14 +21,26 @@ type ListaParticipantesProps = {
 };
 
 /**
- * Extension point for M4 (PRD §5.4): server `updated_at` by participanteId,
- * from GET /api/evaluaciones?competencia=&evaluador=. estadoParticipante()
- * already merges it ("Enviado" unless edited locally after that time).
+ * Server `updated_at` by participanteId (PRD §5.4), from GET
+ * /api/evaluaciones, fetched each time the list mounts. estadoParticipante()
+ * merges it with the local drafts. If the request fails the list just shows
+ * the local statuses: sends recorded on this device still read "Enviado".
  */
 function useEnviadosServidor(competenciaId: string, evaluadorId: string | null): Record<string, string> {
-  void competenciaId;
-  void evaluadorId;
-  return SIN_ENVIOS;
+  const [enviados, setEnviados] = useState<{ clave: string; porParticipante: Record<string, string> } | null>(null);
+  const clave = evaluadorId ? `${competenciaId}:${evaluadorId}` : null;
+
+  useEffect(() => {
+    if (!evaluadorId || !clave) return;
+    const control = new AbortController();
+    consultarEnviadas(competenciaId, evaluadorId, control.signal).then((porParticipante) => {
+      if (porParticipante && !control.signal.aborted) setEnviados({ clave, porParticipante });
+    });
+    return () => control.abort();
+  }, [competenciaId, evaluadorId, clave]);
+
+  // Ignore a previous evaluator's answer until the new one arrives.
+  return enviados && enviados.clave === clave ? enviados.porParticipante : SIN_ENVIOS;
 }
 const SIN_ENVIOS: Record<string, string> = {};
 

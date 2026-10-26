@@ -2,27 +2,43 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BarraEnvio } from "@/components/calificacion/BarraEnvio";
 import { IndicadorSeccion } from "@/components/calificacion/IndicadorSeccion";
+import { PanelSugerencia } from "@/components/calificacion/PanelSugerencia";
 import { Desplegable } from "@/components/ui/Desplegable";
 import { IconoChevron } from "@/components/ui/iconos";
+import { useToast } from "@/components/ui/Toast";
 import type { Indicador } from "@/config/competencias";
 import type { Participante } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import {
+  aplicarSugerencia,
   conCalificacion,
   conObservacion,
   contarCalificados,
+  marcarEnviado,
   nivelManual,
   useBorrador,
   useEvaluadorSeleccionado,
+  vaciarEscrituras,
 } from "@/lib/borrador";
+import { RUTA_ACCESO } from "@/lib/destino";
+import { cuerpoEvaluacion, enviarEvaluacion } from "@/lib/envio";
 
 // The rating screen's interactive part. Every change goes straight into the
 // selected evaluator's draft (useBorrador: readers see it at once, storage
 // gets it after the 300 ms debounce). Without a selected evaluator it sends
 // the user to the evaluator step, like the participant list.
+//
+// "Enviar evaluación" (PRD §5.7) posts the draft as it is at that moment. On
+// success it records `enviadoEn`, toasts "Evaluación enviada" and returns to
+// the list; on failure the draft stays untouched and the bar offers
+// "Reintentar". An expired session goes to /acceso and comes back here.
+//
+// Each indicator has a Jev panel (PRD §5.6); only one is open at a time, so
+// a single filled "Analizar" is on screen. Applying a suggestion stores
+// origen "ia" with its metadata; a later manual pick switches to "manual".
 
 type PantallaCalificacionProps = {
   competencia: { id: string; nombre: string; definicion: string; fuente: string; indicadores: Indicador[] };
@@ -54,6 +70,36 @@ export function PantallaCalificacion({
   const entrada = evaluadorId ? borrador?.participantes[participante.id] : undefined;
   const indicadorIds = competencia.indicadores.map((i) => i.id);
   const faltan = indicadorIds.length - contarCalificados(entrada, indicadorIds);
+  const { mostrar } = useToast();
+  const [envio, setEnvio] = useState<"inactivo" | "enviando" | "error">("inactivo");
+  const [panelAbierto, setPanelAbierto] = useState<string | null>(null);
+
+  async function enviar() {
+    if (!evaluadorId || !entrada || envio === "enviando") return;
+    const ids = { competenciaId: competencia.id, evaluadorId, participanteId: participante.id };
+    const cuerpo = cuerpoEvaluacion(ids, entrada, indicadorIds);
+    if (!cuerpo) return;
+    const modificadoEnEnviado = entrada.modificadoEn;
+    setEnvio("enviando");
+    const respuesta = await enviarEvaluacion(cuerpo);
+    // Next keeps this page's state alive after navigating away (back/forward
+    // and revisits restore it), so never leave "enviando" behind.
+    setEnvio(respuesta.ok || respuesta.status === 401 ? "inactivo" : "error");
+
+    if (respuesta.ok) {
+      // Applied to the current draft: the user may have edited while the request was in flight.
+      actualizar((actual) => marcarEnviado(actual, participante.id, modificadoEnEnviado));
+      vaciarEscrituras(); // persist before leaving the page
+      mostrar(TEXTOS.envio.exito);
+      router.push(rutaLista);
+      return;
+    }
+    if (respuesta.status === 401) {
+      vaciarEscrituras();
+      const destino = new URLSearchParams({ next: `${rutaLista}/${participante.id}`, motivo: "expirada" });
+      router.push(`${RUTA_ACCESO}?${destino}`);
+    }
+  }
 
   function cambiar(indicadorId: string, cambio: Parameters<typeof conCalificacion>[3]) {
     actualizar((actual) => conCalificacion(actual, participante.id, indicadorId, cambio));
@@ -96,7 +142,16 @@ export function PantallaCalificacion({
               calificacion={entrada?.calificaciones[indicador.id]}
               alCambiarNivel={(nivel) => cambiar(indicador.id, nivelManual(nivel))}
               alCambiarObservacion={(texto) => cambiar(indicador.id, conObservacion(texto))}
-              // SLOT (M5): panelSugerencia={<PanelSugerencia … />}
+              panelAbierto={panelAbierto === indicador.id}
+              alAlternarPanel={(abierto) => setPanelAbierto(abierto ? indicador.id : null)}
+              panelSugerencia={
+                <PanelSugerencia
+                  competenciaId={competencia.id}
+                  indicador={indicador}
+                  observacionActual={entrada?.calificaciones[indicador.id]?.observacion}
+                  alAplicar={(nivel, ia, observacion) => cambiar(indicador.id, aplicarSugerencia(nivel, ia, observacion))}
+                />
+              }
             />
           ))}
         </div>
@@ -117,8 +172,7 @@ export function PantallaCalificacion({
         </nav>
       </div>
 
-      {/* SLOT (M4): alEnviar (POST /api/evaluaciones) and enviando. */}
-      <BarraEnvio faltan={faltan} />
+      <BarraEnvio faltan={faltan} alEnviar={enviar} enviando={envio === "enviando"} error={envio === "error"} />
     </>
   );
 }

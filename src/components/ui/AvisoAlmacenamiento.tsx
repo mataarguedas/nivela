@@ -16,7 +16,7 @@ export function AvisoAlmacenamiento() {
   const [descartado, setDescartado] = useState(false);
   if (disponible || descartado) return null;
   return (
-    <div role="status" className="bg-surface">
+    <div role="status" className="bg-surface print:hidden">
       <div className="mx-auto flex max-w-[980px] items-start gap-3 py-2 pr-[max(8px,env(safe-area-inset-right))] pl-[max(16px,env(safe-area-inset-left))]">
         <IconoAlerta className="mt-[13px] shrink-0 text-ink" />
         <p className="flex-1 py-[11px] text-[14px] text-ink">{TEXTOS.avisos.sinAlmacenamiento}</p>

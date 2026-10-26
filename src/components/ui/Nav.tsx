@@ -10,7 +10,7 @@ import { MarcaNivela } from "./iconos";
 
 export function Nav({ children }: { children?: ReactNode }) {
   return (
-    <header className="esmerilado sticky top-0 z-40 bg-white/80 pt-[env(safe-area-inset-top)]">
+    <header className="esmerilado sticky top-0 z-40 bg-white/80 pt-[env(safe-area-inset-top)] print:hidden">
       <nav
         aria-label={TEXTOS.ui.navegacion}
         className="mx-auto flex h-11 max-w-[980px] items-center justify-between gap-3 pr-[max(8px,env(safe-area-inset-right))] pl-[max(16px,env(safe-area-inset-left))]"

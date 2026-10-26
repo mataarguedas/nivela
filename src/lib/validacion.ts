@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { obtenerCompetenciaHabilitada, obtenerIndicador, type Competencia, type Indicador } from "@/config/competencias";
-import { obtenerEvaluador } from "@/config/equipos";
+import { equipoDeCompetencia, obtenerEvaluador, type Equipo } from "@/config/equipos";
 import {
   LARGO_MAXIMO_DESCRIPCION_IA,
   LARGO_MAXIMO_OBSERVACION,
@@ -10,10 +10,11 @@ import { VALORES_NIVEL } from "@/config/niveles";
 import { obtenerParticipante } from "@/config/participantes";
 import { formatearEntero } from "@/lib/formato";
 
-// Request validation for /api/evaluaciones (PRD §10) and /api/jev (PRD §8.3): zod for the shape, then
-// cross-checks against src/config. Every rejection carries a Spanish message
-// for the `{ error }` body. Client code may `import type` from here; importing
-// values would ship zod to the rating pages.
+// Request validation for /api/evaluaciones (PRD §10), /api/jev (PRD §8.3) and
+// /api/reportes: zod for the shape, then cross-checks against src/config.
+// Every rejection carries a Spanish message for the `{ error }` body. Client
+// code may `import type` from here; importing values would ship zod to the
+// rating pages.
 
 /** Tolerance for the probabilities of a Jev suggestion summing to 1. */
 export const TOLERANCIA_SUMA_PROBABILIDADES = 0.02;
@@ -153,4 +154,15 @@ export function validarSolicitudJev(datos: unknown): Resultado<SolicitudJevValid
   const indicador = obtenerIndicador(competencia, forma.data.indicadorId);
   if (!indicador) return { ok: false, error: MENSAJES_VALIDACION.indicador };
   return { ok: true, datos: { competencia, indicador, texto: forma.data.texto } };
+}
+
+export type CompetenciaReporte = { competencia: Competencia; equipo: Equipo };
+
+/** /api/reportes/[competencia] param: an enabled competencia that has a team. */
+export function validarCompetenciaReporte(valor: unknown): Resultado<CompetenciaReporte> {
+  const forma = id.safeParse(valor);
+  const competencia = forma.success ? obtenerCompetenciaHabilitada(forma.data) : undefined;
+  const equipo = competencia && equipoDeCompetencia(competencia.id);
+  if (!competencia || !equipo) return { ok: false, error: MENSAJES_VALIDACION.competencia };
+  return { ok: true, datos: { competencia, equipo } };
 }

@@ -33,7 +33,39 @@ export function formatearPorcentaje(ratio: number): string {
   return `${entero.format(ratio * 100)}${NBSP}%`;
 }
 
+const partesFechaHora = new Intl.DateTimeFormat(LOCALE, {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: ZONA_HORARIA,
+});
+
+function aFecha(valor: Date | string): Date {
+  return typeof valor === "string" ? new Date(valor) : valor;
+}
+
 /** Date or ISO string → "dd/mm/aaaa" in Costa Rica time. */
 export function formatearFecha(valor: Date | string): string {
-  return fecha.format(typeof valor === "string" ? new Date(valor) : valor);
+  return fecha.format(aFecha(valor));
+}
+
+/** The date's parts in Costa Rica time. Assembled by hand: ICU's separators vary. */
+function partes(valor: Date | string) {
+  const p = Object.fromEntries(partesFechaHora.formatToParts(aFecha(valor)).map((x) => [x.type, x.value]));
+  return { dia: p.day, mes: p.month, anio: p.year, hora: p.hour, minuto: p.minute };
+}
+
+/** Date or ISO string → "dd/mm/aaaa hh:mm" (24 h) in Costa Rica time. */
+export function formatearFechaHora(valor: Date | string): string {
+  const { dia, mes, anio, hora, minuto } = partes(valor);
+  return `${dia}/${mes}/${anio} ${hora}:${minuto}`;
+}
+
+/** Date → "aaaa-mm-dd" in Costa Rica time, for file names (no slashes). */
+export function fechaParaArchivo(valor: Date | string): string {
+  const { dia, mes, anio } = partes(valor);
+  return `${anio}-${mes}-${dia}`;
 }

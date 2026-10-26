@@ -85,6 +85,19 @@ export function acuerdo(niveles: readonly NivelValor[]): Acuerdo | null {
   };
 }
 
+/** How many ratings chose each level. Every level is present, with 0 if none chose it. */
+export function distribucion(niveles: readonly NivelValor[]): Record<NivelValor, number> {
+  const conteo: Record<NivelValor, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  for (const nivel of niveles) conteo[nivel] += 1;
+  return conteo;
+}
+
+/** parte ÷ total (e.g. share of AI-assisted levels), or null when total is 0. */
+export function proporcion(parte: number, total: number): number | null {
+  if (total <= 0) return null;
+  return parte / total;
+}
+
 /** Cobertura: evaluations received ÷ (evaluators × participants), or null if none are expected. */
 export function cobertura(recibidas: number, evaluadores: number, participantes: number): number | null {
   const esperadas = evaluadores * participantes;

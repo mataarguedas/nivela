@@ -150,7 +150,7 @@ Tests: unit tests for every rejection case in validacion.ts; an integration test
 
 ---
 
-## Prompt 8 — Jev suggestion (M5)
+## Prompt 8 — Jev suggestion (M5) - DONE
 
 > **⚠ Before this prompt:** add `TYPESAFE_API_KEY` and `JEV_MODEL=jev-1.13.0` to `.env.local` and to Vercel's environment variables.
 
@@ -174,7 +174,7 @@ Tests: unit tests for the mapping (normal, low-confidence, off-topic, malformed,
 
 ---
 
-## Prompt 9 — Reports, CSV and print (M6)
+## Prompt 9 — Reports, CSV and print (M6) - DONE
 
 ```text
 Use plan mode first. Implement PRD §5.9 and §11 for the docente role.

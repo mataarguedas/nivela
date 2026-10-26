@@ -68,8 +68,13 @@ describe("firmarSesion / verificarSesion", () => {
 
   it("rechaza una firma alterada", async () => {
     const token = await firmarSesion({ rol: "evaluador", sid: SID });
-    const ultimo = token.at(-1) === "A" ? "B" : "A";
-    await expect(verificarSesion(token.slice(0, -1) + ultimo)).resolves.toBeNull();
+    // Alter the signature's FIRST character: the last one of a 32-byte
+    // signature holds 2 padding bits, so swapping it (e.g. "B" → "A") can
+    // decode to the same bytes and leave the token valid.
+    const inicioFirma = token.lastIndexOf(".") + 1;
+    const otro = token[inicioFirma] === "A" ? "B" : "A";
+    const alterado = token.slice(0, inicioFirma) + otro + token.slice(inicioFirma + 1);
+    await expect(verificarSesion(alterado)).resolves.toBeNull();
   });
 
   it("rechaza un token firmado con otro secreto", async () => {

@@ -36,7 +36,7 @@ export function ProveedorToast({ children, duracion = DURACION_TOAST_MS }: { chi
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+52px)] z-50 flex justify-center px-4"
+        className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+52px)] z-50 flex justify-center px-4 print:hidden"
       >
         {aviso && (
           <p key={aviso.id} className="max-w-[480px] rounded-pill bg-ink px-5 py-3 text-center text-[14px] text-white">

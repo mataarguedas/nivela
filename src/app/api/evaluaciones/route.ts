@@ -1,37 +1,23 @@
 import { NextResponse } from "next/server";
 import { TEXTOS } from "@/config/textos";
 import { guardarEvaluacion, listarEnviadas } from "@/lib/db/evaluaciones";
+import { registrarError } from "@/lib/registro";
 import { getSesion } from "@/lib/sesion";
 import { validarConsultaEnviadas, validarEvaluacion } from "@/lib/validacion";
 
 // /api/evaluaciones (PRD §10, §5.7). Both roles may use it; the session is
 // re-verified here, not only in proxy.ts.
 //
-// Logging: only the method, status, latency and the driver's error code. Never
-// the request body or the error message: Drizzle's "Failed query" message
-// embeds the query parameters, i.e. the observation text.
+// Logging: only the method, status, latency and the driver's error code (see
+// lib/registro.ts), never the request body or the error message.
 
 // Runs on Node.js, the default (see api/acceso/route.ts on `runtime`).
 
+const RUTA = "/api/evaluaciones";
 const SIN_CACHE = { "Cache-Control": "no-store" };
 
 function responder(cuerpo: unknown, status = 200) {
   return NextResponse.json(cuerpo, { status, headers: SIN_CACHE });
-}
-
-function registrarError(metodo: string, inicio: number, error: unknown) {
-  const codigo = typeof error === "object" && error !== null && "code" in error ? String(error.code) : undefined;
-  const causa = error instanceof Error && error.cause;
-  const codigoCausa = typeof causa === "object" && causa !== null && "code" in causa ? String(causa.code) : undefined;
-  console.error(
-    JSON.stringify({
-      ruta: "/api/evaluaciones",
-      metodo,
-      status: 500,
-      ms: Date.now() - inicio,
-      codigo: codigo ?? codigoCausa ?? (error instanceof Error ? error.name : "desconocido"),
-    }),
-  );
 }
 
 export async function POST(request: Request) {
@@ -44,7 +30,7 @@ export async function POST(request: Request) {
   try {
     return responder(await guardarEvaluacion(validacion.datos));
   } catch (error) {
-    registrarError("POST", inicio, error);
+    registrarError(RUTA, "POST", inicio, error);
     return responder({ error: TEXTOS.envio.errorGuardar }, 500);
   }
 }
@@ -60,7 +46,7 @@ export async function GET(request: Request) {
     const evaluaciones = await listarEnviadas(consulta.datos.competenciaId, consulta.datos.evaluadorId);
     return responder({ evaluaciones });
   } catch (error) {
-    registrarError("GET", inicio, error);
+    registrarError(RUTA, "GET", inicio, error);
     return responder({ error: TEXTOS.envio.errorConsulta }, 500);
   }
 }

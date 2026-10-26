@@ -4,8 +4,10 @@ import {
   cobertura,
   coincidencia,
   desviacionEstandar,
+  distribucion,
   nivelGeneral,
   promedio,
+  proporcion,
   puntajeEvaluacion,
   puntajeGeneral,
   puntajeIndicador,
@@ -111,5 +113,18 @@ describe("cobertura", () => {
   it("es null cuando no se espera ninguna evaluación", () => {
     expect(cobertura(0, 0, 20)).toBeNull();
     expect(cobertura(0, 8, 0)).toBeNull();
+  });
+});
+
+describe("distribucion y proporcion", () => {
+  it("cuenta cuántas calificaciones eligieron cada nivel, con 0 para los que nadie eligió", () => {
+    expect(distribucion([3, 3, 1, 4, 3])).toEqual({ 1: 1, 2: 0, 3: 3, 4: 1 });
+    expect(distribucion([])).toEqual({ 1: 0, 2: 0, 3: 0, 4: 0 });
+  });
+
+  it("proporcion es parte ÷ total, o null sin total", () => {
+    expect(proporcion(1, 4)).toBe(0.25);
+    expect(proporcion(0, 4)).toBe(0);
+    expect(proporcion(0, 0)).toBeNull();
   });
 });

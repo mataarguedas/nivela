@@ -42,3 +42,21 @@ body { background: var(--color-canvas); color: var(--color-ink); font-size: 17px
   -webkit-backdrop-filter: saturate(1.8) blur(20px);
   backdrop-filter: saturate(1.8) blur(20px);
 }
+
+/* Print / "guardar PDF" (FR-14). The nav, notices and report actions carry
+   print:hidden. Everything prints on white; chart fills keep their colors;
+   charts, tiles and table rows never split across pages; scrollable tables
+   print whole. */
+@media print {
+  @page { margin: 12mm; }
+  html, body { background: #ffffff; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .seccion-reporte, .kpi { background: #ffffff; padding-left: 0; padding-right: 0; }
+  .grafico, .kpi, .fila-reporte, tr { break-inside: avoid; }
+  .seccion-reporte h2, .seccion-reporte h3 { break-after: avoid; }
+  .desplazable { overflow: visible; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+  .grafico svg { max-width: 100%; height: auto; }
+  /* 20 participant columns must fit an A4 width. */
+  .matriz-cobertura { width: 100%; font-size: 10px; }
+  .matriz-cobertura th, .matriz-cobertura td { min-width: 0; padding-left: 1px; padding-right: 1px; }
+}

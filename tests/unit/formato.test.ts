@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatearDecimal, formatearFecha, formatearPorcentaje } from "@/lib/formato";
+import {
+  fechaParaArchivo,
+  formatearDecimal,
+  formatearFecha,
+  formatearFechaHora,
+  formatearPorcentaje,
+} from "@/lib/formato";
 
 describe("formato es-CR", () => {
   it("decimales con coma y 2 posiciones", () => {
@@ -20,5 +26,16 @@ describe("formato es-CR", () => {
     // 03:00 UTC is still the previous evening in Costa Rica (UTC-6).
     expect(formatearFecha(new Date("2026-10-25T03:00:00Z"))).toBe("24/10/2026");
     expect(formatearFecha("2026-03-05T12:00:00Z")).toBe("05/03/2026");
+  });
+
+  it("fecha y hora dd/mm/aaaa hh:mm (24 h) en hora de Costa Rica", () => {
+    expect(formatearFechaHora("2026-10-25T20:05:00Z")).toBe("25/10/2026 14:05");
+    expect(formatearFechaHora("2026-10-25T06:00:00Z")).toBe("25/10/2026 00:00");
+    expect(formatearFechaHora(new Date("2026-10-25T03:30:00Z"))).toBe("24/10/2026 21:30");
+  });
+
+  it("fecha para nombres de archivo aaaa-mm-dd en hora de Costa Rica", () => {
+    expect(fechaParaArchivo("2026-10-25T18:00:00Z")).toBe("2026-10-25");
+    expect(fechaParaArchivo(new Date("2026-03-06T03:00:00Z"))).toBe("2026-03-05");
   });
 });

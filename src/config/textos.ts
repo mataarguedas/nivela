@@ -43,6 +43,8 @@ export const TEXTOS = {
     enviadas: (n: number, total: number) => `${n} de ${total} enviadas`,
     confirmarBorrado:
       "¿Desea borrar todas las evaluaciones guardadas en este dispositivo? Las evaluaciones ya enviadas no se eliminan del servidor.",
+    // Not in PRD Appendix C: the list now comes from the database.
+    errorCarga: "No se pudo cargar la lista de participantes. Intente de nuevo.",
   },
   estados: {
     pendiente: "Pendiente",
@@ -131,6 +133,8 @@ export const TEXTOS = {
     // Not in PRD Appendix C: API 401/403 bodies and the docente gate notice.
     requerida: "Debe ingresar el código de acceso para continuar.",
     soloDocente: "Esta sección requiere el código docente.",
+    soloAdmin: "Esta sección requiere el código de administración.",
+    noParaAdmin: "Con el código de administración solo puede gestionar los participantes.",
   },
   // Not in PRD Appendix C: 404 page (unknown or disabled competencias, etc.).
   noEncontrado: {

@@ -20,8 +20,20 @@ export function destinoSeguro(valor: string | null | undefined): string {
 }
 
 /** Why the user landed on /acceso, shown above the form. */
-export type MotivoAcceso = "expirada" | "docente";
+export type MotivoAcceso = "expirada" | "docente" | "admin";
 
 export function motivoAcceso(valor: string | null | undefined): MotivoAcceso | null {
-  return valor === "expirada" || valor === "docente" ? valor : null;
+  return valor === "expirada" || valor === "docente" || valor === "admin" ? valor : null;
+}
+
+export const RUTA_ADMIN = "/admin";
+
+/**
+ * Where to go after a successful /acceso: the admin always lands on /admin
+ * (it can't open anything else); other roles go to the safe `next`.
+ */
+export function destinoTrasAcceso(rol: string | undefined, siguiente: string | null | undefined): string {
+  const destino = destinoSeguro(siguiente);
+  if (rol !== "admin") return destino;
+  return destino === RUTA_ADMIN || destino.startsWith(`${RUTA_ADMIN}/`) || destino.startsWith(`${RUTA_ADMIN}?`) ? destino : RUTA_ADMIN;
 }

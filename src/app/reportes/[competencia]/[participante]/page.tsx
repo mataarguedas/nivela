@@ -9,7 +9,6 @@ import { DistribucionNiveles, RadarIndicadores } from "@/components/reportes/gra
 import { Chip, type TonoChip } from "@/components/ui/Chip";
 import { IconoChevron } from "@/components/ui/iconos";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
-import { PARTICIPANTES } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
@@ -55,13 +54,15 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
   await exigirDocente(`/reportes/${idCompetencia}/${idParticipante}`);
   const { competencia, reporte } = await cargarReporte(idCompetencia, "/reportes/[competencia]/[participante]");
 
-  const indice = PARTICIPANTES.findIndex((p) => p.id === idParticipante);
-  if (indice === -1) notFound();
-  const participante = PARTICIPANTES[indice];
-  const datos = reporte?.participantes.find((p) => p.id === participante.id) ?? null;
+  // The report covers exactly the active participants (names from the DB).
+  const lista = reporte?.participantes ?? [];
+  const indice = lista.findIndex((p) => p.id === idParticipante);
+  if (reporte && indice === -1) notFound();
+  const datos = lista[indice] ?? null;
+  const titulo = datos?.etiqueta ?? TEXTOS.reportes.individual;
   const rutaGeneral = `/reportes/${competencia.id}`;
-  const anterior = PARTICIPANTES[indice - 1];
-  const siguiente = PARTICIPANTES[indice + 1];
+  const anterior = lista[indice - 1];
+  const siguiente = lista[indice + 1];
 
   return (
     <>
@@ -76,7 +77,7 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
         <p className="text-sub text-ink-3">
           {competencia.nombre} · {TEXTOS.reportes.individual}
         </p>
-        <h1 className="mt-2 text-h2 font-semibold md:text-display">{participante.etiqueta}</h1>
+        <h1 className="mt-2 text-h2 font-semibold md:text-display">{titulo}</h1>
         {datos && datos.nivelGeneral !== null && (
           <div className="mt-6">
             <p className="text-body text-ink-3">{TEXTOS.reportes.nivelGeneral}</p>

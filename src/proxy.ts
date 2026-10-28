@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { TEXTOS } from "@/config/textos";
-import { RUTA_ACCESO, type MotivoAcceso } from "@/lib/destino";
+import { RUTA_ACCESO, RUTA_ADMIN, type MotivoAcceso } from "@/lib/destino";
 import { COOKIE_SESION, COOKIE_SESION_PREVIA, verificarSesion } from "@/lib/sesion";
 
 // Session gate (CLAUDE.md → Sessions and access). Next 16 runs proxy on the
-// Node runtime. Route handlers and pages re-verify the session themselves;
+// Node runtime. Roles: /reportes needs docente; /admin needs admin, and an
+// admin session is sent back to /admin from everywhere else. Route handlers and pages re-verify the session themselves;
 // this is the first line, not the only one.
 
 // /api/salir only clears cookies, and must work once the session has expired.
@@ -12,6 +13,10 @@ const RUTAS_PUBLICAS = new Set([RUTA_ACCESO, "/api/acceso", "/api/salir"]);
 
 function requiereDocente(ruta: string): boolean {
   return /^\/(api\/)?reportes(\/|$)/.test(ruta);
+}
+
+function esRutaAdmin(ruta: string): boolean {
+  return /^\/(api\/)?admin(\/|$)/.test(ruta);
 }
 
 export async function proxy(request: NextRequest) {
@@ -29,6 +34,16 @@ export async function proxy(request: NextRequest) {
     // A cookie that fails verification (tampered, old secret) is useless.
     if (token) respuesta.cookies.delete(COOKIE_SESION);
     return respuesta;
+  }
+
+  // The admin area is admin-only, and the admin code opens nothing else.
+  if (esRutaAdmin(pathname) !== (sesion.rol === "admin")) {
+    if (sesion.rol === "admin") {
+      if (esApi) return NextResponse.json({ error: TEXTOS.sesion.noParaAdmin }, { status: 403 });
+      return NextResponse.redirect(new URL(RUTA_ADMIN, request.url));
+    }
+    if (esApi) return NextResponse.json({ error: TEXTOS.sesion.soloAdmin }, { status: 403 });
+    return redirigirAAcceso(request, pathname + search, "admin");
   }
 
   if (requiereDocente(pathname) && sesion.rol !== "docente") {

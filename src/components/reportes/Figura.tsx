@@ -81,8 +81,9 @@ export function TablaEquivalente({
           </tr>
         </thead>
         <tbody>
-          {filas.map((fila) => (
-            <tr key={fila[0]}>
+          {/* Rows never reorder; the first cell can repeat (two participants with one name). */}
+          {filas.map((fila, i) => (
+            <tr key={i}>
               <th scope="row">{fila[0]}</th>
               {fila.slice(1).map((celda, i) => (
                 <td key={i}>{celda}</td>

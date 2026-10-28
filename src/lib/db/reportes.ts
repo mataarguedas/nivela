@@ -2,9 +2,9 @@ import "server-only";
 import { asc, eq } from "drizzle-orm";
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
-import { PARTICIPANTES } from "@/config/participantes";
 import { agregarReporte, type FilaReporte, type Reporte } from "@/lib/reportes";
 import { getDb } from "./index";
+import { obtenerParticipantes } from "./participantes";
 import { calificaciones, evaluaciones } from "./schema";
 
 // Reads for the report routes: one join over a competencia's evaluaciones and
@@ -31,7 +31,8 @@ export async function leerFilasReporte(competenciaId: string): Promise<FilaRepor
   return filas.map((f) => ({ ...f, actualizadoEn: f.actualizadoEn.toISOString() }));
 }
 
-/** Everything both reports need for one competencia. */
+/** Everything both reports need for one competencia, over the active participants. */
 export async function obtenerReporte(competencia: Competencia, equipo: Equipo): Promise<Reporte> {
-  return agregarReporte(competencia, equipo, PARTICIPANTES, await leerFilasReporte(competencia.id));
+  const [participantes, filas] = await Promise.all([obtenerParticipantes(), leerFilasReporte(competencia.id)]);
+  return agregarReporte(competencia, equipo, participantes, filas);
 }

@@ -16,7 +16,7 @@
 
 Nivela is a mobile-first web app (installable as a PWA) used during a peer-assessment activity in the courses **AGRH 315 Psicología 2** and **AGRH 613 Seminario Integrado de Recursos Humanos**.
 
-Students are grouped into five teams, one per *competencia*. Each team member rates anonymous participants from a **separate course** on that team's competencia. Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4).
+Students are grouped into five teams, one per *competencia*. Each team member rates participants from a **separate course** on that team's competencia. An admin sets how many participants there are and their names (§5.10). Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4).
 
 When an evaluator is unsure which level applies, they can describe what they observed in Spanish. **Jev** (TypeSafe AI's System One decision model) then suggests the most likely level with a calibrated probability. The evaluator always confirms the level.
 
@@ -29,8 +29,9 @@ The first demo enables only **Adaptabilidad**. The other four competencias appea
 | Role | Who | What they do |
 |---|---|---|
 | **Evaluador** | The 8 members of Equipo 4 (Adaptabilidad), from both courses (Appendix B) | Enter the class access code, pick their own name, rate every participant on the 4 indicators, submit. |
-| **Evaluado / Participante** | Students from a separate course, **anonymous** | They do not use the app. Shown only by code (e.g., "Participante 07"). |
+| **Evaluado / Participante** | Students from a separate course | They do not use the app. Shown by the name the admin entered, with their number ("Participante 07") as a secondary label; without a name, by number only. |
 | **Docente** (or course coordinator) | Professor, or a designated student | Enter the docente code and view reports, export CSV, print. |
+| **Admin** | Whoever prepares the activity | Enter the admin code (`CODIGO_ADMIN`) and set the number of participants and their names (§5.10). Nothing else: no rating, no reports. |
 
 Rules:
 - Evaluators never rate each other or themselves. This is structural: evaluados come from a different course and a different list.
@@ -65,6 +66,7 @@ Rules:
 1. The user opens the app. If there is no valid session cookie, they are redirected to `/acceso`.
 2. They enter the **class code**. The server compares it with `CODIGO_ACCESO` and sets a signed httpOnly cookie with role `evaluador`.
 3. If they enter the **docente code** (`CODIGO_DOCENTE`) instead, the cookie gets role `docente`. That role can do everything an evaluator can, plus view reports.
+   With the **admin code** (`CODIGO_ADMIN`), the cookie gets role `admin`, which lands on `/admin` and can open nothing else (other pages redirect there; other APIs answer 403).
 4. After 5 failed attempts in a row, the client adds a 30 s delay. The server also enforces a small artificial delay on every failure.
 
 ### 5.2 Choose competencia (Inicio)
@@ -121,6 +123,13 @@ Rules:
 - `/reportes`: competencia picker (only Adaptabilidad has data) → **Reporte general**.
 - From the ranking table, tap a participant → **Reporte individual**.
 - "Descargar CSV" and "Imprimir o guardar PDF" are available in both views.
+
+### 5.10 Participants (admin only)
+- `/admin`: "Cantidad de participantes" (1–99), then one name field per participant ("Participante 01", "Participante 02"…). "Pegar lista" fills the names from one-per-line text and sets the count to the number of lines.
+- Names only: no emails or phone numbers (anything with "@" or 7+ digits is rejected), at most 80 characters. A blank name shows as "Participante NN".
+- **"Guardar cambios"** saves; success shows the toast *"Cambios guardados"*. Evaluators and reports see the new list on their next page load.
+- Lowering the count **hides** the participants above it; nothing is deleted. If any of them already have evaluations, a confirmation says how many: *"Se ocultarán N participantes con M evaluaciones enviadas. Las evaluaciones no se eliminan y vuelven a aparecer si aumenta la cantidad de nuevo."* Hidden participants leave the lists, the rating routes (404) and the reports, and can't receive new evaluations; their stored evaluations and names come back if the count is raised again. The CSV keeps all rows.
+- Until the admin saves for the first time, the app shows `CANTIDAD_PARTICIPANTES` (default 20) unnamed participants.
 
 ## 6. Functional requirements
 
@@ -234,7 +243,7 @@ Response 200:
 - `niveles.ts`: the 4 levels (value, key, label).
 - `competencias/*.ts`: one file per competencia: `id`, `nombre`, `habilitada`, `definicion`, `fuente`, `indicadores[]`. Each indicator has `id`, `numero`, `titulo`, and `niveles` (1–4 → description). Adaptabilidad is fully filled in (Appendix A). The other 4 have `habilitada: false` and `indicadores: []` until their templates arrive.
 - `equipos.ts`: 5 teams: `id`, `competenciaId`, `integrantes[]` with `{ id, nombre, curso }`. Names only (Appendix B).
-- `participantes.ts`: anonymous evaluados `{ id: "P01", etiqueta: "Participante 01" }`. The count is set by `CANTIDAD_PARTICIPANTES` (placeholder 20, **see §16**).
+- `participantes.ts`: the id and label scheme for evaluados (`{ id: "P01", numero: 1, nombre, etiqueta }`, where `etiqueta` is the name or "Participante 01") and the fallback list of `CANTIDAD_PARTICIPANTES` (default 20) unnamed participants. The real list lives in the `participantes` table (§9.2), set by the admin (§5.10). Ids `P01…P99` are stable: drafts, URLs and evaluations refer to them.
 - A config validation test fails the build if ids are duplicated, an indicator doesn't have exactly 4 levels, or an enabled competencia has no team.
 
 ### 9.2 Database (Neon Postgres via the Vercel Marketplace, Drizzle ORM)
@@ -268,9 +277,16 @@ uso_jev
   ventana     timestamptz not null                -- truncated to the hour
   conteo      integer not null default 0
   primary key (sesion_id, ventana)
+
+participantes
+  id          text pk                             -- "P01".."P99"
+  numero      smallint not null unique check (numero between 1 and 99)
+  nombre      text null                           -- max 80; null → "Participante NN"
+  activo      boolean not null default true       -- false = hidden (§5.10); rows are never deleted
+  updated_at  timestamptz not null default now()
 ```
 
-IDs reference the static config. Names are never stored in the DB. The upsert runs in a single transaction: it upserts `evaluaciones`, deletes and reinserts that evaluation's `calificaciones`, and recomputes `puntaje`.
+IDs reference the static config, or the `participantes` table for evaluados. The only names in the DB are the participants' (set by the admin); evaluator names stay in config. The upsert runs in a single transaction: it upserts `evaluaciones`, deletes and reinserts that evaluation's `calificaciones`, and recomputes `puntaje`.
 
 ### 9.3 Local draft (`localStorage`)
 Key: `nivela:v1:<competenciaId>:<evaluadorId>`, plus `nivela:v1:evaluador:<competenciaId>`.
@@ -304,17 +320,18 @@ Every read and write is wrapped in try/catch. If storage is unavailable (Safari 
 | POST | `/api/evaluaciones` | evaluador, docente | Upsert one evaluation. |
 | GET | `/api/reportes/[competencia]` | docente | Aggregated report JSON (general + per participant). |
 | GET | `/api/reportes/[competencia]/csv` | docente | CSV download (UTF-8 with BOM so Excel opens accents correctly). |
+| PUT | `/api/admin/participantes` | admin | Save `{ cantidad, nombres[], confirmar? }` (§5.10). `409 { error, ocultos, evaluacionesAfectadas }` when hiding participants with evaluations without `confirmar`. |
 
 `POST /api/evaluaciones` validation (zod plus config checks):
 - The competencia exists and is `habilitada`.
 - The evaluador belongs to that competencia's team.
-- The participante exists.
+- The participante exists and is active (§5.10).
 - It has exactly that competencia's indicator ids, each with a level from 1 to 4.
 - Each observation is ≤ 1,000 chars, and `ia_*` fields are well-formed if present.
 
 Errors use the same shape as §8.3, in Spanish.
 
-CSV columns: `competencia, evaluador, curso_evaluador, participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`.
+CSV columns: `competencia, evaluador, curso_evaluador, participante, nombre_participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`. `nombre_participante` is empty for a participant without a name.
 
 ## 11. Reports and charts (Recharts)
 
@@ -388,9 +405,9 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 - Security headers: CSP, `X-Content-Type-Options`, `Referrer-Policy`.
 
 **Privacy**:
-- Names live only in config.
-- Participants are anonymous codes.
-- The DB stores ids, levels, observations and AI metadata only.
+- Evaluator names live only in config.
+- Participant names are entered by the admin and stored in the `participantes` table: names only, never emails or phone numbers. They are never sent to Jev and never logged.
+- Otherwise the DB stores ids, levels, observations and AI metadata only.
 
 **PWA**:
 - `app/manifest.ts` with name "Nivela", `display: standalone`, `theme_color: #ffffff`, `background_color: #f5f5f7`, and 192/512/maskable icons.
@@ -424,7 +441,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 
 ## 16. Open questions
 
-1. **Participants**: how many evaluados are there, and how are they identified during the activity (number tags, seat numbers)? The app currently uses "Participante 01…N" with N = 20 as a placeholder.
+1. ~~**Participants**: how many evaluados are there, and how are they identified?~~ Resolved: the admin sets the count and the names at `/admin` (§5.10); each participant also keeps a number ("Participante 07").
 2. **Indicador 4 wording**: "Propone soluciones **exigentes** y eficaces…". Should "exigentes" be "eficientes"? It is kept as written for now.
 3. **Indicador 1 · Avanzado**: "Adopta de manera autónoma sus métodos…" was corrected to "**Adapta**…". Confirm.
 4. **Who is the docente user**: the professor, the student coordinator, or both? This affects who gets `CODIGO_DOCENTE`.

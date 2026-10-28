@@ -3,13 +3,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { obtenerCompetenciaHabilitada } from "@/config/competencias";
 import { equipoDeCompetencia } from "@/config/equipos";
-import { PARTICIPANTES } from "@/config/participantes";
+import { TEXTOS } from "@/config/textos";
+import { cargarParticipantes } from "@/lib/db/participantes";
 import { PantallaCalificacion } from "./PantallaCalificacion";
 
 // Rating screen (PRD §5.5, FR-5, FR-6). The layouts already answered 404 for
-// unknown competencias and participants; params are read behind Suspense so
-// moving between participants is instant. Only the rubric text, the
-// participant codes and the team ids reach the client: no names.
+// unknown competencias and malformed participant ids; whether the participant
+// is active is checked here against the DB. Params are read behind Suspense
+// so moving between participants is instant. The client gets the rubric
+// text, the team ids and the participant's name and code; the names never
+// go to Jev (only the observation text does).
 
 // Not validated in dev; see the note in ../layout.tsx.
 export const instant = false;
@@ -33,8 +36,19 @@ async function Calificacion({ params }: Pick<PageProps<"/[competencia]/[particip
   const { competencia: idCompetencia, participante: idParticipante } = await params;
   const competencia = obtenerCompetenciaHabilitada(idCompetencia);
   const equipo = competencia && equipoDeCompetencia(competencia.id);
-  const indice = PARTICIPANTES.findIndex((p) => p.id === idParticipante);
-  if (!competencia || !equipo || indice === -1) notFound();
+  if (!competencia || !equipo) notFound();
+
+  const participantes = await cargarParticipantes("/[competencia]/[participante]");
+  if (!participantes) {
+    return (
+      <p role="alert" className="px-4 pt-16 text-center text-body text-ink">
+        {TEXTOS.lista.errorCarga}
+      </p>
+    );
+  }
+  // A participant the admin has hidden (or never created).
+  const indice = participantes.findIndex((p) => p.id === idParticipante);
+  if (indice === -1) notFound();
 
   return (
     <PantallaCalificacion
@@ -45,9 +59,9 @@ async function Calificacion({ params }: Pick<PageProps<"/[competencia]/[particip
         fuente: competencia.fuente,
         indicadores: competencia.indicadores,
       }}
-      participante={PARTICIPANTES[indice]}
-      anterior={PARTICIPANTES[indice - 1] ?? null}
-      siguiente={PARTICIPANTES[indice + 1] ?? null}
+      participante={participantes[indice]}
+      anterior={participantes[indice - 1] ?? null}
+      siguiente={participantes[indice + 1] ?? null}
       evaluadorIds={equipo.integrantes.map((i) => i.id)}
     />
   );

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { destinoSeguro, motivoAcceso } from "@/lib/destino";
+import { destinoSeguro, destinoTrasAcceso, motivoAcceso } from "@/lib/destino";
 
 describe("destinoSeguro", () => {
   it("acepta rutas relativas de la misma app", () => {
@@ -30,7 +30,23 @@ describe("motivoAcceso", () => {
   it("solo reconoce los motivos conocidos", () => {
     expect(motivoAcceso("expirada")).toBe("expirada");
     expect(motivoAcceso("docente")).toBe("docente");
+    expect(motivoAcceso("admin")).toBe("admin");
     expect(motivoAcceso("otro")).toBeNull();
     expect(motivoAcceso(undefined)).toBeNull();
+  });
+});
+
+describe("destinoTrasAcceso", () => {
+  it("evaluador y docente siguen el next seguro", () => {
+    expect(destinoTrasAcceso("evaluador", "/adaptabilidad")).toBe("/adaptabilidad");
+    expect(destinoTrasAcceso("docente", "/reportes")).toBe("/reportes");
+    expect(destinoTrasAcceso("docente", "//malo.example")).toBe("/");
+  });
+
+  it("el admin siempre termina en /admin", () => {
+    expect(destinoTrasAcceso("admin", null)).toBe("/admin");
+    expect(destinoTrasAcceso("admin", "/reportes")).toBe("/admin");
+    expect(destinoTrasAcceso("admin", "/administracion")).toBe("/admin");
+    expect(destinoTrasAcceso("admin", "/admin")).toBe("/admin");
   });
 });

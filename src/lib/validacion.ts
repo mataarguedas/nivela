@@ -7,11 +7,13 @@ import {
   LARGO_MINIMO_DESCRIPCION_IA,
 } from "@/config/limites";
 import { VALORES_NIVEL } from "@/config/niveles";
-import { obtenerParticipante } from "@/config/participantes";
+import { CANTIDAD_MAXIMA_PARTICIPANTES, esNombreValido } from "@/config/participantes";
+import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { formatearEntero } from "@/lib/formato";
 
-// Request validation for /api/evaluaciones (PRD §10), /api/jev (PRD §8.3) and
-// /api/reportes: zod for the shape, then cross-checks against src/config.
+// Request validation for /api/evaluaciones (PRD §10), /api/jev (PRD §8.3),
+// /api/reportes and /api/admin/participantes: zod for the shape, then
+// cross-checks against src/config (and the participant list from the DB).
 // Every rejection carries a Spanish message for the `{ error }` body. Client
 // code may `import type` from here; importing values would ship zod to the
 // rating pages.
@@ -35,6 +37,9 @@ export const MENSAJES_VALIDACION = {
   indicador: "El indicador no existe en esta competencia.",
   descripcion: `La descripción debe tener entre ${formatearEntero(LARGO_MINIMO_DESCRIPCION_IA)} y ${formatearEntero(LARGO_MAXIMO_DESCRIPCION_IA)} caracteres.`,
   solicitudIa: "Los datos de la solicitud de análisis no son válidos.",
+  cantidadParticipantes: TEXTOS_ADMIN.cantidadInvalida,
+  nombreParticipante: TEXTOS_ADMIN.nombreInvalido,
+  listaParticipantes: TEXTOS_ADMIN.listaInvalida,
 } as const;
 
 const id = z.string().trim().min(1).max(100);
@@ -92,8 +97,15 @@ function mensajeDe(error: z.ZodError): string {
   return MENSAJES_VALIDACION.cuerpo;
 }
 
-/** POST /api/evaluaciones body: shape plus every config cross-check in PRD §10. */
-export function validarEvaluacion(datos: unknown): Resultado<EvaluacionValida> {
+/**
+ * POST /api/evaluaciones body: shape plus every cross-check in PRD §10.
+ * `participantes` is the current active list (db/participantes.ts), so a
+ * participant the admin has hidden can't receive new evaluations.
+ */
+export function validarEvaluacion(
+  datos: unknown,
+  participantes: readonly { id: string }[],
+): Resultado<EvaluacionValida> {
   const forma = esquemaEvaluacion.safeParse(datos);
   if (!forma.success) return { ok: false, error: mensajeDe(forma.error) };
   const evaluacion = forma.data;
@@ -103,7 +115,7 @@ export function validarEvaluacion(datos: unknown): Resultado<EvaluacionValida> {
   if (!obtenerEvaluador(competencia.id, evaluacion.evaluadorId)) {
     return { ok: false, error: MENSAJES_VALIDACION.evaluador };
   }
-  if (!obtenerParticipante(evaluacion.participanteId)) return { ok: false, error: MENSAJES_VALIDACION.participante };
+  if (!participantes.some((p) => p.id === evaluacion.participanteId)) return { ok: false, error: MENSAJES_VALIDACION.participante };
 
   const esperados = competencia.indicadores.map((i) => i.id);
   const recibidos = evaluacion.calificaciones.map((c) => c.indicadorId);
@@ -165,4 +177,38 @@ export function validarCompetenciaReporte(valor: unknown): Resultado<Competencia
   const equipo = competencia && equipoDeCompetencia(competencia.id);
   if (!competencia || !equipo) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   return { ok: true, datos: { competencia, equipo } };
+}
+
+const esquemaParticipantes = z.object({
+  cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA_PARTICIPANTES),
+  // Blank names are stored as null and shown as "Participante NN".
+  nombres: z
+    .array(
+      z
+        .string()
+        .trim()
+        .refine(esNombreValido)
+        .transform((t) => (t ? t : null)),
+    )
+    .max(CANTIDAD_MAXIMA_PARTICIPANTES),
+  confirmar: z.boolean().optional().default(false),
+});
+
+export type CuerpoParticipantes = z.input<typeof esquemaParticipantes>;
+export type ParticipantesValidos = { nombres: (string | null)[]; confirmar: boolean };
+
+/** PUT /api/admin/participantes body: one name (or blank) per participant, in order. */
+export function validarParticipantes(datos: unknown): Resultado<ParticipantesValidos> {
+  const forma = esquemaParticipantes.safeParse(datos);
+  if (!forma.success) {
+    const ruta = forma.error.issues[0]?.path ?? [];
+    if (ruta[0] === "cantidad") return { ok: false, error: MENSAJES_VALIDACION.cantidadParticipantes };
+    if (ruta[0] === "nombres" && typeof ruta[1] === "number") {
+      return { ok: false, error: MENSAJES_VALIDACION.nombreParticipante(ruta[1] + 1) };
+    }
+    return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
+  }
+  const { cantidad, nombres, confirmar } = forma.data;
+  if (nombres.length !== cantidad) return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
+  return { ok: true, datos: { nombres, confirmar } };
 }

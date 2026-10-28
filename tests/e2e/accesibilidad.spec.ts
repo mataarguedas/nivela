@@ -54,6 +54,16 @@ const PANTALLAS: { nombre: string; ruta: string; rol?: Rol; preparar?: (page: Pa
     },
   },
   { nombre: "No encontrado", ruta: "/ruta-inexistente", rol: "evaluador" },
+  {
+    nombre: "Admin",
+    ruta: "/admin",
+    rol: "admin",
+    preparar: async (page) => {
+      await esperarHidratacion(page, "form");
+      // Open "Pegar lista" too, so its field is part of the scan. Read-only: nothing is saved.
+      await page.getByRole("button", { name: "Pegar lista" }).click();
+    },
+  },
 ];
 
 for (const pantalla of PANTALLAS) {

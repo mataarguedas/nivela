@@ -10,7 +10,7 @@ import { Desplegable } from "@/components/ui/Desplegable";
 import { IconoChevron } from "@/components/ui/iconos";
 import { useToast } from "@/components/ui/Toast";
 import type { Indicador } from "@/config/competencias";
-import type { Participante } from "@/config/participantes";
+import { etiquetaNumero, type Participante } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import {
   aplicarSugerencia,
@@ -120,7 +120,9 @@ export function PantallaCalificacion({
 
         <header className="mt-4 text-center">
           <p className="text-[14px] text-ink-2">{competencia.nombre}</p>
-          <h1 className="mt-1 text-h3 font-semibold md:text-h2">{participante.etiqueta}</h1>
+          <h1 className="mt-1 text-h3 font-semibold break-words md:text-h2">{participante.etiqueta}</h1>
+          {/* With a name, the number still matches the person's tag. */}
+          {participante.nombre && <p className="mt-1 text-[14px] text-ink-2">{etiquetaNumero(participante.numero)}</p>}
         </header>
 
         <div className="mt-8 rounded-tile bg-surface px-4 py-2">

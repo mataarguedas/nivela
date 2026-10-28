@@ -6,9 +6,11 @@ import { CURSOS, EQUIPOS, equipoDeCompetencia, obtenerEvaluador } from "@/config
 import { NIVELES } from "@/config/niveles";
 import {
   CANTIDAD_PARTICIPANTES_PREDETERMINADA,
+  crearParticipante,
+  esIdParticipante,
+  esNombreValido,
   generarParticipantes,
   leerCantidadParticipantes,
-  PARTICIPANTES,
 } from "@/config/participantes";
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -51,7 +53,7 @@ describe("ids únicos y con formato estable", () => {
   });
 
   it("participantes", () => {
-    expect(duplicados(PARTICIPANTES.map((p) => p.id))).toEqual([]);
+    expect(duplicados(generarParticipantes(99).map((p) => p.id))).toEqual([]);
   });
 });
 
@@ -176,12 +178,33 @@ describe("equipos coinciden con PRD Apéndice B", () => {
 });
 
 describe("participantes", () => {
-  it("por defecto son P01…P20", () => {
+  it("la lista de respaldo por defecto es P01…P20, sin nombres", () => {
     expect(leerCantidadParticipantes(undefined)).toBe(CANTIDAD_PARTICIPANTES_PREDETERMINADA);
     expect(leerCantidadParticipantes("")).toBe(20);
-    expect(PARTICIPANTES).toHaveLength(20);
-    expect(PARTICIPANTES[0]).toEqual({ id: "P01", etiqueta: "Participante 01" });
-    expect(PARTICIPANTES[19]).toEqual({ id: "P20", etiqueta: "Participante 20" });
+    const respaldo = generarParticipantes(CANTIDAD_PARTICIPANTES_PREDETERMINADA);
+    expect(respaldo).toHaveLength(20);
+    expect(respaldo[0]).toEqual({ id: "P01", numero: 1, nombre: null, etiqueta: "Participante 01" });
+    expect(respaldo[19]).toEqual({ id: "P20", numero: 20, nombre: null, etiqueta: "Participante 20" });
+  });
+
+  it("con nombre, la etiqueta es el nombre (recortado); vacío vuelve a «Participante NN»", () => {
+    expect(crearParticipante(7, "  Ana Pérez ")).toEqual({ id: "P07", numero: 7, nombre: "Ana Pérez", etiqueta: "Ana Pérez" });
+    expect(crearParticipante(7, "   ")).toEqual({ id: "P07", numero: 7, nombre: null, etiqueta: "Participante 07" });
+  });
+
+  it("reconoce ids P01…P99 y nada más", () => {
+    for (const id of ["P01", "P20", "P99"]) expect(esIdParticipante(id)).toBe(true);
+    for (const id of ["P00", "P1", "P100", "p01", "X01", "P0a", ""]) expect(esIdParticipante(id)).toBe(false);
+  });
+
+  it("solo nombres: sin correos, teléfonos ni caracteres de control", () => {
+    expect(esNombreValido("María Guadalupe Núñez Arguedas")).toBe(true);
+    expect(esNombreValido("")).toBe(true); // no name
+    expect(esNombreValido("Grupo 2 · Ana")).toBe(true); // a few digits are fine
+    expect(esNombreValido("ana@correo.com")).toBe(false);
+    expect(esNombreValido("+506 8888 1234")).toBe(false);
+    expect(esNombreValido("Ana\tPérez")).toBe(false);
+    expect(esNombreValido("a".repeat(81))).toBe(false);
   });
 
   it("respeta CANTIDAD_PARTICIPANTES válida", () => {

@@ -91,7 +91,7 @@ describe("firmarSesion / verificarSesion", () => {
 
   it("rechaza un payload bien firmado pero con forma inválida", async () => {
     const clave = new TextEncoder().encode(SECRETO);
-    const token = await new SignJWT({ rol: "admin", sid: SID })
+    const token = await new SignJWT({ rol: "superusuario", sid: SID })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("1h")
       .sign(clave);
@@ -149,9 +149,18 @@ describe("rolParaCodigo", () => {
     expect(rolParaCodigo("mismo")).toBe("docente");
   });
 
+  it("asigna admin con CODIGO_ADMIN, antes que los otros códigos", () => {
+    vi.stubEnv("CODIGO_ADMIN", "admin2026");
+    expect(rolParaCodigo("admin2026")).toBe("admin");
+    expect(rolParaCodigo("admin2027")).toBeNull();
+    vi.stubEnv("CODIGO_DOCENTE", "admin2026");
+    expect(rolParaCodigo("admin2026")).toBe("admin");
+  });
+
   it("un código sin configurar nunca coincide", () => {
     vi.stubEnv("CODIGO_ACCESO", "");
     vi.stubEnv("CODIGO_DOCENTE", "");
+    vi.stubEnv("CODIGO_ADMIN", "");
     expect(rolParaCodigo("")).toBeNull();
     expect(rolParaCodigo("clase-2026")).toBeNull();
   });

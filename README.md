@@ -2,7 +2,7 @@
 
 **Evaluación de competencias entre pares** para los cursos AGRH 315 Psicología 2 y AGRH 613 Seminario Integrado de Recursos Humanos.
 
-Nivela es una aplicación web pensada para el teléfono (se puede instalar como app desde el navegador). Cada integrante de un equipo califica a participantes anónimos de otro curso en la competencia de su equipo: 4 indicadores, cada uno con 4 niveles de conducta (Básico, Intermedio, Avanzado, Experto). Si la persona evaluadora no está segura del nivel, puede describir lo que observó y **Jev** (el modelo de decisión de TypeSafe AI) le sugiere el nivel más probable con su porcentaje. La sugerencia nunca se aplica sola: la persona evaluadora siempre decide.
+Nivela es una aplicación web pensada para el teléfono (se puede instalar como app desde el navegador). Cada integrante de un equipo califica a participantes de otro curso (con los nombres que define la administración) en la competencia de su equipo: 4 indicadores, cada uno con 4 niveles de conducta (Básico, Intermedio, Avanzado, Experto). Si la persona evaluadora no está segura del nivel, puede describir lo que observó y **Jev** (el modelo de decisión de TypeSafe AI) le sugiere el nivel más probable con su porcentaje. La sugerencia nunca se aplica sola: la persona evaluadora siempre decide.
 
 Las evaluaciones enviadas se guardan en Postgres. Con el código docente se consultan los reportes (general e individual), se descarga el CSV y se imprime o guarda en PDF.
 
@@ -59,8 +59,9 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `DATABASE_URL` | Conexión a Neon Postgres. La define la integración de Neon en Vercel. |
 | `CODIGO_ACCESO` | Código de la clase (rol evaluador). |
 | `CODIGO_DOCENTE` | Código docente (rol docente: todo lo del evaluador más los reportes). |
+| `CODIGO_ADMIN` | Código de administración (rol admin: solo `/admin`, donde se definen la cantidad y los nombres de los participantes). |
 | `SESSION_SECRET` | Secreto para firmar la cookie de sesión: al menos 32 bytes aleatorios. |
-| `CANTIDAD_PARTICIPANTES` | Cantidad de participantes anónimos (predeterminado: 20). Se fija al compilar: cambiarla exige volver a desplegar. |
+| `CANTIDAD_PARTICIPANTES` | Participantes sin nombre que se muestran mientras la administración no guarde la lista real (predeterminado: 20). |
 
 Nunca suba archivos `.env*` al repositorio, salvo `.env.example`.
 
@@ -68,11 +69,19 @@ Nunca suba archivos `.env*` al repositorio, salvo `.env.example`.
 
 Los códigos viven solo en las variables de entorno, no en el código.
 
-1. En Vercel: **Project → Settings → Environment Variables**, edite `CODIGO_ACCESO` o `CODIGO_DOCENTE` (o use `vercel env rm CODIGO_ACCESO production` y `vercel env add CODIGO_ACCESO production`).
+1. En Vercel: **Project → Settings → Environment Variables**, edite `CODIGO_ACCESO`, `CODIGO_DOCENTE` o `CODIGO_ADMIN` (o use `vercel env rm CODIGO_ACCESO production` y `vercel env add CODIGO_ACCESO production`).
 2. Vuelva a desplegar (`vercel --prod` o **Redeploy** en el panel) para que el cambio tome efecto.
 3. Las sesiones abiertas siguen activas hasta que vencen (12 h). Para cerrar todas las sesiones de inmediato, cambie también `SESSION_SECRET` y vuelva a desplegar.
 
 Localmente, edite los mismos nombres en `.env.local` y reinicie `npm run dev`.
+
+## Cómo definir los participantes
+
+1. Ingrese en `/acceso` con el código de administración (`CODIGO_ADMIN`). La app lo lleva a **Participantes** (`/admin`).
+2. Escriba la cantidad de participantes y el nombre de cada uno, o use **Pegar lista** para pegar una columna de nombres (uno por línea) desde una hoja de cálculo.
+3. Toque **Guardar cambios**. Las personas evaluadoras y los reportes ven la lista nueva al cargar la siguiente página; no hace falta volver a desplegar.
+
+Solo nombres: la app rechaza correos y números de teléfono. Un nombre vacío se muestra como «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones.
 
 ## Cómo habilitar otra competencia
 
@@ -101,7 +110,7 @@ Termina con error si no alcanza las metas. Usa `TYPESAFE_API_KEY` y `JEV_MODEL` 
 
 Ingrese con el **código docente** y abra **Reportes → Adaptabilidad**.
 
-- **Descargar CSV**: un archivo `nivela-adaptabilidad-aaaa-mm-dd.csv` con una fila por calificación (columnas: `competencia, evaluador, curso_evaluador, participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
+- **Descargar CSV**: un archivo `nivela-adaptabilidad-aaaa-mm-dd.csv` con una fila por calificación (columnas: `competencia, evaluador, curso_evaluador, participante, nombre_participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
 - **Imprimir o guardar PDF**: abre el diálogo de impresión con un formato limpio (sin menú ni botones, gráficos en blanco). Elija «Guardar como PDF» para obtener el archivo.
 - Ambas opciones están en el Reporte general y en cada Reporte individual.
 
@@ -122,7 +131,7 @@ DATABASE_URL_MIGRACION="<DATABASE_URL de producción>" npm run db:migrate
 
 ## Privacidad y seguridad
 
-- Solo se guardan nombres en la configuración; nunca correos ni teléfonos. La base de datos guarda identificadores, niveles, observaciones y metadatos de la IA, sin nombres.
+- Solo se guardan nombres; nunca correos ni teléfonos. Los nombres de quienes evalúan están en la configuración. Los de los participantes los escribe la administración y se guardan en la tabla `participantes`. Fuera de eso, la base de datos guarda identificadores, niveles, observaciones y metadatos de la IA.
 - A Jev solo se envía el texto de la observación y la rúbrica del indicador. Nunca el código del participante, el nombre de quien evalúa ni la sesión. La interfaz recuerda: «No incluya nombres en la descripción.»
 - Los registros del servidor solo incluyen ruta, estado, tiempo y modelo; nunca el texto de las observaciones.
 - La sesión es una cookie httpOnly firmada (12 h). La app envía CSP y otros encabezados de seguridad (ver `next.config.ts`).

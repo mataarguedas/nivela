@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { generarParticipantes } from "@/config/participantes";
 import { MENSAJES_VALIDACION } from "@/lib/validacion";
 
 // /api/evaluaciones with the db layer and the session mocked. The upsert's SQL
 // behaviour is covered against a real Postgres in evaluaciones-db.test.ts.
 
 const db = vi.hoisted(() => ({ guardarEvaluacion: vi.fn(), listarEnviadas: vi.fn() }));
+const dbParticipantes = vi.hoisted(() => ({ obtenerParticipantes: vi.fn() }));
 const sesion = vi.hoisted(() => ({ getSesion: vi.fn() }));
 vi.mock("@/lib/db/evaluaciones", () => db);
+vi.mock("@/lib/db/participantes", () => dbParticipantes);
 vi.mock("@/lib/sesion", () => sesion);
 
 const { GET, POST } = await import("@/app/api/evaluaciones/route");
@@ -41,6 +44,7 @@ function consultar(query: string) {
 
 beforeEach(() => {
   sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123" });
+  dbParticipantes.obtenerParticipantes.mockResolvedValue(generarParticipantes(20));
 });
 
 afterEach(() => {
@@ -54,6 +58,22 @@ describe("POST /api/evaluaciones", () => {
     const respuesta = await enviar(CUERPO);
     expect(respuesta.status).toBe(401);
     await expect(respuesta.json()).resolves.toEqual({ error: "Debe ingresar el código de acceso para continuar." });
+    expect(db.guardarEvaluacion).not.toHaveBeenCalled();
+  });
+
+  it("403 para el rol admin, también en GET", async () => {
+    sesion.getSesion.mockResolvedValue({ rol: "admin", sid: "0123456789abcdef0123" });
+    expect((await enviar(CUERPO)).status).toBe(403);
+    expect((await consultar("competencia=adaptabilidad&evaluador=jimena-salgado")).status).toBe(403);
+    expect(db.guardarEvaluacion).not.toHaveBeenCalled();
+    expect(db.listarEnviadas).not.toHaveBeenCalled();
+  });
+
+  it("400 para un participante que el admin ocultó", async () => {
+    dbParticipantes.obtenerParticipantes.mockResolvedValue(generarParticipantes(5));
+    const respuesta = await enviar({ ...CUERPO, participanteId: "P07" });
+    expect(respuesta.status).toBe(400);
+    await expect(respuesta.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.participante });
     expect(db.guardarEvaluacion).not.toHaveBeenCalled();
   });
 

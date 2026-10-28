@@ -14,7 +14,8 @@ import { consultarEnviadas } from "@/lib/envio";
 type ListaParticipantesProps = {
   competenciaId: string;
   nombreCompetencia: string;
-  participantes: { id: string; etiqueta: string }[];
+  /** `detalle`: "Participante 07" under a name, so it matches the person's tag; null without a name. */
+  participantes: { id: string; etiqueta: string; detalle: string | null }[];
   indicadorIds: string[];
   /** Team member ids, to reject a stale or foreign stored selection. */
   evaluadorIds: string[];
@@ -106,7 +107,10 @@ export function ListaParticipantes({
                 href={`/${competenciaId}/${participante.id}`}
                 className="group flex min-h-14 w-full items-center gap-3 rounded-tile bg-surface px-4 py-3"
               >
-                <span className="min-w-0 flex-1 text-body text-ink group-hover:text-link">{participante.etiqueta}</span>
+                <span className="min-w-0 flex-1 break-words">
+                  <span className="block text-body text-ink group-hover:text-link">{participante.etiqueta}</span>
+                  {participante.detalle && <span className="block text-caption text-ink-2">{participante.detalle}</span>}
+                </span>
                 {estado && <Chip tono={TONO_POR_ESTADO[estado]}>{TEXTOS.estados[estado]}</Chip>}
                 <IconoChevron className="shrink-0 text-ink-2" />
               </Link>

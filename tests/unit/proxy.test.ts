@@ -103,3 +103,37 @@ describe("proxy con sesión", () => {
     dejaPasar(await proxy(await solicitud("/api/reportes/adaptabilidad", { rol: "docente" })));
   });
 });
+
+describe("proxy y el rol admin", () => {
+  it("deja pasar al admin en /admin y /api/admin/**", async () => {
+    dejaPasar(await proxy(await solicitud("/admin", { rol: "admin" })));
+    dejaPasar(await proxy(await solicitud("/api/admin/participantes", { rol: "admin" })));
+  });
+
+  it("lleva al admin a /admin desde cualquier otra página", async () => {
+    for (const ruta of ["/", "/adaptabilidad", "/adaptabilidad/P01", "/reportes/adaptabilidad"]) {
+      const respuesta = await proxy(await solicitud(ruta, { rol: "admin" }));
+      expect(respuesta.status).toBe(307);
+      expect(destino(respuesta).pathname).toBe("/admin");
+    }
+  });
+
+  it("responde 403 al admin en el resto de la API", async () => {
+    for (const ruta of ["/api/evaluaciones", "/api/jev", "/api/reportes/adaptabilidad"]) {
+      const respuesta = await proxy(await solicitud(ruta, { rol: "admin" }));
+      expect(respuesta.status).toBe(403);
+    }
+  });
+
+  it.each(["evaluador", "docente"] as const)("bloquea /admin al rol %s", async (rol) => {
+    const url = destino(await proxy(await solicitud("/admin", { rol })));
+    expect(url.pathname).toBe("/acceso");
+    expect(url.searchParams.get("motivo")).toBe("admin");
+    expect(url.searchParams.get("next")).toBe("/admin");
+    expect((await proxy(await solicitud("/api/admin/participantes", { rol }))).status).toBe(403);
+  });
+
+  it("no confunde rutas que solo empiezan igual", async () => {
+    dejaPasar(await proxy(await solicitud("/administracion", { rol: "evaluador" })));
+  });
+});

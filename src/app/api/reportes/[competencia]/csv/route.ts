@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { generarCsv } from "@/lib/csv";
+import { obtenerTodosLosParticipantes } from "@/lib/db/participantes";
 import { leerFilasReporte } from "@/lib/db/reportes";
 import { fechaParaArchivo } from "@/lib/formato";
 import { registrarError } from "@/lib/registro";
@@ -32,7 +33,8 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/repo
 
   const inicio = Date.now();
   try {
-    const csv = generarCsv(competencia, equipo, await leerFilasReporte(competencia.id));
+    const [filas, participantes] = await Promise.all([leerFilasReporte(competencia.id), obtenerTodosLosParticipantes()]);
+    const csv = generarCsv(competencia, equipo, filas, participantes);
     const nombre = `nivela-${competencia.id}-${fechaParaArchivo(new Date())}.csv`;
     return new NextResponse(csv, {
       headers: {

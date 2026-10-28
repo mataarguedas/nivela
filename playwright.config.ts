@@ -12,6 +12,7 @@ for (const archivo of [".env.local", ".env"]) {
   }
 }
 
+const ADMIN = /admin\.spec\.ts$/;
 const PORT = 3000;
 const baseURL = `http://localhost:${PORT}`;
 
@@ -33,15 +34,24 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "iPhone 13", use: { ...devices["iPhone 13"] } },
-    { name: "Pixel 7", use: { ...devices["Pixel 7"] } },
+    { name: "iPhone 13", testIgnore: ADMIN, use: { ...devices["iPhone 13"] } },
+    { name: "Pixel 7", testIgnore: ADMIN, use: { ...devices["Pixel 7"] } },
     {
       // Firefox doesn't support isMobile, so emulate a phone-sized viewport only.
       name: "Firefox",
+      testIgnore: ADMIN,
       use: { ...devices["Desktop Firefox"], viewport: { width: 390, height: 844 } },
     },
     // The docente reads reports on a laptop; the whole flow must work there too.
-    { name: "Desktop Chrome", use: { ...devices["Desktop Chrome"] } },
+    { name: "Desktop Chrome", testIgnore: ADMIN, use: { ...devices["Desktop Chrome"] } },
+    // admin.spec renames the shared participant list every other spec reads,
+    // so it runs once, after all of them (and restores the list).
+    {
+      name: "Admin",
+      testMatch: ADMIN,
+      dependencies: ["iPhone 13", "Pixel 7", "Firefox", "Desktop Chrome"],
+      use: { ...devices["iPhone 13"] },
+    },
   ],
   webServer: {
     command: "npm run dev",

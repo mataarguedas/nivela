@@ -6,11 +6,13 @@
 // standard format works everywhere else unchanged).
 //
 // Unlike the report, the export keeps every row in the DB: an evaluador id
-// that is no longer in config is written as the id, with an empty curso.
+// that is no longer in config is written as the id, with an empty curso, and
+// participants the admin has hidden still appear with their name.
 
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import { esNivelValor, obtenerNivel } from "@/config/niveles";
+import type { Participante } from "@/config/participantes";
 import { formatearFechaHora } from "@/lib/formato";
 import { redondear2 } from "@/lib/puntajes";
 import type { FilaReporte } from "@/lib/reportes";
@@ -22,6 +24,7 @@ export const COLUMNAS_CSV = [
   "evaluador",
   "curso_evaluador",
   "participante",
+  "nombre_participante",
   "indicador",
   "nivel",
   "nivel_nombre",
@@ -43,9 +46,19 @@ export function celdaCsv(valor: string | number | null): string {
   return /[",\r\n]/.test(texto) ? `"${texto.replaceAll('"', '""')}"` : texto;
 }
 
-export function generarCsv(competencia: Competencia, equipo: Equipo, filas: readonly FilaReporte[]): string {
+/**
+ * `participantes`: every stored participant, hidden ones included, so their
+ * rows keep the name; an unnamed or unknown participant gets an empty name.
+ */
+export function generarCsv(
+  competencia: Competencia,
+  equipo: Equipo,
+  filas: readonly FilaReporte[],
+  participantes: readonly Pick<Participante, "id" | "nombre">[],
+): string {
   const integrantes = new Map(equipo.integrantes.map((i) => [i.id, i]));
   const numeros = new Map(competencia.indicadores.map((i) => [i.id, i.numero]));
+  const nombres = new Map(participantes.map((p) => [p.id, p.nombre]));
 
   const lineas = filas.map((f) => {
     const integrante = integrantes.get(f.evaluadorId);
@@ -54,6 +67,7 @@ export function generarCsv(competencia: Competencia, equipo: Equipo, filas: read
       integrante?.nombre ?? f.evaluadorId,
       integrante?.curso ?? "",
       f.participanteId,
+      nombres.get(f.participanteId) ?? null,
       numeros.get(f.indicadorId) ?? f.indicadorId,
       f.nivel,
       esNivelValor(f.nivel) ? obtenerNivel(f.nivel).etiqueta : "",

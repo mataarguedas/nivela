@@ -6,6 +6,7 @@ import type { MotivoAcceso } from "@/lib/destino";
 const AVISOS: Record<MotivoAcceso, string> = {
   expirada: TEXTOS.sesion.expirada,
   docente: TEXTOS.sesion.soloDocente,
+  admin: TEXTOS.sesion.soloAdmin,
 };
 
 export function AvisoAcceso({ motivo }: { motivo: MotivoAcceso | null }) {

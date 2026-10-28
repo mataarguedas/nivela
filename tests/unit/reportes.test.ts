@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { obtenerCompetencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
-import type { Participante } from "@/config/participantes";
+import { crearParticipante, generarParticipantes, type Participante } from "@/config/participantes";
 import { agregarReporte, type FilaReporte } from "@/lib/reportes";
 
 // agregarReporte against a small hand-computed fixture: 3 evaluators × 3
@@ -21,11 +21,8 @@ const equipo: Equipo = {
   ],
 };
 
-const participantes: Participante[] = [
-  { id: "P01", etiqueta: "Participante 01" },
-  { id: "P02", etiqueta: "Participante 02" },
-  { id: "P03", etiqueta: "Participante 03" },
-];
+// P02 has a name (set by the admin); the others show their fallback label.
+const participantes: Participante[] = [crearParticipante(1, null), crearParticipante(2, "Ana Pérez"), crearParticipante(3, null)];
 
 type Extra = Partial<Pick<FilaReporte, "origen" | "observacion" | "indicadorId">>;
 
@@ -153,15 +150,13 @@ describe("agregarReporte", () => {
         evaluaciones: 3,
         medias: p01.indicadores.map((i) => i.media),
       },
-      expect.objectContaining({ id: "P02", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5] }),
+      // The admin's name reaches the report as the label.
+      expect.objectContaining({ id: "P02", etiqueta: "Ana Pérez", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5] }),
     ]);
   });
 
   it("puntajes más altos: los empates comparten posición y los empatados en el corte se incluyen", () => {
-    const siete: Participante[] = Array.from({ length: 7 }, (_, i) => ({
-      id: `P0${i + 1}`,
-      etiqueta: `Participante 0${i + 1}`,
-    }));
+    const siete = generarParticipantes(7);
     const empates = agregarReporte(competencia, equipo, siete, [
       ...evaluacion("e1", "P01", [4, 4, 4, 4]), // 4
       ...evaluacion("e1", "P02", [4, 4, 3, 3]), // 3,5
@@ -182,10 +177,7 @@ describe("agregarReporte", () => {
   });
 
   it("puntajes más altos: el corte es estricto cuando no hay empate en el quinto lugar", () => {
-    const seis: Participante[] = Array.from({ length: 6 }, (_, i) => ({
-      id: `P0${i + 1}`,
-      etiqueta: `Participante 0${i + 1}`,
-    }));
+    const seis = generarParticipantes(6);
     const filas = seis.flatMap((p, i) => evaluacion("e1", p.id, [4 - (i % 4), 4 - (i % 4), 4 - Math.floor(i / 4), 4]));
     const resultado = agregarReporte(competencia, equipo, seis, filas);
     expect(resultado.mejores).toHaveLength(5);

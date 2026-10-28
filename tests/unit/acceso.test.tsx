@@ -45,6 +45,14 @@ describe("FormularioAcceso", () => {
     expect(irA).toHaveBeenCalledWith("/reportes");
   });
 
+  it("con el código de administración va a /admin aunque next apunte a otra página", async () => {
+    window.history.replaceState(null, "", "/acceso?next=%2Freportes");
+    render(<FormularioAcceso />);
+    responder(200, { rol: "admin" });
+    await enviar("admin2026");
+    expect(irA).toHaveBeenCalledWith("/admin");
+  });
+
   it("muestra el error del código inválido", async () => {
     render(<FormularioAcceso />);
     responder(401, { error: "x" });

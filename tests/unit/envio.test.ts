@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { generarParticipantes } from "@/config/participantes";
 import type { EntradaParticipante } from "@/lib/borrador";
 import { consultarEnviadas, cuerpoEvaluacion, enviarEvaluacion } from "@/lib/envio";
 import { validarEvaluacion } from "@/lib/validacion";
@@ -34,7 +35,7 @@ describe("cuerpoEvaluacion", () => {
         { indicadorId: "adaptabilidad-4", nivel: 1, origen: "manual" },
       ],
     });
-    expect(validarEvaluacion(cuerpo).ok).toBe(true);
+    expect(validarEvaluacion(cuerpo, generarParticipantes(20)).ok).toBe(true);
   });
 
   it("es null mientras falte un nivel", () => {

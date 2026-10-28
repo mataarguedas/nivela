@@ -33,6 +33,7 @@ function registrar(datos: { status: number; ms: number; modelo?: string; statusJ
 export async function POST(request: Request) {
   const sesion = await getSesion();
   if (!sesion) return responder({ error: TEXTOS.sesion.requerida }, 401);
+  if (sesion.rol === "admin") return responder({ error: TEXTOS.sesion.noParaAdmin }, 403);
 
   const validacion = validarSolicitudJev(await request.json().catch(() => null));
   if (!validacion.ok) return responder({ error: validacion.error }, 400);

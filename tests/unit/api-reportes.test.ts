@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { crearParticipante } from "@/config/participantes";
 import type { FilaReporte } from "@/lib/reportes";
 
 // /api/reportes/[competencia] and its /csv with the db layer and the session
 // mocked. The aggregation itself is covered in reportes.test.ts.
 
 const db = vi.hoisted(() => ({ leerFilasReporte: vi.fn(), obtenerReporte: vi.fn() }));
+const dbParticipantes = vi.hoisted(() => ({ obtenerTodosLosParticipantes: vi.fn() }));
 const sesion = vi.hoisted(() => ({ getSesion: vi.fn() }));
 vi.mock("@/lib/db/reportes", () => db);
+vi.mock("@/lib/db/participantes", () => dbParticipantes);
 vi.mock("@/lib/sesion", () => sesion);
 
 const { GET: GET_REPORTE } = await import("@/app/api/reportes/[competencia]/route");
@@ -38,6 +41,7 @@ const pedirCsv = (competencia = "adaptabilidad") =>
 
 beforeEach(() => {
   sesion.getSesion.mockResolvedValue(DOCENTE);
+  dbParticipantes.obtenerTodosLosParticipantes.mockResolvedValue([crearParticipante(3, "Carla Mora")]);
 });
 
 afterEach(() => {
@@ -114,7 +118,7 @@ describe("GET /api/reportes/[competencia]/csv", () => {
     const bytes = new Uint8Array(await respuesta.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const texto = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
-    expect(texto).toContain("Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,2,2,Intermedio,manual");
+    expect(texto).toContain("Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,Carla Mora,2,2,Intermedio,manual");
     expect(texto).toContain(OBSERVACION);
   });
 });

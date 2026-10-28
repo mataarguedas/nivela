@@ -1,8 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { MENSAJES_VALIDACION, validarConsultaEnviadas, validarEvaluacion, validarSolicitudJev } from "@/lib/validacion";
+import { generarParticipantes } from "@/config/participantes";
+import {
+  MENSAJES_VALIDACION,
+  validarConsultaEnviadas,
+  validarEvaluacion,
+  validarParticipantes,
+  validarSolicitudJev,
+} from "@/lib/validacion";
 
 // POST /api/evaluaciones validation: every rejection case in PRD §10. Also
-// the POST /api/jev body (PRD §8.3).
+// the POST /api/jev body (PRD §8.3) and the admin's participant list.
+
+/** The active participants, as db/participantes.ts would return them. */
+const PARTICIPANTES = generarParticipantes(20);
+const evaluar = (datos: unknown, participantes = PARTICIPANTES) => validarEvaluacion(datos, participantes);
 
 const IA = {
   nivelSugerido: 3,
@@ -30,18 +41,18 @@ function conPrimera(cambios: Calificacion): Calificacion[] {
 }
 
 function error(datos: unknown) {
-  const resultado = validarEvaluacion(datos);
+  const resultado = evaluar(datos);
   return resultado.ok ? null : resultado.error;
 }
 
 describe("validarEvaluacion: casos válidos", () => {
   it("acepta una evaluación completa", () => {
-    const resultado = validarEvaluacion(cuerpo());
+    const resultado = evaluar(cuerpo());
     expect(resultado.ok).toBe(true);
   });
 
   it("normaliza observaciones: recorta y guarda las vacías como null", () => {
-    const resultado = validarEvaluacion(
+    const resultado = evaluar(
       cuerpo({}, [
         { indicadorId: "adaptabilidad-1", nivel: 1, origen: "manual", observacion: "  Pidió ayuda para reorganizarse.  " },
         { indicadorId: "adaptabilidad-2", nivel: 2, origen: "manual", observacion: "   " },
@@ -55,18 +66,18 @@ describe("validarEvaluacion: casos válidos", () => {
   });
 
   it("acepta origen ia con metadatos, y origen manual que conserva los de una sugerencia anterior", () => {
-    expect(validarEvaluacion(cuerpo({}, conPrimera({ origen: "ia", nivel: 3, ia: IA }))).ok).toBe(true);
-    expect(validarEvaluacion(cuerpo({}, conPrimera({ origen: "manual", nivel: 2, ia: IA }))).ok).toBe(true);
+    expect(evaluar(cuerpo({}, conPrimera({ origen: "ia", nivel: 3, ia: IA }))).ok).toBe(true);
+    expect(evaluar(cuerpo({}, conPrimera({ origen: "manual", nivel: 2, ia: IA }))).ok).toBe(true);
   });
 
   it("acepta exactamente 1000 caracteres de observación y probabilidades que suman 1 ± 0,02", () => {
-    expect(validarEvaluacion(cuerpo({}, conPrimera({ observacion: "a".repeat(1000) }))).ok).toBe(true);
+    expect(evaluar(cuerpo({}, conPrimera({ observacion: "a".repeat(1000) }))).ok).toBe(true);
     const casiUno = { ...IA, probabilidades: { "1": 0.05, "2": 0.17, "3": 0.79, "4": 0.01 } }; // 1.02
-    expect(validarEvaluacion(cuerpo({}, conPrimera({ origen: "ia", ia: casiUno }))).ok).toBe(true);
+    expect(evaluar(cuerpo({}, conPrimera({ origen: "ia", ia: casiUno }))).ok).toBe(true);
   });
 
   it("acepta la docente u otra integrante del equipo y cualquier participante configurado", () => {
-    expect(validarEvaluacion(cuerpo({ evaluadorId: "wesnlyn-garcia-perez", participanteId: "P20" })).ok).toBe(true);
+    expect(evaluar(cuerpo({ evaluadorId: "wesnlyn-garcia-perez", participanteId: "P20" })).ok).toBe(true);
   });
 });
 
@@ -90,6 +101,11 @@ describe("validarEvaluacion: rechazos (PRD §10)", () => {
 
   it("participante inexistente", () => {
     expect(error(cuerpo({ participanteId: "P99" }))).toBe(MENSAJES_VALIDACION.participante);
+  });
+
+  it("participante que el admin ocultó al bajar la cantidad", () => {
+    const resultado = evaluar(cuerpo({ participanteId: "P20" }), generarParticipantes(15));
+    expect(resultado).toEqual({ ok: false, error: MENSAJES_VALIDACION.participante });
   });
 
   it("no tiene exactamente los indicadores de la competencia", () => {
@@ -204,5 +220,44 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
 
   it("el mensaje de longitud usa el formato es-CR", () => {
     expect(MENSAJES_VALIDACION.descripcion).toBe("La descripción debe tener entre 20 y 1 500 caracteres.");
+  });
+});
+
+describe("validarParticipantes (PUT /api/admin/participantes)", () => {
+  const lista = (nombres: string[], extra: Record<string, unknown> = {}) => ({ cantidad: nombres.length, nombres, ...extra });
+
+  it("acepta nombres con tildes, recorta y guarda los vacíos como null", () => {
+    expect(validarParticipantes(lista(["  Ana Pérez ", "", "José Ñúñez Solís"]))).toEqual({
+      ok: true,
+      datos: { nombres: ["Ana Pérez", null, "José Ñúñez Solís"], confirmar: false },
+    });
+    expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
+  });
+
+  it.each([0, 100, 2.5, "5", null])("rechaza la cantidad %j", (cantidad) => {
+    expect(validarParticipantes({ cantidad, nombres: ["Ana"] })).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.cantidadParticipantes,
+    });
+  });
+
+  it("rechaza una cantidad que no coincide con los nombres, o un cuerpo sin forma", () => {
+    expect(validarParticipantes({ cantidad: 3, nombres: ["Ana", "Bea"] })).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.listaParticipantes,
+    });
+    expect(validarParticipantes(null)).toEqual({ ok: false, error: MENSAJES_VALIDACION.listaParticipantes });
+  });
+
+  it.each([
+    ["un correo", "ana@ejemplo.com"],
+    ["un teléfono", "Ana 8888-1234"],
+    ["un salto de línea", "Ana\nPérez"],
+    ["más de 80 caracteres", "a".repeat(81)],
+  ])("rechaza %s y señala el participante", (_, nombre) => {
+    expect(validarParticipantes(lista(["Ana", nombre]))).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.nombreParticipante(2),
+    });
   });
 });

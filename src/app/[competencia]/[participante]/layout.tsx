@@ -1,18 +1,21 @@
 import { notFound } from "next/navigation";
-import { obtenerParticipante, PARTICIPANTES } from "@/config/participantes";
+import { esIdParticipante } from "@/config/participantes";
 
-// Unknown participants get a real 404 before anything streams, for the same
-// reason the parent layout checks the competencia (see ../layout.tsx, which
-// also explains `instant = false`).
+// Ids that can't be a participant ("P01".."P99") get a real 404 before
+// anything streams, for the same reason the parent layout checks the
+// competencia (see ../layout.tsx, which also explains `instant = false`).
+// Whether the participant is currently active comes from the DB, so the page
+// checks that at request time, behind its Suspense boundary.
 
 export const instant = false;
 
+// Cache Components needs a sample param to prerender; the list itself is runtime data.
 export function generateStaticParams() {
-  return PARTICIPANTES.map((p) => ({ participante: p.id }));
+  return [{ participante: "P01" }];
 }
 
 export default async function LayoutParticipante({ children, params }: LayoutProps<"/[competencia]/[participante]">) {
   const { participante } = await params;
-  if (!obtenerParticipante(participante)) notFound();
+  if (!esIdParticipante(participante)) notFound();
   return children;
 }

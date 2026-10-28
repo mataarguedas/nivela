@@ -1,20 +1,18 @@
 import { notFound } from "next/navigation";
-import { obtenerParticipante, PARTICIPANTES } from "@/config/participantes";
+import { esIdParticipante } from "@/config/participantes";
 
-// Unknown participants get a real 404 before anything streams (see
-// app/[competencia]/layout.tsx on `instant = false`).
+// Same check as app/[competencia]/[participante]/layout.tsx: a malformed id
+// is a real 404 here; whether the participant is active is checked by the
+// page at request time.
 
 export const instant = false;
 
 export function generateStaticParams() {
-  return PARTICIPANTES.map((p) => ({ participante: p.id }));
+  return [{ participante: "P01" }];
 }
 
-export default async function LayoutReporteParticipante({
-  children,
-  params,
-}: LayoutProps<"/reportes/[competencia]/[participante]">) {
+export default async function LayoutParticipanteReporte({ children, params }: LayoutProps<"/reportes/[competencia]/[participante]">) {
   const { participante } = await params;
-  if (!obtenerParticipante(participante)) notFound();
+  if (!esIdParticipante(participante)) notFound();
   return children;
 }

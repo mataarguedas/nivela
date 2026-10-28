@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react
 import { Boton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
 import { TEXTOS } from "@/config/textos";
-import { destinoSeguro } from "@/lib/destino";
+import { destinoTrasAcceso } from "@/lib/destino";
 import { irA } from "@/lib/navegacion";
 
 // Access code form (PRD §5.1). After MAX_FALLOS wrong codes in a row the
@@ -41,8 +41,9 @@ export function FormularioAcceso() {
         body: JSON.stringify({ codigo: valor }),
       });
       if (respuesta.ok) {
+        const { rol } = (await respuesta.json().catch(() => ({}))) as { rol?: string };
         // Stay in the loading state while the page navigates away.
-        irA(destinoSeguro(new URLSearchParams(window.location.search).get("next")));
+        irA(destinoTrasAcceso(rol, new URLSearchParams(window.location.search).get("next")));
         return;
       }
       if (respuesta.status === 401) {

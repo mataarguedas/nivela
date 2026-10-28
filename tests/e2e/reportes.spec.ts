@@ -9,7 +9,7 @@ import { iniciarSesion } from "./sesion";
 // don't break them.
 
 const CABECERA_CSV =
-  "competencia,evaluador,curso_evaluador,participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado";
+  "competencia,evaluador,curso_evaluador,participante,nombre_participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado";
 
 function tabla(page: Page): Locator {
   return page.getByRole("table", { name: "Tabla de participantes" });

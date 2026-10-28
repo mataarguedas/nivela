@@ -23,7 +23,7 @@ export const DURACION_SESION_S = 12 * 60 * 60;
 const DURACION_PREVIA_S = 30 * 24 * 60 * 60;
 const BYTES_MINIMOS_SECRETO = 32;
 
-export const ROLES = ["evaluador", "docente"] as const;
+export const ROLES = ["evaluador", "docente", "admin"] as const;
 export type Rol = (typeof ROLES)[number];
 
 const esquemaSesion = z.object({
@@ -94,14 +94,18 @@ export function codigosIguales(recibido: string, esperado: string): boolean {
 }
 
 /**
- * Maps an access code to a role: CODIGO_DOCENTE first, then CODIGO_ACCESO.
- * Both comparisons always run. An unset or empty env code never matches.
+ * Maps an access code to a role: CODIGO_ADMIN first, then CODIGO_DOCENTE,
+ * then CODIGO_ACCESO. All comparisons always run. An unset or empty env code
+ * never matches.
  */
 export function rolParaCodigo(codigo: string): Rol | null {
+  const admin = process.env.CODIGO_ADMIN ?? "";
   const docente = process.env.CODIGO_DOCENTE ?? "";
   const acceso = process.env.CODIGO_ACCESO ?? "";
+  const esAdmin = admin !== "" && codigosIguales(codigo, admin);
   const esDocente = docente !== "" && codigosIguales(codigo, docente);
   const esEvaluador = acceso !== "" && codigosIguales(codigo, acceso);
+  if (esAdmin) return "admin";
   if (esDocente) return "docente";
   if (esEvaluador) return "evaluador";
   return null;

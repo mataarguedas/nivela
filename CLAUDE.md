@@ -8,7 +8,7 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
 2. **Light mode only.** Don't add `dark:` variants.
 3. **The TypeSafe API key never reaches the client.** All Jev calls go through `src/lib/jev.ts` (`import "server-only"`), called only from `app/api/jev/route.ts`.
 4. **Never send names or participant codes to Jev.** Send only the competencia/indicator text from server config plus the evaluator's observation.
-5. **Only names in config; never emails or phone numbers.** The DB stores ids, levels, observations and AI metadata. No names.
+5. **Only names; never emails or phone numbers.** Evaluator names live in config. Participant names are entered by the admin and stored in the `participantes` table (PRD §5.10); they are never sent to Jev or logged. Otherwise the DB stores ids, levels, observations and AI metadata.
 6. **Jev suggests, the human decides.** A suggestion is never applied without a tap on "Aplicar sugerencia". A Jev failure must never block manual rating or submission.
 7. **Competencias, indicators, teams and participants are data** in `src/config/`. No competencia-specific logic in components. Enabling a competencia means editing config only.
 8. **Design**: DESIGN.md tokens only.
@@ -65,7 +65,8 @@ Before declaring a task done, run `lint`, `typecheck` and `test`. Also run `test
 | `CODIGO_ACCESO` | Class code (role `evaluador`). |
 | `CODIGO_DOCENTE` | Report code (role `docente`). |
 | `SESSION_SECRET` | ≥ 32 random bytes, used for HMAC. |
-| `CANTIDAD_PARTICIPANTES` | Default 20 (placeholder, PRD §16). |
+| `CODIGO_ADMIN` | Admin code (role `admin`, `/admin` only). Never commit its value. |
+| `CANTIDAD_PARTICIPANTES` | Default 20. Fallback list only, until the admin saves the real one. |
 
 Keep `.env.example` in sync. Never commit `.env*` except the example.
 
@@ -85,7 +86,9 @@ src/
     reportes/page.tsx
     reportes/[competencia]/page.tsx              # Reporte general
     reportes/[competencia]/[participante]/page.tsx  # Reporte individual
+    admin/page.tsx + EditorParticipantes.tsx       # admin: participant count and names
     api/acceso/route.ts
+    api/admin/participantes/route.ts
     api/salir/route.ts
     api/jev/route.ts
     api/evaluaciones/route.ts
@@ -95,14 +98,14 @@ src/
   config/
     niveles.ts
     equipos.ts
-    participantes.ts
+    participantes.ts        # id/label scheme + fallback list; the real list is in the DB
     competencias/index.ts   # registry
     competencias/adaptabilidad.ts
     competencias/{pensamiento-critico,autorregulacion-emocional,orientacion-detalle,orientacion-resultados}.ts
   lib/
     jev.ts                  # server-only Jev client + mapping to proxy contract
     sesion.ts               # sign/verify cookie, constant-time code compare
-    db/{index.ts,schema.ts}
+    db/{index.ts,schema.ts,participantes.ts}  # participantes.ts: the admin's list, read at request time
     puntajes.ts             # pure scoring (PRD §7)
     reportes.ts             # aggregation for report routes
     borrador.ts             # localStorage drafts (client), try/catch + memory fallback
@@ -210,17 +213,19 @@ Rules for this module:
 
 ## Sessions and access (`src/lib/sesion.ts`, `src/proxy.ts`)
 
-- `POST /api/acceso` compares the code with `CODIGO_ACCESO` / `CODIGO_DOCENTE` using `crypto.timingSafeEqual` (pad to equal length first). Add a ~400 ms delay on failure.
+- `POST /api/acceso` compares the code with `CODIGO_ADMIN` / `CODIGO_DOCENTE` / `CODIGO_ACCESO` (in that priority) using `crypto.timingSafeEqual` (pad to equal length first). Add a ~400 ms delay on failure.
 - The cookie is `nivela_sesion`: a JWT (HS256, jose) with `{ rol, sid }`. httpOnly, Secure (in prod), SameSite=Lax, `maxAge` 12 h. `sid` is a random id used only for the Jev cap.
 - `proxy.ts`:
   - Unauthenticated page requests redirect to `/acceso`. Unauthenticated `/api/*` requests get 401 JSON.
   - `/reportes/**` and `/api/reportes/**` require `rol === "docente"`.
+  - `/admin/**` and `/api/admin/**` require `rol === "admin"`, and the admin role is confined there: other pages redirect to `/admin`, other APIs answer 403.
   - Excluded from the check: `/acceso`, `/api/acceso`, static assets, `manifest.webmanifest`, `sw.js`, icons.
 - Route handlers re-verify the session themselves. Don't rely on `proxy.ts` alone.
 
 ## Database
 
-- The schema in `src/lib/db/schema.ts` matches PRD §9.2 exactly: `evaluaciones`, `calificaciones`, `uso_jev`.
+- The schema in `src/lib/db/schema.ts` matches PRD §9.2 exactly: `evaluaciones`, `calificaciones`, `uso_jev`, `participantes`.
+- **Participants are runtime data** (`src/lib/db/participantes.ts`), not config. Never import a static list. Pages read them behind Suspense after `connection()` (`cargarParticipantes`), so the build never needs the DB. Route handlers read them uncached (`obtenerParticipantes`). Rows are never deleted; `activo = false` hides them.
 - Migrations go through `drizzle-kit`, committed under `drizzle/`.
 - **Upsert flow** (`POST /api/evaluaciones`), all in one transaction:
   1. Validate with zod plus config cross-checks (PRD §10).

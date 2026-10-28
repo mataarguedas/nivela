@@ -140,13 +140,13 @@ async function main() {
     process.exit(1);
   }
 
-  // Imported after the env files load: participantes.ts reads CANTIDAD_PARTICIPANTES at import.
+  // Imported after the env files load: the db modules read DATABASE_URL.
   const { sql } = await import("drizzle-orm");
   const { obtenerCompetenciaHabilitada } = await import("@/config/competencias");
   const { equipoDeCompetencia } = await import("@/config/equipos");
-  const { PARTICIPANTES } = await import("@/config/participantes");
   const { getDb } = await import("@/lib/db");
   const { guardarEvaluacion } = await import("@/lib/db/evaluaciones");
+  const { obtenerParticipantes } = await import("@/lib/db/participantes");
   const { validarEvaluacion } = await import("@/lib/validacion");
 
   console.log(`Base de datos: ${new URL(process.env.DATABASE_URL).host}`);
@@ -160,6 +160,8 @@ async function main() {
   const competencia = obtenerCompetenciaHabilitada(COMPETENCIA_ID);
   const equipo = equipoDeCompetencia(COMPETENCIA_ID);
   if (!competencia || !equipo) throw new Error(`${COMPETENCIA_ID} is not enabled or has no team`);
+  // The admin's list if one was saved; otherwise the unnamed fallback.
+  const PARTICIPANTES = await obtenerParticipantes();
 
   // Each participant has a "true" level per indicator; each evaluator is a bit
   // stricter or more lenient; every rating adds its own noise.
@@ -191,12 +193,15 @@ async function main() {
           ia: { nivelSugerido, probabilidades: p, confianza: redondear(p[String(nivelSugerido)] * entre(0.85, 0.98)), modelo: MODELO },
         };
       });
-      const resultado = validarEvaluacion({
-        competenciaId: competencia.id,
-        evaluadorId: evaluador.id,
-        participanteId: participante.id,
-        calificaciones,
-      });
+      const resultado = validarEvaluacion(
+        {
+          competenciaId: competencia.id,
+          evaluadorId: evaluador.id,
+          participanteId: participante.id,
+          calificaciones,
+        },
+        PARTICIPANTES,
+      );
       if (!resultado.ok) throw new Error(`Invalid seed data for ${evaluador.id}/${participante.id}: ${resultado.error}`);
       return resultado.datos;
     }),

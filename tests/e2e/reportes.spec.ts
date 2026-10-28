@@ -52,7 +52,7 @@ test.describe("como docente", () => {
     await expect(page.getByText("Aún no hay evaluaciones enviadas"), "run `npm run db:seed` first").toHaveCount(0);
     await expect(page.getByText("Participantes evaluados")).toBeVisible();
     await expect(page.getByText("Niveles asistidos por IA")).toBeVisible();
-    for (const titulo of ["Distribución de niveles por indicador", "Puntaje por participante", "Cobertura de evaluaciones"]) {
+    for (const titulo of ["Los 5 puntajes más altos", "Distribución de niveles por indicador", "Puntaje por participante", "Cobertura de evaluaciones"]) {
       await expect(page.getByRole("heading", { level: 2, name: titulo })).toBeVisible();
     }
     // Both charts load on the client and each has a text equivalent.
@@ -74,6 +74,18 @@ test.describe("como docente", () => {
     const descendente = (await puntajes(page)).filter((p) => p !== null);
     expect(descendente.length).toBeGreaterThan(1);
     expect(descendente).toEqual([...descendente].sort((a, b) => b - a));
+
+    // Top 5: at least 5 places (more only on a tie at the cut), the same
+    // scores the table opens with, each card linking to its Reporte individual.
+    const mejores = page.getByRole("region", { name: "Los 5 puntajes más altos" }).getByRole("listitem");
+    const cantidad = await mejores.count();
+    expect(cantidad).toBeGreaterThanOrEqual(Math.min(5, descendente.length));
+    const puntajesMejores = (await mejores.locator("span.text-h3:not([aria-hidden])").allTextContents()).map((t) =>
+      Number(t.trim().replace(",", ".")),
+    );
+    expect(puntajesMejores).toEqual(descendente.slice(0, cantidad));
+    expect(puntajesMejores.slice(5).every((p) => p === puntajesMejores[4])).toBe(true);
+    await expect(mejores.first().getByRole("link")).toHaveAttribute("href", /\/reportes\/adaptabilidad\/P\d+$/);
 
     await columnaPuntaje.getByRole("button").click();
     await expect(columnaPuntaje).toHaveAttribute("aria-sort", "ascending");

@@ -142,10 +142,62 @@ describe("agregarReporte", () => {
     expect(empate.ranking.map((r) => r.id)).toEqual(["P02", "P03", "P01"]);
   });
 
+  it("puntajes más altos: con menos de 5 evaluados aparecen todos, con medias y evaluaciones", () => {
+    expect(reporte.mejores).toEqual([
+      {
+        id: "P01",
+        etiqueta: "Participante 01",
+        puntaje: reporte.ranking[0].puntaje,
+        nivel: 4,
+        posicion: 1,
+        evaluaciones: 3,
+        medias: p01.indicadores.map((i) => i.media),
+      },
+      expect.objectContaining({ id: "P02", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5] }),
+    ]);
+  });
+
+  it("puntajes más altos: los empates comparten posición y los empatados en el corte se incluyen", () => {
+    const siete: Participante[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `P0${i + 1}`,
+      etiqueta: `Participante 0${i + 1}`,
+    }));
+    const empates = agregarReporte(competencia, equipo, siete, [
+      ...evaluacion("e1", "P01", [4, 4, 4, 4]), // 4
+      ...evaluacion("e1", "P02", [4, 4, 3, 3]), // 3,5
+      ...evaluacion("e1", "P03", [3, 3, 4, 4]), // 3,5
+      ...evaluacion("e1", "P04", [3, 3, 3, 3]), // 3
+      ...evaluacion("e1", "P05", [3, 3, 2, 2]), // 2,5 (5th place, tied)
+      ...evaluacion("e1", "P06", [2, 2, 3, 3]), // 2,5 (5th place, tied)
+      ...evaluacion("e1", "P07", [1, 1, 1, 1]), // 1, would be 7th
+    ]);
+    expect(empates.mejores.map((d) => [d.id, d.posicion])).toEqual([
+      ["P01", 1],
+      ["P02", 2],
+      ["P03", 2],
+      ["P04", 4],
+      ["P05", 5],
+      ["P06", 5],
+    ]);
+  });
+
+  it("puntajes más altos: el corte es estricto cuando no hay empate en el quinto lugar", () => {
+    const seis: Participante[] = Array.from({ length: 6 }, (_, i) => ({
+      id: `P0${i + 1}`,
+      etiqueta: `Participante 0${i + 1}`,
+    }));
+    const filas = seis.flatMap((p, i) => evaluacion("e1", p.id, [4 - (i % 4), 4 - (i % 4), 4 - Math.floor(i / 4), 4]));
+    const resultado = agregarReporte(competencia, equipo, seis, filas);
+    expect(resultado.mejores).toHaveLength(5);
+    expect(resultado.mejores.map((d) => d.posicion)).toEqual([1, 2, 3, 4, 5]);
+    expect(resultado.mejores.map((d) => d.id)).toEqual(resultado.ranking.slice(0, 5).map((r) => r.id));
+  });
+
   it("sin filas: estado vacío", () => {
     const vacio = agregarReporte(competencia, equipo, participantes, []);
     expect(vacio.vacio).toBe(true);
     expect(vacio.ranking).toEqual([]);
+    expect(vacio.mejores).toEqual([]);
     expect(vacio.kpis).toEqual({
       participantesEvaluados: 0,
       participantesTotal: 3,

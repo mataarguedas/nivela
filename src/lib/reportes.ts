@@ -72,6 +72,17 @@ export type DistribucionIndicador = {
 
 export type PosicionRanking = { id: string; etiqueta: string; puntaje: number; nivel: NivelValor };
 
+/** How many places the "puntajes más altos" block shows (ties at the cut are all kept). */
+export const CANTIDAD_MEJORES = 5;
+
+export type Destacado = PosicionRanking & {
+  /** 1-based; participants with the same displayed puntaje share it (1, 2, 2, 4…). */
+  posicion: number;
+  evaluaciones: number;
+  /** Aligned with the competencia's indicators. */
+  medias: (number | null)[];
+};
+
 export type FilaCobertura = {
   evaluadorId: string;
   nombre: string;
@@ -95,6 +106,8 @@ export type Reporte = {
   distribucion: DistribucionIndicador[];
   /** Evaluated participants only, puntaje descending (ties by id). */
   ranking: PosicionRanking[];
+  /** The top CANTIDAD_MEJORES places of `ranking`, in the same order. */
+  mejores: Destacado[];
   /** Every participant in config order, evaluated or not. */
   participantes: ReporteParticipante[];
   cobertura: { participantes: { id: string; etiqueta: string }[]; filas: FilaCobertura[] };
@@ -176,6 +189,24 @@ export function agregarReporte(
     // are ordered by code rather than by float noise.
     .sort((a, b) => redondear2(b.puntaje) - redondear2(a.puntaje) || a.id.localeCompare(b.id));
 
+  // Standard competition ranking at display precision: a tie shares the
+  // position and skips the next ones, and everyone tied at the cut stays in,
+  // so the block never ranks one of two equal scores above the other.
+  const porId = new Map(reportesParticipantes.map((p) => [p.id, p]));
+  const mejores: Destacado[] = [];
+  for (const [indice, posicion] of ranking.entries()) {
+    const anterior = mejores.at(-1);
+    const lugar = anterior && redondear2(anterior.puntaje) === redondear2(posicion.puntaje) ? anterior.posicion : indice + 1;
+    if (lugar > CANTIDAD_MEJORES) break;
+    const participante = porId.get(posicion.id);
+    mejores.push({
+      ...posicion,
+      posicion: lugar,
+      evaluaciones: participante?.evaluaciones ?? 0,
+      medias: participante?.indicadores.map((i) => i.media) ?? [],
+    });
+  }
+
   const recibidas = reportesParticipantes.reduce((suma, p) => suma + p.evaluaciones, 0);
   const evaluadores = equipo.integrantes.length;
 
@@ -212,6 +243,7 @@ export function agregarReporte(
       };
     }),
     ranking,
+    mejores,
     participantes: reportesParticipantes,
     cobertura: {
       participantes: participantes.map(({ id, etiqueta }) => ({ id, etiqueta })),

@@ -40,6 +40,8 @@ export default defineConfig({
       name: "Firefox",
       use: { ...devices["Desktop Firefox"], viewport: { width: 390, height: 844 } },
     },
+    // The docente reads reports on a laptop; the whole flow must work there too.
+    { name: "Desktop Chrome", use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
     command: "npm run dev",

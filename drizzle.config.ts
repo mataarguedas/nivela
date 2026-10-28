@@ -11,6 +11,10 @@ import { defineConfig } from "drizzle-kit";
 // replaces existing variables) and migrations would silently go to the URL in
 // `.env`. Read `.env.local` explicitly and let it win, like `next dev` does.
 // Without a .env.local (CI, Vercel) the environment's own value is used.
+//
+// DATABASE_URL_MIGRACION overrides both, for the one deliberate case of
+// migrating production from this machine (README → Despliegue):
+//   DATABASE_URL_MIGRACION="<production url>" npm run db:migrate
 function desdeEnvLocal(clave: string): string | undefined {
   try {
     return parseEnv(readFileSync(".env.local", "utf8"))[clave];
@@ -19,7 +23,7 @@ function desdeEnvLocal(clave: string): string | undefined {
   }
 }
 
-const url = desdeEnvLocal("DATABASE_URL") ?? process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL_MIGRACION ?? desdeEnvLocal("DATABASE_URL") ?? process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
 console.log(`drizzle-kit → ${new URL(url).host}`);
 

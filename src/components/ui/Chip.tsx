@@ -18,7 +18,8 @@ const TONOS: Record<TonoChip, string> = {
   suave: "border-hairline text-ink-2",
   medio: "border-transparent bg-hairline text-ink",
   fuerte: "border-transparent bg-ink text-white",
-  enviado: "border-transparent bg-link/10 font-semibold text-link",
+  // 8 % tint keeps #0066cc text ≥ 4.5:1 on white and on the canvas.
+  enviado: "border-transparent bg-link/8 font-semibold text-link",
 };
 
 type ChipProps = {

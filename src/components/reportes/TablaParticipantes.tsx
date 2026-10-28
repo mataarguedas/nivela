@@ -63,12 +63,15 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
   const [orden, setOrden] = useState<Orden>(ORDEN_INICIAL);
   const ordenadas = ordenar(filas, orden);
 
-  const columnas: { id: Columna; titulo: string; detalle?: string; numerica: boolean }[] = [
+  const columnas: { id: Columna; titulo: string; detalle?: string; complemento?: string; numerica: boolean }[] = [
     { id: "participante", titulo: TEXTOS_REPORTES.participante, numerica: false },
     ...indicadores.map((ind, i) => ({
       id: `indicador-${i}` as const,
       titulo: TEXTOS_REPORTES.indicadorCorto(ind.numero),
       detalle: `${TEXTOS.calificacion.indicador(ind.numero)}. ${ind.titulo}`,
+      // Read after the visible "Ind. n" so the button's name starts with
+      // its visible label (WCAG 2.5.3 Label in Name).
+      complemento: `: ${ind.titulo}`,
       numerica: true,
     })),
     { id: "puntaje", titulo: TEXTOS.reportes.puntajeGeneral, numerica: true },
@@ -104,11 +107,11 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
                       screen readers); aria-sort on the <th> tells the order. */}
                   <button
                     type="button"
-                    aria-label={c.detalle}
                     onClick={() => alternar(c.id)}
                     className={`inline-flex min-h-11 w-full cursor-pointer items-center gap-1 whitespace-nowrap px-2 text-caption hover:text-link ${c.numerica ? "justify-end" : "justify-start"} ${activa ? "text-link" : "text-ink-3"}`}
                   >
                     <span>{c.titulo}</span>
+                    {c.complemento && <span className="sr-only">{c.complemento}</span>}
                     <span aria-hidden="true" className={`text-[10px] ${activa ? "" : "invisible"}`}>
                       {activa && orden.direccion === "ascending" ? "▲" : "▼"}
                     </span>

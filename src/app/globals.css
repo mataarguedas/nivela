@@ -8,6 +8,7 @@
   --color-ink-3: #505050;        /* Slate */
   --color-chrome: #333333;       /* Iron, nav icons */
   --color-hairline: #d6d6d6;     /* Pale Mist */
+  --color-control: #858585;      /* Silver, form control borders (3:1 non-text contrast, WCAG 1.4.11) */
   --color-primary: #0071e3;      /* Iris Blue, filled primary button ONLY */
   --color-link: #0066cc;         /* Sapphire, links, outlines, selected state */
   --color-link-hover: #509be7;

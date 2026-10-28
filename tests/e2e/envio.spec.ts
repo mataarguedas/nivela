@@ -13,6 +13,7 @@ const EVALUADOR_POR_PROYECTO: Record<string, { id: string; nombre: string }> = {
   "iPhone 13": { id: "allison-campos-morera", nombre: "Allison Campos Morera" },
   "Pixel 7": { id: "angelina-mata-arguedas", nombre: "Angelina Mata Arguedas" },
   Firefox: { id: "kristel-barrantes-lopez", nombre: "Kristel Barrantes López" },
+  "Desktop Chrome": { id: "sebastian-chaves", nombre: "Sebastian Chaves" },
 };
 
 function radio(page: Page, n: number, nivel: string) {

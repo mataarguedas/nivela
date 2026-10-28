@@ -330,6 +330,7 @@ Chart palette: a monochrome blue ramp consistent with DESIGN.md. Básico `#d6d6d
 
 ### 11.2 Reporte general
 - KPI tiles: participantes evaluados · evaluaciones recibidas / esperadas (cobertura %) · puntaje general promedio · % de niveles asistidos por IA.
+- **Los 5 puntajes más altos**: the top 5 places by puntaje general, each showing its puntaje, nivel general, evaluations received and the 4 indicator means, and linking to the individual report. Scores that are equal at 2 decimals share a position (1, 2, 2, 4…), and everyone tied at 5th place is shown.
 - **Distribución de niveles por indicador**: 100 % stacked bars, one per indicator, across all ratings.
 - **Puntaje por participante**: horizontal bars sorted descending, colored by nivel general.
 - **Tabla de participantes**: code, the 4 indicator means, puntaje general, nivel general, number of evaluations. Sortable, and each row links to the individual report.

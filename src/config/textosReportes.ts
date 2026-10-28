@@ -15,6 +15,11 @@ export const TEXTOS_REPORTES = {
   asistidosIa: "Niveles asistidos por IA",
   puntajePorParticipante: "Puntaje por participante",
   tablaParticipantes: "Tabla de participantes",
+  mejoresTitulo: (n: number) => `Los ${n} puntajes más altos`,
+  mejoresDescripcion: "Según el puntaje general. Los empates comparten la posición.",
+  posicion: (n: number) => `Posición ${n}`,
+  /** Count comes formatted. */
+  evaluacionesCuenta: (n: string) => (n === "1" ? "1 evaluación" : `${n} evaluaciones`),
   promedioPorIndicador: "Promedio por indicador",
   calificacionesPorIndicador: "Calificaciones por indicador",
   coincidenciaTitulo: "Coincidencia entre evaluadores",

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { esperarCalificacion } from "./hidratacion";
+import { esperarCalificacion, esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 import { sinEnviosEnServidor } from "./servidor";
 
@@ -184,6 +184,11 @@ test("a 375 px: sin desplazamiento horizontal, sin zoom en iOS y la barra no tap
       return enfocado.bottom - barra.top;
     });
   }
+  // The bar hydrates after the radiogroups, and its focus handler is attached
+  // in an effect: focusing earlier tested nothing (a WebKit flake). Wait for
+  // the bar's hydration, then one frame for passive effects to flush.
+  await esperarHidratacion(page, "[aria-label='Envío']");
+  await page.evaluate(() => new Promise((listo) => requestAnimationFrame(() => setTimeout(listo))));
   await page.evaluate(() => window.scrollTo(0, 0));
   await observacion(page, 2).focus();
   await expect.poll(tapadoPorLaBarra).toBeLessThanOrEqual(0);

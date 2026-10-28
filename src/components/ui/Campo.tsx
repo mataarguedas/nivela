@@ -22,9 +22,11 @@ type CampoTextoProps = Comunes & Omit<ComponentPropsWithoutRef<"textarea">, keyo
 
 const CONTROL =
   "block w-full min-h-11 rounded-tile bg-surface text-body text-ink placeholder:text-ink-2 disabled:opacity-40";
+// The border is the field's only outline on a white section, so it uses
+// Silver (#858585, ≥ 3:1 on white and canvas, WCAG 1.4.11), not the hairline.
 // Error state: thicker border plus an icon and text. The palette has no
 // error color, so the message never relies on color alone.
-const BORDE_NORMAL = "border border-hairline px-4 py-[11px] focus:border-link";
+const BORDE_NORMAL = "border border-control px-4 py-[11px] focus:border-link";
 const BORDE_ERROR = "border-2 border-ink px-[15px] py-[10px]";
 
 export function Campo({ etiqueta, ayuda, error, id, className, ...input }: CampoProps) {

@@ -6,6 +6,7 @@ import { puntosDistribucionGeneral, puntosPuntajes } from "@/components/reportes
 import { ClaveIndicadores, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
 import { DistribucionNiveles, PuntajesParticipantes } from "@/components/reportes/graficos";
 import { MatrizCobertura } from "@/components/reportes/MatrizCobertura";
+import { MejoresPuntajes } from "@/components/reportes/MejoresPuntajes";
 import { TablaParticipantes } from "@/components/reportes/TablaParticipantes";
 import { IconoChevron } from "@/components/ui/iconos";
 import type { Competencia } from "@/config/competencias";
@@ -14,11 +15,11 @@ import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { nivelGeneral, proporcion } from "@/lib/puntajes";
-import type { Reporte } from "@/lib/reportes";
+import { CANTIDAD_MEJORES, type Reporte } from "@/lib/reportes";
 import { cargarReporte } from "../cargarReporte";
 import { exigirDocente } from "../exigirDocente";
 
-// Reporte general (PRD §11.2, FR-11): KPI tiles, level distribution per
+// Reporte general (PRD §11.2, FR-11): KPI tiles, the top puntajes, level distribution per
 // indicator, score per participant, the sortable participant table and the
 // coverage grid, all from one server aggregation (lib/reportes.ts). Charts
 // load on the client; each has a hidden table with the same values.
@@ -106,6 +107,12 @@ function Contenido({ competencia, reporte }: { competencia: Competencia; reporte
           valor={kpis.proporcionIa === null ? "—" : formatearPorcentaje(kpis.proporcionIa)}
         />
       </dl>
+
+      <SeccionReporte id="mejores" titulo={TEXTOS_REPORTES.mejoresTitulo(CANTIDAD_MEJORES)}>
+        <p className="-mt-2 mb-4 text-caption text-ink-2">{TEXTOS_REPORTES.mejoresDescripcion}</p>
+        <MejoresPuntajes mejores={reporte.mejores} competenciaId={competencia.id} indicadores={indicadores} />
+        <ClaveIndicadores indicadores={indicadores} />
+      </SeccionReporte>
 
       <SeccionReporte id="distribucion" titulo={TEXTOS.reportes.distribucion}>
         <FiguraGrafico

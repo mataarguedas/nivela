@@ -2,16 +2,18 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { SelectorJornada } from "@/components/ui/SelectorJornada";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { cargarEstadoParticipantes } from "@/lib/db/participantes";
 import { getSesion } from "@/lib/sesion";
 import { EditorParticipantes } from "./EditorParticipantes";
 
-// /admin (PRD §5.10): the admin sets how many participants there are and
-// their names. The header prerenders; the editor streams in behind Suspense
-// once the role is re-checked here (not only in proxy.ts) and the current
-// list is read from the DB at request time.
+// /admin (PRD §5.10, §5.11): the admin sets how many participants there are
+// and their names, per jornada. The header prerenders; the jornada switch and
+// the editor stream in behind Suspense once the role is re-checked here (not
+// only in proxy.ts) and the session jornada's list is read from the DB at
+// request time.
 
 export const metadata: Metadata = {
   title: "Participantes · Nivela",
@@ -39,13 +41,21 @@ async function Editor() {
   const sesion = await getSesion();
   if (sesion?.rol !== "admin") redirect("/acceso?motivo=admin&next=%2Fadmin");
 
-  const estado = await cargarEstadoParticipantes("/admin");
-  if (!estado) {
-    return (
-      <p role="alert" className="px-4 pt-6 text-center text-body text-ink">
-        {TEXTOS.lista.errorCarga}
-      </p>
-    );
-  }
-  return <EditorParticipantes inicial={estado} />;
+  const { jornada } = sesion;
+  const estado = await cargarEstadoParticipantes("/admin", jornada);
+  return (
+    <>
+      <div className="mb-8 px-4">
+        <SelectorJornada actual={jornada} />
+      </div>
+      {estado ? (
+        // Keyed by jornada: switching remounts the editor with the other list.
+        <EditorParticipantes key={jornada} inicial={estado} jornada={jornada} />
+      ) : (
+        <p role="alert" className="px-4 pt-6 text-center text-body text-ink">
+          {TEXTOS.lista.errorCarga}
+        </p>
+      )}
+    </>
+  );
 }

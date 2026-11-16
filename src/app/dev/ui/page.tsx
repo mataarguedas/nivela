@@ -18,7 +18,7 @@ export default function PaginaComponentes() {
 
   const competencia = COMPETENCIAS.find((c) => c.habilitada && c.indicadores.length > 0);
   const indicador = competencia?.indicadores[0];
-  const integrante = competencia && equipoDeCompetencia(competencia.id)?.integrantes[0];
+  const integrante = competencia && equipoDeCompetencia("manana", competencia.id)?.integrantes[0];
   if (!indicador || !integrante) notFound();
 
   return <Muestrario indicador={indicador} nombreEvaluador={integrante.nombre} />;

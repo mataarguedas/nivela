@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generarParticipantes } from "@/config/participantes";
+import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { MENSAJES_VALIDACION } from "@/lib/validacion";
 
@@ -22,13 +23,14 @@ function guardar(cuerpo: unknown) {
     new Request("http://localhost/api/admin/participantes", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
+      // The editor always names the jornada it loaded; tests may override it.
+      body: JSON.stringify(cuerpo && typeof cuerpo === "object" ? { jornada: "manana", ...cuerpo } : cuerpo),
     }),
   );
 }
 
 beforeEach(() => {
-  sesion.getSesion.mockResolvedValue({ rol: "admin", sid: SID });
+  sesion.getSesion.mockResolvedValue({ rol: "admin", sid: SID, jornada: "manana" });
   db.guardarParticipantes.mockResolvedValue({ ok: true, participantes: generarParticipantes(3) });
 });
 
@@ -42,7 +44,7 @@ describe("PUT /api/admin/participantes", () => {
     sesion.getSesion.mockResolvedValue(null);
     expect((await guardar({ cantidad: 3, nombres: NOMBRES })).status).toBe(401);
     for (const rol of ["evaluador", "docente"]) {
-      sesion.getSesion.mockResolvedValue({ rol, sid: SID });
+      sesion.getSesion.mockResolvedValue({ rol, sid: SID, jornada: "manana" });
       expect((await guardar({ cantidad: 3, nombres: NOMBRES })).status).toBe(403);
     }
     expect(db.guardarParticipantes).not.toHaveBeenCalled();
@@ -53,7 +55,21 @@ describe("PUT /api/admin/participantes", () => {
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     await expect(respuesta.json()).resolves.toEqual({ cantidad: 3 });
-    expect(db.guardarParticipantes).toHaveBeenCalledWith(["Ana Pérez", null, "Carlos Peña"], false);
+    expect(db.guardarParticipantes).toHaveBeenCalledWith("manana", ["Ana Pérez", null, "Carlos Peña"], false);
+  });
+
+  it("guarda la lista de la jornada de la sesión", async () => {
+    sesion.getSesion.mockResolvedValue({ rol: "admin", sid: SID, jornada: "noche" });
+    expect((await guardar({ jornada: "noche", cantidad: 3, nombres: NOMBRES })).status).toBe(200);
+    expect(db.guardarParticipantes).toHaveBeenCalledWith("noche", ["Ana Pérez", null, "Carlos Peña"], false);
+  });
+
+  it("409 sin guardar si la jornada del editor no es la de la sesión (otra pestaña)", async () => {
+    sesion.getSesion.mockResolvedValue({ rol: "admin", sid: SID, jornada: "noche" });
+    const respuesta = await guardar({ jornada: "manana", cantidad: 3, nombres: NOMBRES });
+    expect(respuesta.status).toBe(409);
+    await expect(respuesta.json()).resolves.toEqual({ error: TEXTOS.jornada.distinta, jornadaDistinta: true });
+    expect(db.guardarParticipantes).not.toHaveBeenCalled();
   });
 
   it("400 con un nombre que parece un correo", async () => {
@@ -74,7 +90,7 @@ describe("PUT /api/admin/participantes", () => {
     });
 
     expect((await guardar({ cantidad: 3, nombres: NOMBRES, confirmar: true })).status).toBe(200);
-    expect(db.guardarParticipantes).toHaveBeenLastCalledWith(["Ana Pérez", null, "Carlos Peña"], true);
+    expect(db.guardarParticipantes).toHaveBeenLastCalledWith("manana", ["Ana Pérez", null, "Carlos Peña"], true);
   });
 
   it("500 si falla la base de datos, sin registrar los nombres", async () => {

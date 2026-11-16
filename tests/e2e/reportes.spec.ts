@@ -4,12 +4,12 @@ import { esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 
 // Docente reports (PRD §5.9, §11, §15.7) against the dev database filled by
-// `npm run db:seed` (8 evaluators × 20 participants). Assertions are about
+// `npm run db:seed` (each jornada's Adaptabilidad team × its participants). Assertions are about
 // structure and ordering, not seeded values, so other specs' submissions
 // don't break them.
 
 const CABECERA_CSV =
-  "competencia,evaluador,curso_evaluador,participante,nombre_participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado";
+  "jornada,competencia,evaluador,curso_evaluador,participante,nombre_participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado";
 
 function tabla(page: Page): Locator {
   return page.getByRole("table", { name: "Tabla de participantes" });
@@ -124,7 +124,7 @@ test.describe("como docente", () => {
       page.waitForEvent("download"),
       page.getByRole("link", { name: "Descargar CSV" }).click(),
     ]);
-    expect(descarga.suggestedFilename()).toMatch(/^nivela-adaptabilidad-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(descarga.suggestedFilename()).toMatch(/^nivela-adaptabilidad-manana-\d{4}-\d{2}-\d{2}\.csv$/);
 
     const bytes = await readFile(await descarga.path());
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);

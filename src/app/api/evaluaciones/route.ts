@@ -3,11 +3,12 @@ import { TEXTOS } from "@/config/textos";
 import { guardarEvaluacion, listarEnviadas } from "@/lib/db/evaluaciones";
 import { obtenerParticipantes } from "@/lib/db/participantes";
 import { registrarError } from "@/lib/registro";
-import { getSesion } from "@/lib/sesion";
+import { getSesion, type Sesion } from "@/lib/sesion";
 import { validarConsultaEnviadas, validarEvaluacion } from "@/lib/validacion";
 
 // /api/evaluaciones (PRD §10, §5.7). Evaluador and docente may use it, not
-// admin; the session is re-verified here, not only in proxy.ts.
+// admin; the session is re-verified here, not only in proxy.ts. Everything is
+// scoped to the session's jornada, never one named in the request.
 //
 // Logging: only the method, status, latency and the driver's error code (see
 // lib/registro.ts), never the request body or the error message.
@@ -21,24 +22,25 @@ function responder(cuerpo: unknown, status = 200) {
   return NextResponse.json(cuerpo, { status, headers: SIN_CACHE });
 }
 
-/** 401 without a session, 403 for the admin role; null when the request may go on. */
-async function rechazoSesion() {
+/** The session, or the 401 (none) / 403 (admin role) response to answer with. */
+async function sesionPermitida(): Promise<Sesion | Response> {
   const sesion = await getSesion();
   if (!sesion) return responder({ error: TEXTOS.sesion.requerida }, 401);
   if (sesion.rol === "admin") return responder({ error: TEXTOS.sesion.noParaAdmin }, 403);
-  return null;
+  return sesion;
 }
 
 export async function POST(request: Request) {
-  const rechazo = await rechazoSesion();
-  if (rechazo) return rechazo;
+  const sesion = await sesionPermitida();
+  if (sesion instanceof Response) return sesion;
+  const { jornada } = sesion;
 
   const cuerpo: unknown = await request.json().catch(() => null);
   const inicio = Date.now();
   try {
-    const validacion = validarEvaluacion(cuerpo, await obtenerParticipantes());
+    const validacion = validarEvaluacion(cuerpo, await obtenerParticipantes(jornada), jornada);
     if (!validacion.ok) return responder({ error: validacion.error }, 400);
-    return responder(await guardarEvaluacion(validacion.datos));
+    return responder(await guardarEvaluacion(jornada, validacion.datos));
   } catch (error) {
     registrarError(RUTA, "POST", inicio, error);
     return responder({ error: TEXTOS.envio.errorGuardar }, 500);
@@ -46,15 +48,16 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const rechazo = await rechazoSesion();
-  if (rechazo) return rechazo;
+  const sesion = await sesionPermitida();
+  if (sesion instanceof Response) return sesion;
+  const { jornada } = sesion;
 
-  const consulta = validarConsultaEnviadas(new URL(request.url).searchParams);
+  const consulta = validarConsultaEnviadas(new URL(request.url).searchParams, jornada);
   if (!consulta.ok) return responder({ error: consulta.error }, 400);
 
   const inicio = Date.now();
   try {
-    const evaluaciones = await listarEnviadas(consulta.datos.competenciaId, consulta.datos.evaluadorId);
+    const evaluaciones = await listarEnviadas(jornada, consulta.datos.competenciaId, consulta.datos.evaluadorId);
     return responder({ evaluaciones });
   } catch (error) {
     registrarError(RUTA, "GET", inicio, error);

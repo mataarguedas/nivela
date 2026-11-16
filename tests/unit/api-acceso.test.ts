@@ -7,6 +7,7 @@ beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", "secreto-de-prueba-con-al-menos-32-bytes!!");
   vi.stubEnv("CODIGO_ACCESO", "clase-2026");
   vi.stubEnv("CODIGO_DOCENTE", "docente-2026");
+  vi.stubEnv("CODIGO_ACCESO_NOCHE", "noche-2026");
 });
 
 afterEach(() => {
@@ -54,8 +55,16 @@ describe("POST /api/acceso", () => {
     expect(cookie).not.toMatch(/Secure/i);
 
     const token = cookie.split(";")[0].slice(COOKIE_SESION.length + 1);
-    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "evaluador" });
+    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "evaluador", jornada: "manana" });
     expect(cookieDe(respuesta, COOKIE_SESION_PREVIA)).toBeDefined();
+  });
+
+  it("el código de la noche da rol evaluador en la jornada noche", async () => {
+    const respuesta = await acceder(pedir({ codigo: "noche-2026" }));
+    expect(respuesta.status).toBe(200);
+    await expect(respuesta.json()).resolves.toEqual({ rol: "evaluador" });
+    const token = cookieDe(respuesta, COOKIE_SESION)!.split(";")[0].slice(COOKIE_SESION.length + 1);
+    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "evaluador", jornada: "noche" });
   });
 
   it("el código docente da rol docente", async () => {

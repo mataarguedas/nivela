@@ -1,6 +1,7 @@
 import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import type { JornadaId } from "@/config/jornadas";
 import type { NivelValor } from "@/config/niveles";
 import { puntajeEvaluacion, redondear2 } from "@/lib/puntajes";
 import type { EvaluacionValida } from "@/lib/validacion";
@@ -18,7 +19,7 @@ export type EnvioRegistrado = { participanteId: string; actualizadoEn: string };
 /**
  * The submission upsert (CLAUDE.md → Database) as three statements that must
  * run in one transaction, in order:
- *   1. upsert the evaluación on (competencia, evaluador, participante),
+ *   1. upsert the evaluación on (jornada, competencia, evaluador, participante),
  *      setting puntaje and updated_at = now();
  *   2. delete that evaluación's calificaciones;
  *   3. insert the new ones.
@@ -26,13 +27,14 @@ export type EnvioRegistrado = { participanteId: string; actualizadoEn: string };
  * returned id, so the statements work in a neon-http batch. Generic over the
  * database so the integration test can run the same statements on PGlite.
  */
-export function sentenciasGuardar<B extends Bd>(db: B, evaluacion: EvaluacionValida) {
+export function sentenciasGuardar<B extends Bd>(db: B, jornada: JornadaId, evaluacion: EvaluacionValida) {
   const { competenciaId, evaluadorId, participanteId } = evaluacion;
   const niveles = evaluacion.calificaciones.map((c) => c.nivel as NivelValor);
   // validarEvaluacion() guarantees at least one calificación.
   const puntaje = redondear2(puntajeEvaluacion(niveles) ?? 0);
 
   const clave = and(
+    eq(evaluaciones.jornada, jornada),
     eq(evaluaciones.competenciaId, competenciaId),
     eq(evaluaciones.evaluadorId, evaluadorId),
     eq(evaluaciones.participanteId, participanteId),
@@ -41,9 +43,9 @@ export function sentenciasGuardar<B extends Bd>(db: B, evaluacion: EvaluacionVal
 
   const upsert = db
     .insert(evaluaciones)
-    .values({ competenciaId, evaluadorId, participanteId, puntaje })
+    .values({ jornada, competenciaId, evaluadorId, participanteId, puntaje })
     .onConflictDoUpdate({
-      target: [evaluaciones.competenciaId, evaluaciones.evaluadorId, evaluaciones.participanteId],
+      target: [evaluaciones.jornada, evaluaciones.competenciaId, evaluaciones.evaluadorId, evaluaciones.participanteId],
       set: { puntaje, updatedAt: sql`now()` },
     })
     .returning({ id: evaluaciones.id, actualizadoEn: evaluaciones.updatedAt });
@@ -67,21 +69,31 @@ export function sentenciasGuardar<B extends Bd>(db: B, evaluacion: EvaluacionVal
   return [upsert, borrar, insertar] as const;
 }
 
-/** Saves one validated evaluation atomically (one neon-http batch). */
-export async function guardarEvaluacion(evaluacion: EvaluacionValida): Promise<EvaluacionGuardada> {
+/** Saves one validated evaluation of the jornada atomically (one neon-http batch). */
+export async function guardarEvaluacion(jornada: JornadaId, evaluacion: EvaluacionValida): Promise<EvaluacionGuardada> {
   const db = getDb();
-  const [filas] = await db.batch(sentenciasGuardar(db, evaluacion));
+  const [filas] = await db.batch(sentenciasGuardar(db, jornada, evaluacion));
   const fila = filas[0];
   if (!fila) throw new Error("upsert returned no row");
   return { id: fila.id, actualizadoEn: fila.actualizadoEn.toISOString() };
 }
 
-/** Participants this evaluator has already sent for the competencia, with updated_at. */
-export async function listarEnviadas(competenciaId: string, evaluadorId: string): Promise<EnvioRegistrado[]> {
+/** Participants this evaluator has already sent for the competencia in the jornada, with updated_at. */
+export async function listarEnviadas(
+  jornada: JornadaId,
+  competenciaId: string,
+  evaluadorId: string,
+): Promise<EnvioRegistrado[]> {
   const filas = await getDb()
     .select({ participanteId: evaluaciones.participanteId, actualizadoEn: evaluaciones.updatedAt })
     .from(evaluaciones)
-    .where(and(eq(evaluaciones.competenciaId, competenciaId), eq(evaluaciones.evaluadorId, evaluadorId)))
+    .where(
+      and(
+        eq(evaluaciones.jornada, jornada),
+        eq(evaluaciones.competenciaId, competenciaId),
+        eq(evaluaciones.evaluadorId, evaluadorId),
+      ),
+    )
     .orderBy(asc(evaluaciones.participanteId));
   return filas.map((f) => ({ participanteId: f.participanteId, actualizadoEn: f.actualizadoEn.toISOString() }));
 }

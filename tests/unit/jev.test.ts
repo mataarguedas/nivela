@@ -128,7 +128,7 @@ describe("sugerirNivel", () => {
     expect(Object.keys(solicitud)).toEqual(["state", "questions"]);
     expect(solicitud.state).toEqual({
       competencia: `Adaptabilidad: ${competencia.definicion}`,
-      indicador: "Modifica su forma de actuar ante cambios.",
+      indicador: "Actúa de manera rápida y flexible.",
       observacion: TEXTO,
     });
     expect(solicitud.questions.nivel).toEqual({

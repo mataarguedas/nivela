@@ -11,6 +11,10 @@ import { COOKIE_SESION, COOKIE_SESION_PREVIA, verificarSesion } from "@/lib/sesi
 // /api/salir only clears cookies, and must work once the session has expired.
 const RUTAS_PUBLICAS = new Set([RUTA_ACCESO, "/api/acceso", "/api/salir"]);
 
+// Open to every signed-in role, admin included; the route checks the role
+// itself (an evaluador's jornada can't change).
+const RUTAS_TODOS_LOS_ROLES = new Set(["/api/jornada"]);
+
 function requiereDocente(ruta: string): boolean {
   return /^\/(api\/)?reportes(\/|$)/.test(ruta);
 }
@@ -19,9 +23,14 @@ function esRutaAdmin(ruta: string): boolean {
   return /^\/(api\/)?admin(\/|$)/.test(ruta);
 }
 
+// Dev only: e2e tests read verification codes here before signing in. The
+// route itself answers 404 in production, and this exception is off there.
+const RUTA_CORREOS_DEV = "/api/dev/correos";
+
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (RUTAS_PUBLICAS.has(pathname)) return NextResponse.next();
+  if (pathname === RUTA_CORREOS_DEV && process.env.NODE_ENV !== "production") return NextResponse.next();
 
   const esApi = pathname.startsWith("/api/");
   const token = request.cookies.get(COOKIE_SESION)?.value;
@@ -35,6 +44,8 @@ export async function proxy(request: NextRequest) {
     if (token) respuesta.cookies.delete(COOKIE_SESION);
     return respuesta;
   }
+
+  if (RUTAS_TODOS_LOS_ROLES.has(pathname)) return NextResponse.next();
 
   // The admin area is admin-only, and the admin code opens nothing else.
   if (esRutaAdmin(pathname) !== (sesion.rol === "admin")) {

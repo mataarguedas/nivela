@@ -8,6 +8,7 @@ import { ClaveIndicadores, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente 
 import { DistribucionNiveles, RadarIndicadores } from "@/components/reportes/graficos";
 import { Chip, type TonoChip } from "@/components/ui/Chip";
 import { IconoChevron } from "@/components/ui/iconos";
+import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
@@ -51,8 +52,8 @@ export default function PaginaReporteIndividual({ params }: Props) {
 
 async function ReporteIndividual({ params }: Pick<Props, "params">) {
   const { competencia: idCompetencia, participante: idParticipante } = await params;
-  await exigirDocente(`/reportes/${idCompetencia}/${idParticipante}`);
-  const { competencia, reporte } = await cargarReporte(idCompetencia, "/reportes/[competencia]/[participante]");
+  const jornada = await exigirDocente(`/reportes/${idCompetencia}/${idParticipante}`);
+  const { competencia, reporte } = await cargarReporte(jornada, idCompetencia, "/reportes/[competencia]/[participante]");
 
   // The report covers exactly the active participants (names from the DB).
   const lista = reporte?.participantes ?? [];
@@ -75,7 +76,7 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
       </Link>
       <header className="mt-4 mb-6 text-center">
         <p className="text-sub text-ink-3">
-          {competencia.nombre} · {TEXTOS.reportes.individual}
+          {competencia.nombre} · {TEXTOS.jornada.actual(nombreJornada(jornada))} · {TEXTOS.reportes.individual}
         </p>
         <h1 className="mt-2 text-h2 font-semibold md:text-display">{titulo}</h1>
         {datos && datos.nivelGeneral !== null && (

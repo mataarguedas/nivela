@@ -2,7 +2,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { COMPETENCIAS, obtenerCompetencia, obtenerCompetenciaHabilitada } from "@/config/competencias";
-import { CURSOS, EQUIPOS, equipoDeCompetencia, obtenerEvaluador } from "@/config/equipos";
+import {
+  competenciaConEquipo,
+  competenciaDisponible,
+  CURSOS,
+  EQUIPOS,
+  equipoDeCompetencia,
+  obtenerEvaluador,
+} from "@/config/equipos";
+import { esJornada, IDS_JORNADA, JORNADAS, type JornadaId } from "@/config/jornadas";
 import { NIVELES } from "@/config/niveles";
 import {
   CANTIDAD_PARTICIPANTES_PREDETERMINADA,
@@ -86,9 +94,10 @@ describe("competencias", () => {
   });
 
   it.each(COMPETENCIAS.filter((c) => c.habilitada).map((c) => [c.id, c] as const))(
-    "%s (habilitada) tiene equipo, definición, fuente e indicadores",
+    "%s (habilitada) tiene equipo en alguna jornada, definición, fuente e indicadores",
     (id, c) => {
-      expect(equipoDeCompetencia(id)?.integrantes.length).toBeGreaterThan(0);
+      expect(IDS_JORNADA.some((j) => (equipoDeCompetencia(j, id)?.integrantes.length ?? 0) > 0)).toBe(true);
+      expect(competenciaConEquipo(c)).toBe(true);
       expect(c.definicion.trim()).not.toBe("");
       expect(c.fuente.trim()).not.toBe("");
       expect(c.indicadores.length).toBeGreaterThanOrEqual(1);
@@ -140,8 +149,29 @@ describe("Adaptabilidad coincide con PRD Apéndice A", () => {
   });
 });
 
-describe("equipos coinciden con PRD Apéndice B", () => {
-  const filas = seccion("## Appendix B", "## Appendix C")
+describe("jornadas", () => {
+  it("son mañana y noche, con ids estables", () => {
+    expect(JORNADAS.map((j) => [j.id, j.nombre])).toEqual([
+      ["manana", "Mañana"],
+      ["noche", "Noche"],
+    ]);
+    expect(esJornada("noche")).toBe(true);
+    expect(esJornada("tarde")).toBe(false);
+  });
+
+  it("las restricciones de la base de datos aceptan exactamente estos ids", () => {
+    const esquema = readFileSync(join(process.cwd(), "src/lib/db/schema.ts"), "utf8");
+    const lista = IDS_JORNADA.map((j) => `'${j}'`).join(", ");
+    expect(esquema.match(/jornada\} in \(([^)]+)\)/g)).toEqual([
+      `jornada} in (${lista})`,
+      `jornada} in (${lista})`,
+    ]);
+  });
+});
+
+/** "| 4 | Adaptabilidad | Sí | a, b | c, d |" rows of one jornada's Appendix B table. */
+function filasApendiceB(desde: string, hasta: string) {
+  return seccion(desde, hasta)
     .split("\n")
     .filter((linea) => /^\| \**\d/.test(linea))
     .map((linea) =>
@@ -150,30 +180,97 @@ describe("equipos coinciden con PRD Apéndice B", () => {
         .slice(1, -1)
         .map((celda) => celda.replaceAll("**", "").trim()),
     );
+}
+
+// A night cell reads "Pendiente" until the roster arrives: no integrantes yet.
+const nombresCelda = (celda: string) => (celda === "Pendiente" ? [] : celda.split(", "));
+
+describe.each([
+  ["manana", "### Mañana", "### Noche"],
+  ["noche", "### Noche", "## Appendix C"],
+] as [JornadaId, string, string][])("equipos de la jornada %s coinciden con PRD Apéndice B", (jornada, desde, hasta) => {
+  const filas = filasApendiceB(desde, hasta);
+  const equipos = EQUIPOS.filter((e) => e.jornada === jornada);
 
   it("hay 5 equipos, uno por competencia", () => {
     expect(filas).toHaveLength(5);
-    expect(EQUIPOS).toHaveLength(5);
-    expect(duplicados(EQUIPOS.map((e) => e.competenciaId))).toEqual([]);
-    for (const e of EQUIPOS) expect(obtenerCompetencia(e.competenciaId)).toBeDefined();
+    expect(equipos).toHaveLength(5);
+    expect(duplicados(equipos.map((e) => e.competenciaId))).toEqual([]);
+    for (const e of equipos) expect(obtenerCompetencia(e.competenciaId)).toBeDefined();
   });
 
   it.each(filas.map((f) => [f[0], f] as const))("equipo %s", (numero, [, nombre, habilitada, psico, semi]) => {
-    const equipo = EQUIPOS.find((e) => e.numero === Number(numero))!;
+    const equipo = equipos.find((e) => e.numero === Number(numero))!;
     const competencia = obtenerCompetencia(equipo.competenciaId)!;
     const nombresDe = (curso: string) =>
       equipo.integrantes.filter((i) => i.curso === curso).map((i) => i.nombre);
 
     expect(competencia.nombre).toBe(nombre);
     expect(competencia.habilitada).toBe(habilitada === "Sí");
-    expect(nombresDe(CURSOS[0])).toEqual(psico.split(", "));
-    expect(nombresDe(CURSOS[1])).toEqual(semi.split(", "));
+    expect(nombresDe(CURSOS[0])).toEqual(nombresCelda(psico));
+    expect(nombresDe(CURSOS[1])).toEqual(nombresCelda(semi));
+  });
+});
+
+describe("equipos por jornada", () => {
+  it("cada equipo tiene una jornada válida", () => {
+    for (const e of EQUIPOS) expect(esJornada(e.jornada)).toBe(true);
   });
 
-  it("Adaptabilidad tiene 8 evaluadores y obtenerEvaluador respeta el equipo", () => {
-    expect(equipoDeCompetencia("adaptabilidad")?.integrantes).toHaveLength(8);
-    expect(obtenerEvaluador("adaptabilidad", "jimena-salgado")?.nombre).toBe("Jimena Salgado");
-    expect(obtenerEvaluador("adaptabilidad", "felipe-lopez")).toBeUndefined();
+  it("los ids de integrantes son únicos entre jornadas (las claves de borrador no chocan)", () => {
+    expect(duplicados(integrantes.map((i) => i.id))).toEqual([]);
+  });
+
+  it("Adaptabilidad de mañana tiene 8 evaluadores y obtenerEvaluador respeta equipo y jornada", () => {
+    expect(equipoDeCompetencia("manana", "adaptabilidad")?.integrantes).toHaveLength(8);
+    expect(obtenerEvaluador("manana", "adaptabilidad", "jimena-salgado")?.nombre).toBe("Jimena Salgado");
+    expect(obtenerEvaluador("manana", "adaptabilidad", "felipe-lopez")).toBeUndefined();
+    expect(obtenerEvaluador("noche", "adaptabilidad", "jimena-salgado")).toBeUndefined();
+  });
+
+  it("la numeración de equipos depende de la jornada (Adaptabilidad: Equipo 4 de mañana, Equipo 1 de noche)", () => {
+    const numeracion = (jornada: JornadaId) =>
+      EQUIPOS.filter((e) => e.jornada === jornada)
+        .sort((a, b) => a.numero - b.numero)
+        .map((e) => [e.numero, e.competenciaId]);
+    expect(numeracion("manana")).toEqual([
+      [1, "pensamiento-critico"],
+      [2, "autorregulacion-emocional"],
+      [3, "orientacion-detalle"],
+      [4, "adaptabilidad"],
+      [5, "orientacion-resultados"],
+    ]);
+    expect(numeracion("noche")).toEqual([
+      [1, "adaptabilidad"],
+      [2, "autorregulacion-emocional"],
+      [3, "pensamiento-critico"],
+      [4, "orientacion-detalle"],
+      [5, "orientacion-resultados"],
+    ]);
+
+    const manana = equipoDeCompetencia("manana", "adaptabilidad")!;
+    const noche = equipoDeCompetencia("noche", "adaptabilidad")!;
+    expect([manana.numero, manana.integrantes.length]).toEqual([4, 8]);
+    expect([noche.numero, noche.integrantes.length]).toEqual([1, 7]);
+    expect(obtenerEvaluador("noche", "adaptabilidad", "gabriela-salgado")?.nombre).toBe("Gabriela Salgado");
+    expect(obtenerEvaluador("manana", "adaptabilidad", "gabriela-salgado")).toBeUndefined();
+  });
+
+  it("los números de equipo no se repiten dentro de una jornada", () => {
+    for (const jornada of IDS_JORNADA) {
+      expect(duplicados(EQUIPOS.filter((e) => e.jornada === jornada).map((e) => String(e.numero)))).toEqual([]);
+    }
+  });
+
+  it("un equipo sin integrantes no habilita la competencia en esa jornada", () => {
+    const adaptabilidad = obtenerCompetencia("adaptabilidad")!;
+    for (const jornada of IDS_JORNADA) {
+      const conIntegrantes = EQUIPOS.some(
+        (e) => e.jornada === jornada && e.competenciaId === "adaptabilidad" && e.integrantes.length > 0,
+      );
+      expect(competenciaDisponible(jornada, adaptabilidad)).toBe(conIntegrantes);
+      expect(equipoDeCompetencia(jornada, "adaptabilidad") !== undefined).toBe(conIntegrantes);
+    }
   });
 });
 

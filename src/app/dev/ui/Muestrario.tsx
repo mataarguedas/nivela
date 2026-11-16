@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/Boton";
 import { CampoTexto, Campo } from "@/components/ui/Campo";
 import { Chip, TONO_POR_ESTADO } from "@/components/ui/Chip";
 import { Dialogo } from "@/components/ui/Dialogo";
+import { BotonVolver } from "@/components/ui/BotonVolver";
 import { Nav, NavTexto } from "@/components/ui/Nav";
 import { SelectorNivel } from "@/components/ui/SelectorNivel";
 import { useToast } from "@/components/ui/Toast";
@@ -199,6 +200,24 @@ export function Muestrario({ indicador, nombreEvaluador }: MuestrarioProps) {
           <div className="w-full overflow-hidden rounded-tile">
             <Nav>
               <NavTexto>{nombreEvaluador}</NavTexto>
+              <Boton variante="texto">{TEXTOS.sesion.salir}</Boton>
+            </Nav>
+          </div>
+        </Fila>
+        <Fila etiqueta="Evaluador, calificando (Volver)">
+          <div className="w-full overflow-hidden rounded-tile">
+            <Nav volver={<BotonVolver href="/adaptabilidad" etiqueta={TEXTOS.lista.titulo} />}>
+              <NavTexto>{nombreEvaluador}</NavTexto>
+              <Boton variante="texto">{TEXTOS.sesion.salir}</Boton>
+            </Nav>
+          </div>
+        </Fila>
+        <Fila etiqueta="Docente, reporte individual (Volver)">
+          <div className="w-full overflow-hidden rounded-tile">
+            <Nav volver={<BotonVolver href="/reportes/adaptabilidad" etiqueta={TEXTOS.reportes.general} />}>
+              <Boton variante="texto" href="/reportes">
+                {TEXTOS.reportes.enlace}
+              </Boton>
               <Boton variante="texto">{TEXTOS.sesion.salir}</Boton>
             </Nav>
           </div>

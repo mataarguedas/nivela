@@ -51,6 +51,15 @@ export function MarcaNivela({ className }: IconoProps) {
   );
 }
 
+/** Leading "<" of the nav's "Volver" link. */
+export function IconoChevronIzquierda({ className }: IconoProps) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" className={className}>
+      <path d="M10 3.5L5.5 8 10 12.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /** Trailing ">" on rows that open another screen. */
 export function IconoChevron({ className }: IconoProps) {
   return (

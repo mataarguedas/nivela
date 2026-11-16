@@ -4,10 +4,11 @@ import { Suspense } from "react";
 import { obtenerCompetenciaHabilitada } from "@/config/competencias";
 import { CURSOS, equipoDeCompetencia } from "@/config/equipos";
 import { TEXTOS } from "@/config/textos";
+import { jornadaActual } from "@/lib/jornadaActual";
 import { SelectorEvaluador, type GrupoCurso } from "./SelectorEvaluador";
 
-// Evaluator step (PRD §5.3, FR-3): only the members of the team assigned to
-// this competencia, grouped by curso. The layout answers 404 for unknown or
+// Evaluator step (PRD §5.3, FR-3): only the members of the session jornada's
+// team assigned to this competencia, grouped by curso. The layout answers 404 for unknown or
 // disabled ones. The headings land in the App Shell (as the fallback);
 // everything that depends on the URL streams in behind Suspense, so
 // navigating here from a sibling page is instant.
@@ -35,7 +36,7 @@ export default function PaginaEvaluador({ params }: PageProps<"/[competencia]/ev
 async function Equipo({ params }: Pick<PageProps<"/[competencia]/evaluador">, "params">) {
   const { competencia: id } = await params;
   const competencia = obtenerCompetenciaHabilitada(id);
-  const equipo = competencia && equipoDeCompetencia(competencia.id);
+  const equipo = competencia && equipoDeCompetencia(await jornadaActual(), competencia.id);
   if (!competencia || !equipo) notFound();
 
   const grupos: GrupoCurso[] = CURSOS.map((curso) => ({

@@ -3,10 +3,12 @@ import { timingSafeEqual } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { IDS_JORNADA, JORNADA_PREDETERMINADA, type JornadaId } from "@/config/jornadas";
 
-// Session cookie (PRD §5.1, FR-1, CLAUDE.md → Sessions and access).
-// `nivela_sesion` holds an HS256 JWT { rol, sid } signed with SESSION_SECRET.
-// `sid` is a random id used only for the Jev usage cap; it is never sent to Jev.
+// Session cookie (PRD §5.1, §5.11, FR-1, CLAUDE.md → Sessions and access).
+// `nivela_sesion` holds an HS256 JWT { rol, sid, jornada } signed with
+// SESSION_SECRET. `sid` is a random id used only for the Jev usage cap; it is
+// never sent to Jev. `jornada` scopes every read and write to one cohort.
 // Used by proxy.ts (Node runtime), route handlers and Server Components.
 
 export const COOKIE_SESION = "nivela_sesion";
@@ -29,6 +31,8 @@ export type Rol = (typeof ROLES)[number];
 const esquemaSesion = z.object({
   rol: z.enum(ROLES),
   sid: z.string().min(16).max(64),
+  // Tokens signed before jornadas existed carry none: they are morning sessions.
+  jornada: z.enum(IDS_JORNADA).default(JORNADA_PREDETERMINADA),
 });
 export type Sesion = z.infer<typeof esquemaSesion>;
 
@@ -46,7 +50,7 @@ export function nuevoSid(): string {
 }
 
 export async function firmarSesion(sesion: Sesion): Promise<string> {
-  return new SignJWT({ rol: sesion.rol, sid: sesion.sid })
+  return new SignJWT({ rol: sesion.rol, sid: sesion.sid, jornada: sesion.jornada })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt()
     .setExpirationTime(`${DURACION_SESION_S}s`)
@@ -93,22 +97,31 @@ export function codigosIguales(recibido: string, esperado: string): boolean {
   return iguales && a.length === b.length;
 }
 
+export type Acceso = { rol: Rol; jornada: JornadaId };
+
 /**
- * Maps an access code to a role: CODIGO_ADMIN first, then CODIGO_DOCENTE,
- * then CODIGO_ACCESO. All comparisons always run. An unset or empty env code
- * never matches.
+ * Maps an access code to a role and a jornada: CODIGO_ADMIN first, then
+ * CODIGO_DOCENTE, then CODIGO_ACCESO_NOCHE, then CODIGO_ACCESO (morning).
+ * Docente and admin start in the default jornada and switch in the app. All
+ * comparisons always run. An unset or empty env code never matches; if two
+ * codes are equal, the earlier one in that order wins, so keep them distinct.
  */
-export function rolParaCodigo(codigo: string): Rol | null {
-  const admin = process.env.CODIGO_ADMIN ?? "";
-  const docente = process.env.CODIGO_DOCENTE ?? "";
-  const acceso = process.env.CODIGO_ACCESO ?? "";
-  const esAdmin = admin !== "" && codigosIguales(codigo, admin);
-  const esDocente = docente !== "" && codigosIguales(codigo, docente);
-  const esEvaluador = acceso !== "" && codigosIguales(codigo, acceso);
-  if (esAdmin) return "admin";
-  if (esDocente) return "docente";
-  if (esEvaluador) return "evaluador";
+export function accesoParaCodigo(codigo: string): Acceso | null {
+  const coincide = (valor: string | undefined) => (valor ?? "") !== "" && codigosIguales(codigo, valor ?? "");
+  const esAdmin = coincide(process.env.CODIGO_ADMIN);
+  const esDocente = coincide(process.env.CODIGO_DOCENTE);
+  const esNoche = coincide(process.env.CODIGO_ACCESO_NOCHE);
+  const esManana = coincide(process.env.CODIGO_ACCESO);
+  if (esAdmin) return { rol: "admin", jornada: JORNADA_PREDETERMINADA };
+  if (esDocente) return { rol: "docente", jornada: JORNADA_PREDETERMINADA };
+  if (esNoche) return { rol: "evaluador", jornada: "noche" };
+  if (esManana) return { rol: "evaluador", jornada: "manana" };
   return null;
+}
+
+/** Docente and admin may switch jornada (PRD §5.11); an evaluador's is fixed by their code. */
+export function puedeCambiarJornada(rol: Rol): boolean {
+  return rol === "docente" || rol === "admin";
 }
 
 type OpcionesCookie = {

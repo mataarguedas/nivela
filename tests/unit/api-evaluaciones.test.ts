@@ -43,7 +43,7 @@ function consultar(query: string) {
 }
 
 beforeEach(() => {
-  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123" });
+  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123", jornada: "manana" });
   dbParticipantes.obtenerParticipantes.mockResolvedValue(generarParticipantes(20));
 });
 
@@ -62,7 +62,7 @@ describe("POST /api/evaluaciones", () => {
   });
 
   it("403 para el rol admin, también en GET", async () => {
-    sesion.getSesion.mockResolvedValue({ rol: "admin", sid: "0123456789abcdef0123" });
+    sesion.getSesion.mockResolvedValue({ rol: "admin", sid: "0123456789abcdef0123", jornada: "manana" });
     expect((await enviar(CUERPO)).status).toBe(403);
     expect((await consultar("competencia=adaptabilidad&evaluador=jimena-salgado")).status).toBe(403);
     expect(db.guardarEvaluacion).not.toHaveBeenCalled();
@@ -83,13 +83,14 @@ describe("POST /api/evaluaciones", () => {
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     await expect(respuesta.json()).resolves.toEqual({ id: "e1", actualizadoEn: "2026-10-25T10:00:00.000Z" });
-    const guardada = db.guardarEvaluacion.mock.calls[0][0];
+    const [jornada, guardada] = db.guardarEvaluacion.mock.calls[0];
+    expect(jornada).toBe("manana");
     expect(guardada.calificaciones).toHaveLength(4);
     expect(guardada.calificaciones[2].observacion).toBe(OBSERVACION);
   });
 
   it("acepta también el rol docente", async () => {
-    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: "0123456789abcdef0123" });
+    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: "0123456789abcdef0123", jornada: "manana" });
     db.guardarEvaluacion.mockResolvedValue({ id: "e1", actualizadoEn: "2026-10-25T10:00:00.000Z" });
     expect((await enviar(CUERPO)).status).toBe(200);
   });
@@ -135,7 +136,7 @@ describe("GET /api/evaluaciones", () => {
     await expect(respuesta.json()).resolves.toEqual({
       evaluaciones: [{ participanteId: "P02", actualizadoEn: "2026-10-25T10:00:00.000Z" }],
     });
-    expect(db.listarEnviadas).toHaveBeenCalledWith("adaptabilidad", "jimena-salgado");
+    expect(db.listarEnviadas).toHaveBeenCalledWith("manana", "adaptabilidad", "jimena-salgado");
   });
 
   it.each([

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { JornadaId } from "@/config/jornadas";
 import { generarParticipantes } from "@/config/participantes";
 import {
   MENSAJES_VALIDACION,
@@ -13,7 +14,8 @@ import {
 
 /** The active participants, as db/participantes.ts would return them. */
 const PARTICIPANTES = generarParticipantes(20);
-const evaluar = (datos: unknown, participantes = PARTICIPANTES) => validarEvaluacion(datos, participantes);
+const evaluar = (datos: unknown, participantes = PARTICIPANTES, jornada: JornadaId = "manana") =>
+  validarEvaluacion(datos, participantes, jornada);
 
 const IA = {
   nivelSugerido: 3,
@@ -99,6 +101,11 @@ describe("validarEvaluacion: rechazos (PRD §10)", () => {
     expect(error(cuerpo({ evaluadorId: "nadie" }))).toBe(MENSAJES_VALIDACION.evaluador);
   });
 
+  it("evaluador de otra jornada: la jornada de la sesión decide el equipo", () => {
+    const resultado = evaluar(cuerpo(), PARTICIPANTES, "noche");
+    expect(resultado).toEqual({ ok: false, error: MENSAJES_VALIDACION.evaluador });
+  });
+
   it("participante inexistente", () => {
     expect(error(cuerpo({ participanteId: "P99" }))).toBe(MENSAJES_VALIDACION.participante);
   });
@@ -157,7 +164,7 @@ describe("validarEvaluacion: rechazos (PRD §10)", () => {
 });
 
 describe("validarConsultaEnviadas", () => {
-  const consulta = (texto: string) => validarConsultaEnviadas(new URLSearchParams(texto));
+  const consulta = (texto: string, jornada: JornadaId = "manana") => validarConsultaEnviadas(new URLSearchParams(texto), jornada);
 
   it("acepta competencia habilitada y una integrante de su equipo", () => {
     expect(consulta("competencia=adaptabilidad&evaluador=jimena-salgado")).toEqual({
@@ -173,6 +180,10 @@ describe("validarConsultaEnviadas", () => {
       error: MENSAJES_VALIDACION.competencia,
     });
     expect(consulta("competencia=adaptabilidad&evaluador=felipe-lopez")).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.evaluador,
+    });
+    expect(consulta("competencia=adaptabilidad&evaluador=jimena-salgado", "noche")).toEqual({
       ok: false,
       error: MENSAJES_VALIDACION.evaluador,
     });
@@ -224,25 +235,38 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
 });
 
 describe("validarParticipantes (PUT /api/admin/participantes)", () => {
-  const lista = (nombres: string[], extra: Record<string, unknown> = {}) => ({ cantidad: nombres.length, nombres, ...extra });
+  const lista = (nombres: string[], extra: Record<string, unknown> = {}) => ({
+    jornada: "manana",
+    cantidad: nombres.length,
+    nombres,
+    ...extra,
+  });
 
   it("acepta nombres con tildes, recorta y guarda los vacíos como null", () => {
     expect(validarParticipantes(lista(["  Ana Pérez ", "", "José Ñúñez Solís"]))).toEqual({
       ok: true,
-      datos: { nombres: ["Ana Pérez", null, "José Ñúñez Solís"], confirmar: false },
+      datos: { jornada: "manana", nombres: ["Ana Pérez", null, "José Ñúñez Solís"], confirmar: false },
     });
     expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
   });
 
   it.each([0, 100, 2.5, "5", null])("rechaza la cantidad %j", (cantidad) => {
-    expect(validarParticipantes({ cantidad, nombres: ["Ana"] })).toEqual({
+    expect(validarParticipantes({ jornada: "manana", cantidad, nombres: ["Ana"] })).toEqual({
       ok: false,
       error: MENSAJES_VALIDACION.cantidadParticipantes,
     });
   });
 
   it("rechaza una cantidad que no coincide con los nombres, o un cuerpo sin forma", () => {
-    expect(validarParticipantes({ cantidad: 3, nombres: ["Ana", "Bea"] })).toEqual({
+    expect(validarParticipantes({ jornada: "manana", cantidad: 3, nombres: ["Ana", "Bea"] })).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.listaParticipantes,
+    });
+    expect(validarParticipantes({ cantidad: 1, nombres: ["Ana"] })).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.listaParticipantes,
+    });
+    expect(validarParticipantes(lista(["Ana"], { jornada: "tarde" }))).toEqual({
       ok: false,
       error: MENSAJES_VALIDACION.listaParticipantes,
     });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { obtenerCompetenciaHabilitada, obtenerIndicador, type Competencia, type Indicador } from "@/config/competencias";
 import { equipoDeCompetencia, obtenerEvaluador, type Equipo } from "@/config/equipos";
+import { IDS_JORNADA, type JornadaId } from "@/config/jornadas";
 import {
   LARGO_MAXIMO_DESCRIPCION_IA,
   LARGO_MAXIMO_OBSERVACION,
@@ -14,6 +15,9 @@ import { formatearEntero } from "@/lib/formato";
 // Request validation for /api/evaluaciones (PRD §10), /api/jev (PRD §8.3),
 // /api/reportes and /api/admin/participantes: zod for the shape, then
 // cross-checks against src/config (and the participant list from the DB).
+// The jornada always comes from the session, never from the request: the
+// checks below take it as an argument so a request can't reach the other
+// cohort's team or participants.
 // Every rejection carries a Spanish message for the `{ error }` body. Client
 // code may `import type` from here; importing values would ship zod to the
 // rating pages.
@@ -99,12 +103,13 @@ function mensajeDe(error: z.ZodError): string {
 
 /**
  * POST /api/evaluaciones body: shape plus every cross-check in PRD §10.
- * `participantes` is the current active list (db/participantes.ts), so a
- * participant the admin has hidden can't receive new evaluations.
+ * `participantes` is the jornada's current active list (db/participantes.ts),
+ * so a participant the admin has hidden can't receive new evaluations.
  */
 export function validarEvaluacion(
   datos: unknown,
   participantes: readonly { id: string }[],
+  jornada: JornadaId,
 ): Resultado<EvaluacionValida> {
   const forma = esquemaEvaluacion.safeParse(datos);
   if (!forma.success) return { ok: false, error: mensajeDe(forma.error) };
@@ -112,7 +117,7 @@ export function validarEvaluacion(
 
   const competencia = obtenerCompetenciaHabilitada(evaluacion.competenciaId);
   if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
-  if (!obtenerEvaluador(competencia.id, evaluacion.evaluadorId)) {
+  if (!obtenerEvaluador(jornada, competencia.id, evaluacion.evaluadorId)) {
     return { ok: false, error: MENSAJES_VALIDACION.evaluador };
   }
   if (!participantes.some((p) => p.id === evaluacion.participanteId)) return { ok: false, error: MENSAJES_VALIDACION.participante };
@@ -133,12 +138,12 @@ const esquemaConsulta = z.object({ competencia: id, evaluador: id });
 export type ConsultaEnviadas = { competenciaId: string; evaluadorId: string };
 
 /** GET /api/evaluaciones?competencia=&evaluador= */
-export function validarConsultaEnviadas(parametros: URLSearchParams): Resultado<ConsultaEnviadas> {
+export function validarConsultaEnviadas(parametros: URLSearchParams, jornada: JornadaId): Resultado<ConsultaEnviadas> {
   const consulta = esquemaConsulta.safeParse(Object.fromEntries(parametros));
   if (!consulta.success) return { ok: false, error: MENSAJES_VALIDACION.consulta };
   const competencia = obtenerCompetenciaHabilitada(consulta.data.competencia);
   if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
-  if (!obtenerEvaluador(competencia.id, consulta.data.evaluador)) {
+  if (!obtenerEvaluador(jornada, competencia.id, consulta.data.evaluador)) {
     return { ok: false, error: MENSAJES_VALIDACION.evaluador };
   }
   return { ok: true, datos: { competenciaId: competencia.id, evaluadorId: consulta.data.evaluador } };
@@ -170,16 +175,18 @@ export function validarSolicitudJev(datos: unknown): Resultado<SolicitudJevValid
 
 export type CompetenciaReporte = { competencia: Competencia; equipo: Equipo };
 
-/** /api/reportes/[competencia] param: an enabled competencia that has a team. */
-export function validarCompetenciaReporte(valor: unknown): Resultado<CompetenciaReporte> {
+/** /api/reportes/[competencia] param: an enabled competencia that has a team in the jornada. */
+export function validarCompetenciaReporte(valor: unknown, jornada: JornadaId): Resultado<CompetenciaReporte> {
   const forma = id.safeParse(valor);
   const competencia = forma.success ? obtenerCompetenciaHabilitada(forma.data) : undefined;
-  const equipo = competencia && equipoDeCompetencia(competencia.id);
+  const equipo = competencia && equipoDeCompetencia(jornada, competencia.id);
   if (!competencia || !equipo) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   return { ok: true, datos: { competencia, equipo } };
 }
 
 const esquemaParticipantes = z.object({
+  // The jornada the editor was loaded for; the route compares it with the session's.
+  jornada: z.enum(IDS_JORNADA),
   cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA_PARTICIPANTES),
   // Blank names are stored as null and shown as "Participante NN".
   nombres: z
@@ -195,7 +202,7 @@ const esquemaParticipantes = z.object({
 });
 
 export type CuerpoParticipantes = z.input<typeof esquemaParticipantes>;
-export type ParticipantesValidos = { nombres: (string | null)[]; confirmar: boolean };
+export type ParticipantesValidos = { jornada: JornadaId; nombres: (string | null)[]; confirmar: boolean };
 
 /** PUT /api/admin/participantes body: one name (or blank) per participant, in order. */
 export function validarParticipantes(datos: unknown): Resultado<ParticipantesValidos> {
@@ -208,7 +215,7 @@ export function validarParticipantes(datos: unknown): Resultado<ParticipantesVal
     }
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
-  const { cantidad, nombres, confirmar } = forma.data;
+  const { jornada, cantidad, nombres, confirmar } = forma.data;
   if (nombres.length !== cantidad) return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
-  return { ok: true, datos: { nombres, confirmar } };
+  return { ok: true, datos: { jornada, nombres, confirmar } };
 }

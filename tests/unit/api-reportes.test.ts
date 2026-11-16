@@ -16,7 +16,7 @@ const { GET: GET_REPORTE } = await import("@/app/api/reportes/[competencia]/rout
 const { GET: GET_CSV } = await import("@/app/api/reportes/[competencia]/csv/route");
 
 const OBSERVACION = "Reorganizó sus actividades sin ayuda tras el cambio de prioridades.";
-const DOCENTE = { rol: "docente", sid: "0123456789abcdef0123" };
+const DOCENTE = { rol: "docente", sid: "0123456789abcdef0123", jornada: "manana" };
 
 const FILA: FilaReporte = {
   evaluadorId: "kristel-barrantes-lopez",
@@ -63,7 +63,7 @@ describe.each([
   });
 
   it("403 para el rol evaluador", async () => {
-    sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123" });
+    sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123", jornada: "manana" });
     const respuesta = await pedir();
     expect(respuesta.status).toBe(403);
     await expect(respuesta.json()).resolves.toEqual({ error: "Esta sección requiere el código docente." });
@@ -96,14 +96,15 @@ describe("GET /api/reportes/[competencia]", () => {
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     await expect(respuesta.json()).resolves.toEqual({ vacio: true });
-    const [competencia, equipo] = db.obtenerReporte.mock.calls[0];
+    const [jornada, competencia, equipo] = db.obtenerReporte.mock.calls[0];
+    expect(jornada).toBe("manana");
     expect(competencia.id).toBe("adaptabilidad");
     expect(equipo.competenciaId).toBe("adaptabilidad");
   });
 });
 
 describe("GET /api/reportes/[competencia]/csv", () => {
-  it("descarga UTF-8 con BOM, nombre nivela-{competencia}-{fecha}.csv y tildes intactas", async () => {
+  it("descarga UTF-8 con BOM, nombre nivela-{competencia}-{jornada}-{fecha}.csv y tildes intactas", async () => {
     vi.useFakeTimers({ now: new Date("2026-10-26T03:00:00Z"), toFake: ["Date"] }); // 25/10 21:00 in Costa Rica
     db.leerFilasReporte.mockResolvedValue([FILA]);
     const respuesta = await pedirCsv();
@@ -111,14 +112,14 @@ describe("GET /api/reportes/[competencia]/csv", () => {
 
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("content-type")).toBe("text/csv; charset=utf-8");
-    expect(respuesta.headers.get("content-disposition")).toBe('attachment; filename="nivela-adaptabilidad-2026-10-25.csv"');
+    expect(respuesta.headers.get("content-disposition")).toBe('attachment; filename="nivela-adaptabilidad-manana-2026-10-25.csv"');
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
-    expect(db.leerFilasReporte).toHaveBeenCalledWith("adaptabilidad");
+    expect(db.leerFilasReporte).toHaveBeenCalledWith("manana", "adaptabilidad");
 
     const bytes = new Uint8Array(await respuesta.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const texto = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
-    expect(texto).toContain("Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,Carla Mora,2,2,Intermedio,manual");
+    expect(texto).toContain("Mañana,Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,Carla Mora,2,2,Intermedio,manual");
     expect(texto).toContain(OBSERVACION);
   });
 });

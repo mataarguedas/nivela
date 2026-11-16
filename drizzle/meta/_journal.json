@@ -15,6 +15,13 @@
       "when": 1793161884326,
       "tag": "0001_participantes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793218386471,
+      "tag": "0002_jornadas",
+      "breakpoints": true
     }
   ]
 }

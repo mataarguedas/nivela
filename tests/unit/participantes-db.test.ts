@@ -11,6 +11,7 @@ import {
   sentenciasGuardarParticipantes,
 } from "@/lib/db/participantes";
 import * as schema from "@/lib/db/schema";
+import type { JornadaId } from "@/config/jornadas";
 
 // The admin's participant list against a real Postgres (PGlite, built from
 // the committed migrations): saving, hiding by lowering the count, names
@@ -21,13 +22,13 @@ import * as schema from "@/lib/db/schema";
 const cliente = new PGlite();
 const db = drizzle({ client: cliente, schema });
 
-async function guardar(nombres: (string | null)[]) {
+async function guardar(nombres: (string | null)[], jornada: JornadaId = "manana") {
   await db.transaction(async (tx) => {
-    for (const sentencia of sentenciasGuardarParticipantes(tx, nombres)) await sentencia;
+    for (const sentencia of sentenciasGuardarParticipantes(tx, jornada, nombres)) await sentencia;
   });
 }
 
-const leer = () => sentenciaLeerFilas(db);
+const leer = (jornada: JornadaId = "manana") => sentenciaLeerFilas(db, jornada);
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "drizzle" });
@@ -76,16 +77,40 @@ describe("participantes en la base de datos", () => {
     expect(participantesActivos(await leer(), 20).map((p) => p.id)).toEqual(["P01", "P02", "P03", "P04"]);
   });
 
-  it("cuenta las evaluaciones de los participantes que se ocultarían", async () => {
+  it("cuenta las evaluaciones de los participantes que se ocultarían, solo de su jornada", async () => {
     await db.execute(sql`
-      insert into evaluaciones (competencia_id, evaluador_id, participante_id, puntaje) values
-        ('adaptabilidad', 'e1', 'P03', 3), ('adaptabilidad', 'e2', 'P03', 2),
-        ('adaptabilidad', 'e1', 'P04', 4), ('adaptabilidad', 'e1', 'P01', 1)`);
-    const [{ total }] = await sentenciaContarEvaluaciones(db, ["P03", "P04", "P05"]);
+      insert into evaluaciones (jornada, competencia_id, evaluador_id, participante_id, puntaje) values
+        ('manana', 'adaptabilidad', 'e1', 'P03', 3), ('manana', 'adaptabilidad', 'e2', 'P03', 2),
+        ('manana', 'adaptabilidad', 'e1', 'P04', 4), ('manana', 'adaptabilidad', 'e1', 'P01', 1),
+        ('noche', 'adaptabilidad', 'n1', 'P03', 2)`);
+    const [{ total }] = await sentenciaContarEvaluaciones(db, "manana", ["P03", "P04", "P05"]);
     expect(total).toBe(3);
+    const [{ total: noche }] = await sentenciaContarEvaluaciones(db, "noche", ["P03", "P04", "P05"]);
+    expect(noche).toBe(1);
   });
 
-  it("la restricción rechaza números fuera de 1…99", async () => {
-    await expect(db.execute(sql`insert into participantes (id, numero) values ('P00', 0)`)).rejects.toThrow();
+  it("cada jornada tiene su propia lista: P01 existe en ambas y ocultar en una no toca la otra", async () => {
+    await guardar(["Ana", "Bea", "Carlos"], "manana");
+    await guardar(["Noé", "Olga"], "noche");
+    expect(participantesActivos(await leer("manana"), 20).map((p) => p.etiqueta)).toEqual(["Ana", "Bea", "Carlos"]);
+    expect(participantesActivos(await leer("noche"), 20).map((p) => p.etiqueta)).toEqual(["Noé", "Olga"]);
+
+    await guardar(["Noé"], "noche");
+    expect(participantesActivos(await leer("manana"), 20)).toHaveLength(3);
+    expect(participantesActivos(await leer("noche"), 20).map((p) => p.id)).toEqual(["P01"]);
+  });
+
+  it("una jornada sin filas usa la lista de respaldo aunque la otra tenga", async () => {
+    await guardar(["Ana"], "manana");
+    expect(participantesActivos(await leer("noche"), 3).map((p) => p.etiqueta)).toEqual([
+      "Participante 01",
+      "Participante 02",
+      "Participante 03",
+    ]);
+  });
+
+  it("las restricciones rechazan números fuera de 1…99 y jornadas desconocidas", async () => {
+    await expect(db.execute(sql`insert into participantes (jornada, id, numero) values ('manana', 'P00', 0)`)).rejects.toThrow();
+    await expect(db.execute(sql`insert into participantes (jornada, id, numero) values ('tarde', 'P01', 1)`)).rejects.toThrow();
   });
 });

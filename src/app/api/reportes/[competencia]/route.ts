@@ -8,7 +8,8 @@ import { validarCompetenciaReporte } from "@/lib/validacion";
 
 // GET /api/reportes/[competencia] (PRD §10, §11): the aggregated report as
 // JSON, for the docente only. It includes evaluator names and observations,
-// so the role is re-verified here, not only in proxy.ts.
+// so the role is re-verified here, not only in proxy.ts. The jornada is the
+// session's (PRD §5.11).
 
 // Runs on Node.js, the default (see api/acceso/route.ts on `runtime`).
 
@@ -24,12 +25,13 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/repo
   if (!sesion) return responder({ error: TEXTOS.sesion.requerida }, 401);
   if (sesion.rol !== "docente") return responder({ error: TEXTOS.sesion.soloDocente }, 403);
 
-  const validacion = validarCompetenciaReporte((await params).competencia);
+  const { jornada } = sesion;
+  const validacion = validarCompetenciaReporte((await params).competencia, jornada);
   if (!validacion.ok) return responder({ error: validacion.error }, 404);
 
   const inicio = Date.now();
   try {
-    return responder(await obtenerReporte(validacion.datos.competencia, validacion.datos.equipo));
+    return responder(await obtenerReporte(jornada, validacion.datos.competencia, validacion.datos.equipo));
   } catch (error) {
     registrarError(RUTA, "GET", inicio, error);
     return responder({ error: TEXTOS_REPORTES.errorCarga }, 500);

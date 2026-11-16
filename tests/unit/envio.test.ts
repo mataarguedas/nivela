@@ -35,7 +35,7 @@ describe("cuerpoEvaluacion", () => {
         { indicadorId: "adaptabilidad-4", nivel: 1, origen: "manual" },
       ],
     });
-    expect(validarEvaluacion(cuerpo, generarParticipantes(20)).ok).toBe(true);
+    expect(validarEvaluacion(cuerpo, generarParticipantes(20), "manana").ok).toBe(true);
   });
 
   it("es null mientras falte un nivel", () => {

@@ -6,6 +6,7 @@ import { equipoDeCompetencia } from "@/config/equipos";
 import { etiquetaNumero } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { cargarParticipantes } from "@/lib/db/participantes";
+import { jornadaActual } from "@/lib/jornadaActual";
 import { ListaParticipantes } from "./ListaParticipantes";
 
 // Participant list (PRD §5.4, FR-4). Statuses come from the local draft of
@@ -13,7 +14,8 @@ import { ListaParticipantes } from "./ListaParticipantes";
 // a selected evaluator it sends the user to the evaluator step. The layout
 // already answered 404 for unknown competencias; params are read behind
 // Suspense so navigating here from a sibling page is instant. Participants
-// (names set by the admin) are read from the DB at request time.
+// (names set by the admin) are read from the DB at request time, for the
+// session's jornada only.
 
 // Not validated in dev; see the note in ../layout.tsx.
 export const instant = false;
@@ -37,11 +39,12 @@ export default function PaginaParticipantes({ params }: PageProps<"/[competencia
 
 async function Lista({ params }: Pick<PageProps<"/[competencia]">, "params">) {
   const { competencia: id } = await params;
+  const jornada = await jornadaActual();
   const competencia = obtenerCompetenciaHabilitada(id);
-  const equipo = competencia && equipoDeCompetencia(competencia.id);
+  const equipo = competencia && equipoDeCompetencia(jornada, competencia.id);
   if (!competencia || !equipo) notFound();
 
-  const participantes = await cargarParticipantes("/[competencia]");
+  const participantes = await cargarParticipantes("/[competencia]", jornada);
   if (!participantes) {
     return (
       <p role="alert" className="pt-10 text-center text-body text-ink">

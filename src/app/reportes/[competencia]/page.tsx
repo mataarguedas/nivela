@@ -10,6 +10,7 @@ import { MejoresPuntajes } from "@/components/reportes/MejoresPuntajes";
 import { TablaParticipantes } from "@/components/reportes/TablaParticipantes";
 import { IconoChevron } from "@/components/ui/iconos";
 import type { Competencia } from "@/config/competencias";
+import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
@@ -49,8 +50,8 @@ export default function PaginaReporteGeneral({ params }: PageProps<"/reportes/[c
 
 async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia]">, "params">) {
   const { competencia: id } = await params;
-  await exigirDocente(`/reportes/${id}`);
-  const { competencia, reporte } = await cargarReporte(id, "/reportes/[competencia]");
+  const jornada = await exigirDocente(`/reportes/${id}`);
+  const { competencia, reporte } = await cargarReporte(jornada, id, "/reportes/[competencia]");
 
   return (
     <>
@@ -62,7 +63,9 @@ async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia
         {TEXTOS_REPORTES.volverReportes}
       </Link>
       <header className="mt-4 mb-6 text-center">
-        <p className="text-sub text-ink-3">{competencia.nombre}</p>
+        <p className="text-sub text-ink-3">
+          {competencia.nombre} · {TEXTOS.jornada.actual(nombreJornada(jornada))}
+        </p>
         <h1 className="mt-2 text-h2 font-semibold md:text-display">{TEXTOS.reportes.general}</h1>
       </header>
       <AccionesReporte competenciaId={competencia.id} />

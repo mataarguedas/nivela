@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { AvisoAlmacenamiento } from "@/components/ui/AvisoAlmacenamiento";
 import { AvisoSinConexion } from "@/components/ui/AvisoSinConexion";
+import { VolverNav } from "@/components/ui/BotonVolver";
 import { Nav } from "@/components/ui/Nav";
 import { NavSesion } from "@/components/ui/NavSesion";
 import { RegistroServiceWorker } from "@/components/ui/RegistroServiceWorker";
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es-CR" className="antialiased">
       <body className="flex min-h-dvh flex-col">
         <ProveedorToast>
-          <Nav>
+          <Nav volver={<VolverNav />}>
             {/* Session-dependent, so it streams in after the static shell. */}
             <Suspense fallback={null}>
               <NavSesion />

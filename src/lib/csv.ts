@@ -11,6 +11,7 @@
 
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
+import { nombreJornada, type JornadaId } from "@/config/jornadas";
 import { esNivelValor, obtenerNivel } from "@/config/niveles";
 import type { Participante } from "@/config/participantes";
 import { formatearFechaHora } from "@/lib/formato";
@@ -20,6 +21,7 @@ import type { FilaReporte } from "@/lib/reportes";
 export const BOM = "﻿";
 
 export const COLUMNAS_CSV = [
+  "jornada",
   "competencia",
   "evaluador",
   "curso_evaluador",
@@ -47,10 +49,12 @@ export function celdaCsv(valor: string | number | null): string {
 }
 
 /**
- * `participantes`: every stored participant, hidden ones included, so their
- * rows keep the name; an unnamed or unknown participant gets an empty name.
+ * `participantes`: every stored participant of the jornada, hidden ones
+ * included, so their rows keep the name; an unnamed or unknown participant
+ * gets an empty name. `filas` are already that jornada's.
  */
 export function generarCsv(
+  jornada: JornadaId,
   competencia: Competencia,
   equipo: Equipo,
   filas: readonly FilaReporte[],
@@ -63,6 +67,7 @@ export function generarCsv(
   const lineas = filas.map((f) => {
     const integrante = integrantes.get(f.evaluadorId);
     return [
+      nombreJornada(jornada),
       competencia.nombre,
       integrante?.nombre ?? f.evaluadorId,
       integrante?.curso ?? "",

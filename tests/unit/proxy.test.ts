@@ -16,7 +16,7 @@ afterEach(() => {
 
 async function solicitud(ruta: string, opciones: { rol?: Rol; token?: string; previa?: boolean } = {}) {
   const cookies: string[] = [];
-  const token = opciones.token ?? (opciones.rol ? await firmarSesion({ rol: opciones.rol, sid: SID }) : undefined);
+  const token = opciones.token ?? (opciones.rol ? await firmarSesion({ rol: opciones.rol, sid: SID, jornada: "manana" }) : undefined);
   if (token) cookies.push(`${COOKIE_SESION}=${token}`);
   if (opciones.previa) cookies.push(`${COOKIE_SESION_PREVIA}=1`);
   return new NextRequest(new URL(ruta, ORIGEN), { headers: cookies.length ? { cookie: cookies.join("; ") } : {} });
@@ -135,5 +135,32 @@ describe("proxy y el rol admin", () => {
 
   it("no confunde rutas que solo empiezan igual", async () => {
     dejaPasar(await proxy(await solicitud("/administracion", { rol: "evaluador" })));
+  });
+});
+
+describe("proxy y /api/jornada", () => {
+  it.each(["evaluador", "docente", "admin"] as const)("deja pasar al rol %s (la ruta decide)", async (rol) => {
+    dejaPasar(await proxy(await solicitud("/api/jornada", { rol })));
+  });
+
+  it("sin sesión responde 401", async () => {
+    expect((await proxy(await solicitud("/api/jornada"))).status).toBe(401);
+  });
+});
+
+describe("proxy y el buzón de correos de desarrollo", () => {
+  it("fuera de producción deja pasar /api/dev/correos sin sesión (las pruebas leen el código antes de entrar)", async () => {
+    dejaPasar(await proxy(await solicitud("/api/dev/correos?para=a@ejemplo.test")));
+  });
+
+  it("en producción no hay excepción: sin sesión responde 401", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const respuesta = await proxy(await solicitud("/api/dev/correos?para=a@ejemplo.test"));
+    expect(respuesta.status).toBe(401);
+  });
+
+  it("la página /dev/correos sigue pidiendo sesión", async () => {
+    const respuesta = await proxy(await solicitud("/dev/correos"));
+    expect(respuesta.status).toBe(307);
   });
 });

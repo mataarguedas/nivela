@@ -14,15 +14,21 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+// Relative: drizzle-kit loads this file without the "@/" alias.
+import { IDS_JORNADA } from "../../config/jornadas";
 
 // Database schema, exactly PRD §9.2. Ids reference src/config. The only names
 // stored are the participants' (set by the admin); evaluator names stay in
 // config. Changes go through `npm run db:generate` (drizzle/).
+//
+// `jornada` (src/config/jornadas.ts) scopes the cohort: participant ids
+// P01…P99 repeat across jornadas, so every key that holds one includes it.
 
 export const evaluaciones = pgTable(
   "evaluaciones",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    jornada: text("jornada", { enum: IDS_JORNADA }).notNull(),
     competenciaId: text("competencia_id").notNull(),
     evaluadorId: text("evaluador_id").notNull(),
     participanteId: text("participante_id").notNull(),
@@ -31,7 +37,10 @@ export const evaluaciones = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique().on(t.competenciaId, t.evaluadorId, t.participanteId)],
+  (t) => [
+    unique().on(t.jornada, t.competenciaId, t.evaluadorId, t.participanteId),
+    check("evaluaciones_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+  ],
 );
 
 export const calificaciones = pgTable(
@@ -78,13 +87,19 @@ export const usoJev = pgTable(
 export const participantes = pgTable(
   "participantes",
   {
-    /** "P01".."P99", the id evaluaciones.participante_id refers to. */
-    id: text("id").primaryKey(),
-    numero: smallint("numero").notNull().unique(),
+    jornada: text("jornada", { enum: IDS_JORNADA }).notNull(),
+    /** "P01".."P99" within the jornada, the id evaluaciones.participante_id refers to. */
+    id: text("id").notNull(),
+    numero: smallint("numero").notNull(),
     /** Null → "Participante NN". Max length enforced by validacion.ts. */
     nombre: text("nombre"),
     activo: boolean("activo").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check("participantes_numero_check", sql`${t.numero} between 1 and 99`)],
+  (t) => [
+    primaryKey({ columns: [t.jornada, t.id] }),
+    unique().on(t.jornada, t.numero),
+    check("participantes_numero_check", sql`${t.numero} between 1 and 99`),
+    check("participantes_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+  ],
 );

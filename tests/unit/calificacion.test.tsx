@@ -71,7 +71,7 @@ describe("IndicadorSeccion", () => {
 
   it("titula la sección y el grupo de niveles con 'Indicador n. título'", () => {
     renderizar();
-    const titulo = "Indicador 1. Modifica su forma de actuar ante cambios.";
+    const titulo = "Indicador 1. Actúa de manera rápida y flexible.";
     expect(screen.getByRole("heading", { level: 2, name: titulo })).toBeInTheDocument();
     expect(screen.getByRole("radiogroup", { name: titulo })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(4);

@@ -47,7 +47,7 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `npm test` | Pruebas unitarias (Vitest). |
 | `npm run test:e2e` | Pruebas de extremo a extremo (Playwright: iPhone 13/WebKit, Pixel 7/Chromium, Firefox móvil y Chrome de escritorio). Requiere los datos de `db:seed` en la rama de desarrollo. |
 | `npm run db:generate` / `npm run db:migrate` | Genera y aplica migraciones de Drizzle (carpeta `drizzle/`). |
-| `npm run db:seed` | Datos ficticios: 8 evaluadores × todos los participantes. Se niega a correr con `NODE_ENV=production`. `npm run db:seed -- --limpiar` vacía las tablas. |
+| `npm run db:seed` | Datos ficticios: el equipo de Adaptabilidad de cada jornada (Equipo 4 de mañana, Equipo 1 de noche) × todos sus participantes. Se niega a correr con `NODE_ENV=production`. `npm run db:seed -- --limpiar` vacía las tablas. |
 | `npm run jev:evaluar` | Conjunto de referencia de Jev (ver abajo). |
 
 ## Variables de entorno

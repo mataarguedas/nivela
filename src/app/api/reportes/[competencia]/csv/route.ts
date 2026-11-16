@@ -10,8 +10,9 @@ import { getSesion } from "@/lib/sesion";
 import { validarCompetenciaReporte } from "@/lib/validacion";
 
 // GET /api/reportes/[competencia]/csv (PRD §10, FR-13): every stored rating
-// of the competencia as a CSV download (format notes in lib/csv.ts), named
-// nivela-{competencia}-{aaaa-mm-dd}.csv in Costa Rica time. Docente only.
+// of the competencia in the session's jornada as a CSV download (format notes
+// in lib/csv.ts), named nivela-{competencia}-{jornada}-{aaaa-mm-dd}.csv in
+// Costa Rica time. Docente only.
 
 // Runs on Node.js, the default (see api/acceso/route.ts on `runtime`).
 
@@ -27,15 +28,19 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/repo
   if (!sesion) return responderError(TEXTOS.sesion.requerida, 401);
   if (sesion.rol !== "docente") return responderError(TEXTOS.sesion.soloDocente, 403);
 
-  const validacion = validarCompetenciaReporte((await params).competencia);
+  const { jornada } = sesion;
+  const validacion = validarCompetenciaReporte((await params).competencia, jornada);
   if (!validacion.ok) return responderError(validacion.error, 404);
   const { competencia, equipo } = validacion.datos;
 
   const inicio = Date.now();
   try {
-    const [filas, participantes] = await Promise.all([leerFilasReporte(competencia.id), obtenerTodosLosParticipantes()]);
-    const csv = generarCsv(competencia, equipo, filas, participantes);
-    const nombre = `nivela-${competencia.id}-${fechaParaArchivo(new Date())}.csv`;
+    const [filas, participantes] = await Promise.all([
+      leerFilasReporte(jornada, competencia.id),
+      obtenerTodosLosParticipantes(jornada),
+    ]);
+    const csv = generarCsv(jornada, competencia, equipo, filas, participantes);
+    const nombre = `nivela-${competencia.id}-${jornada}-${fechaParaArchivo(new Date())}.csv`;
     return new NextResponse(csv, {
       headers: {
         ...SIN_CACHE,

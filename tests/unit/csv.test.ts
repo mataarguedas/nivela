@@ -6,7 +6,7 @@ import { BOM, celdaCsv, COLUMNAS_CSV, generarCsv } from "@/lib/csv";
 import type { FilaReporte } from "@/lib/reportes";
 
 const competencia = obtenerCompetencia("adaptabilidad")!;
-const equipo = equipoDeCompetencia("adaptabilidad")!;
+const equipo = equipoDeCompetencia("manana", "adaptabilidad")!;
 /** Every stored participant: P01 named, P02 unnamed. */
 const PARTICIPANTES = [crearParticipante(1, "Ana Pérez"), crearParticipante(2, null)];
 
@@ -31,47 +31,52 @@ function lineas(csv: string): string[] {
 
 describe("generarCsv", () => {
   it("empieza con BOM y el encabezado exacto de PRD §10", () => {
-    const csv = generarCsv(competencia, equipo, [], PARTICIPANTES);
+    const csv = generarCsv("manana", competencia, equipo, [], PARTICIPANTES);
     expect(csv.startsWith("﻿")).toBe(true);
     expect(lineas(csv)[0]).toBe(
-      "competencia,evaluador,curso_evaluador,participante,nombre_participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado",
+      "jornada,competencia,evaluador,curso_evaluador,participante,nombre_participante,indicador,nivel,nivel_nombre,origen,ia_nivel_sugerido,ia_confianza,observacion,actualizado",
     );
-    expect(COLUMNAS_CSV).toHaveLength(13);
+    expect(COLUMNAS_CSV).toHaveLength(14);
     expect(csv.endsWith("\r\n")).toBe(true);
   });
 
   it("una fila manual: nombres con tildes, curso, número de indicador, nombre del nivel y fecha en hora de Costa Rica", () => {
-    const [, linea] = lineas(generarCsv(competencia, equipo, [fila()], PARTICIPANTES));
-    expect(linea).toBe("Adaptabilidad,Ramsés Salas Vargas,AGRH 315 Psicología 2,P01,Ana Pérez,1,3,Avanzado,manual,,,,25/10/2026 14:05");
+    const [, linea] = lineas(generarCsv("manana", competencia, equipo, [fila()], PARTICIPANTES));
+    expect(linea).toBe("Mañana,Adaptabilidad,Ramsés Salas Vargas,AGRH 315 Psicología 2,P01,Ana Pérez,1,3,Avanzado,manual,,,,25/10/2026 14:05");
   });
 
   it("una fila con IA: nivel sugerido y confianza a 2 decimales con punto", () => {
     const [, linea] = lineas(
-      generarCsv(competencia, equipo, [
+      generarCsv("manana", competencia, equipo, [
         fila({ indicadorId: "adaptabilidad-4", nivel: 4, origen: "ia", iaNivelSugerido: 4, iaConfianza: 0.7099999785423279 }),
       ], PARTICIPANTES),
     );
-    expect(linea.split(",").slice(5, 11)).toEqual(["4", "4", "Experto", "ia", "4", "0.71"]);
+    expect(linea.split(",").slice(6, 12)).toEqual(["4", "4", "Experto", "ia", "4", "0.71"]);
   });
 
   it("una persona evaluadora fuera de config se exporta con su id y sin curso", () => {
-    const [, linea] = lineas(generarCsv(competencia, equipo, [fila({ evaluadorId: "antiguo-id" })], PARTICIPANTES));
-    expect(linea.startsWith("Adaptabilidad,antiguo-id,,P01,Ana Pérez,")).toBe(true);
+    const [, linea] = lineas(generarCsv("manana", competencia, equipo, [fila({ evaluadorId: "antiguo-id" })], PARTICIPANTES));
+    expect(linea.startsWith("Mañana,Adaptabilidad,antiguo-id,,P01,Ana Pérez,")).toBe(true);
+  });
+
+  it("la columna jornada nombra la jornada exportada", () => {
+    const [, linea] = lineas(generarCsv("noche", competencia, equipo, [fila()], PARTICIPANTES));
+    expect(linea.startsWith("Noche,Adaptabilidad,")).toBe(true);
   });
 
   it("entrecomilla observaciones con comas, comillas y saltos de línea", () => {
-    const csv = generarCsv(competencia, equipo, [fila({ observacion: 'Dijo "listo", y\nsiguió' })], PARTICIPANTES);
+    const csv = generarCsv("manana", competencia, equipo, [fila({ observacion: 'Dijo "listo", y\nsiguió' })], PARTICIPANTES);
     expect(csv).toContain(',"Dijo ""listo"", y\nsiguió",25/10/2026 14:05\r\n');
   });
 
   it("nombre del participante: vacío sin nombre o fuera de la lista; neutraliza fórmulas", () => {
     const participantes = [...PARTICIPANTES, crearParticipante(3, "=HIPERVINCULO(x)")];
     const [, sinNombre, desconocido, formula] = lineas(
-      generarCsv(competencia, equipo, [fila({ participanteId: "P02" }), fila({ participanteId: "P40" }), fila({ participanteId: "P03" })], participantes),
+      generarCsv("manana", competencia, equipo, [fila({ participanteId: "P02" }), fila({ participanteId: "P40" }), fila({ participanteId: "P03" })], participantes),
     );
-    expect(sinNombre.split(",").slice(3, 5)).toEqual(["P02", ""]);
-    expect(desconocido.split(",").slice(3, 5)).toEqual(["P40", ""]);
-    expect(formula.split(",").slice(3, 5)).toEqual(["P03", "'=HIPERVINCULO(x)"]);
+    expect(sinNombre.split(",").slice(4, 6)).toEqual(["P02", ""]);
+    expect(desconocido.split(",").slice(4, 6)).toEqual(["P40", ""]);
+    expect(formula.split(",").slice(4, 6)).toEqual(["P03", "'=HIPERVINCULO(x)"]);
   });
 });
 

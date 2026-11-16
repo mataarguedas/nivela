@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { CURSOS, equipoDeCompetencia } from "../../src/config/equipos";
 import { esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 import { sinEnviosEnServidor } from "./servidor";
@@ -60,9 +61,13 @@ test("Inicio lleva a la selección de evaluador de Adaptabilidad", async ({ page
   await page.getByRole("link", { name: /Adaptabilidad/ }).click();
   await expect(page).toHaveURL(/\/adaptabilidad\/evaluador$/);
   await expect(page.getByRole("heading", { level: 1, name: "¿Quién está evaluando?" })).toBeVisible();
-  // The 8 members of Equipo 4, grouped by curso.
-  await expect(page.getByRole("region", { name: "AGRH 315 Psicología 2" }).getByRole("button")).toHaveCount(4);
-  await expect(page.getByRole("region", { name: "AGRH 613 Seminario Integrado de RRHH" }).getByRole("button")).toHaveCount(4);
+  // The members of the morning Adaptabilidad team, grouped by curso. Team
+  // numbers and sizes differ per jornada, so the counts come from config.
+  const equipo = equipoDeCompetencia("manana", "adaptabilidad")!;
+  for (const curso of CURSOS) {
+    const cantidad = equipo.integrantes.filter((i) => i.curso === curso).length;
+    await expect(page.getByRole("region", { name: curso }).getByRole("button")).toHaveCount(cantidad);
+  }
 });
 
 test("la lista sin evaluador redirige a la selección", async ({ page }) => {

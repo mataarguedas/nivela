@@ -136,6 +136,17 @@ export const TEXTOS = {
     soloAdmin: "Esta sección requiere el código de administración.",
     noParaAdmin: "Con el código de administración solo puede gestionar los participantes.",
   },
+  // PRD §5.11: the session's cohort, and switching it as docente or admin.
+  jornada: {
+    etiqueta: "Jornada",
+    /** "Jornada: Noche" */
+    actual: (nombre: string) => `Jornada: ${nombre}`,
+    cambiar: "Cambiar jornada",
+    error: "No se pudo cambiar la jornada. Intente de nuevo.",
+    invalida: "La jornada no es válida.",
+    soloDocenteOAdmin: "Su jornada la define el código de acceso de su clase.",
+    distinta: "La jornada cambió en otra pestaña. Recargue la página.",
+  },
   // Not in PRD Appendix C: 404 page (unknown or disabled competencias, etc.).
   noEncontrado: {
     titulo: "Página no encontrada",
@@ -147,6 +158,10 @@ export const TEXTOS = {
     cancelar: "Cancelar",
     navegacion: "Navegación principal",
     irAInicio: "Nivela, ir a Inicio",
+    // "Volver" (PRD §12 Nav, Appendix C). The aria-label names the destination.
+    volver: "Volver",
+    volverA: (destino: string) => `Volver a ${destino}`,
+    destinoInicio: "Inicio",
     /** Screen-reader version of the "12 / 1 000" counter; numbers come formatted. */
     contador: (n: string, max: string) => `${n} de ${max} caracteres`,
   },

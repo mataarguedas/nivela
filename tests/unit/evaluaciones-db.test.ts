@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import type { JornadaId } from "@/config/jornadas";
 import { sentenciasGuardar } from "@/lib/db/evaluaciones";
 import * as schema from "@/lib/db/schema";
 import type { EvaluacionValida } from "@/lib/validacion";
@@ -16,9 +17,9 @@ import type { EvaluacionValida } from "@/lib/validacion";
 const cliente = new PGlite();
 const db = drizzle({ client: cliente, schema });
 
-async function guardar(evaluacion: EvaluacionValida) {
+async function guardar(evaluacion: EvaluacionValida, jornada: JornadaId = "manana") {
   return db.transaction(async (tx) => {
-    const [upsert, borrar, insertar] = sentenciasGuardar(tx, evaluacion);
+    const [upsert, borrar, insertar] = sentenciasGuardar(tx, jornada, evaluacion);
     const [fila] = await upsert;
     await borrar;
     await insertar;
@@ -92,6 +93,29 @@ describe("sentenciasGuardar (upsert de una evaluación)", () => {
     await guardar(evaluacion([1, 1, 1, 1], { participanteId: "P02" }));
     expect(await contar("evaluaciones")).toBe(3);
     expect(await contar("calificaciones")).toBe(12);
+  });
+
+  it("la misma clave en otra jornada es otra evaluación, y reenviar solo toca la suya", async () => {
+    const manana = await guardar(evaluacion([3, 3, 3, 3]));
+    const noche = await guardar(evaluacion([1, 1, 1, 1]), "noche");
+    expect(noche.id).not.toBe(manana.id);
+    await guardar(evaluacion([2, 2, 2, 2]), "noche");
+    expect(await contar("evaluaciones")).toBe(2);
+    expect(await contar("calificaciones")).toBe(8);
+    const puntajes = await db
+      .select({ jornada: schema.evaluaciones.jornada, puntaje: schema.evaluaciones.puntaje })
+      .from(schema.evaluaciones)
+      .orderBy(schema.evaluaciones.jornada);
+    expect(puntajes).toEqual([
+      { jornada: "manana", puntaje: 3 },
+      { jornada: "noche", puntaje: 2 },
+    ]);
+  });
+
+  it("la restricción rechaza una jornada desconocida", async () => {
+    await expect(
+      db.execute(sql`insert into evaluaciones (jornada, competencia_id, evaluador_id, participante_id, puntaje) values ('tarde', 'a', 'e', 'P01', 1)`),
+    ).rejects.toThrow();
   });
 
   it("guarda los metadatos de IA y una observación nula", async () => {

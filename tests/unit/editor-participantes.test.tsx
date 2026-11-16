@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorParticipantes } from "@/app/admin/EditorParticipantes";
 import { ProveedorToast } from "@/components/ui/Toast";
+import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 
 // The admin's editor: count and names, the paste shortcut, client-side name
@@ -21,7 +22,7 @@ afterEach(() => {
 function montar(cantidad = 3, nombres: (string | null)[] = ["Ana", null, "Carlos", "Dani"]) {
   render(
     <ProveedorToast>
-      <EditorParticipantes inicial={{ cantidad, nombres }} />
+      <EditorParticipantes inicial={{ cantidad, nombres }} jornada="noche" />
     </ProveedorToast>,
   );
 }
@@ -82,7 +83,7 @@ describe("EditorParticipantes", () => {
     responder(200, { cantidad: 3 });
     await guardar();
     expect(fetchSimulado).toHaveBeenCalledWith("/api/admin/participantes", expect.objectContaining({ method: "PUT" }));
-    expect(cuerpoEnviado()).toEqual({ cantidad: 3, nombres: ["Ana", "Bea Solís", "Carlos"], confirmar: false });
+    expect(cuerpoEnviado()).toEqual({ jornada: "noche", cantidad: 3, nombres: ["Ana", "Bea Solís", "Carlos"], confirmar: false });
     expect(await screen.findByText(TEXTOS_ADMIN.guardado)).toBeInTheDocument();
   });
 
@@ -112,8 +113,16 @@ describe("EditorParticipantes", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.confirmar }));
     });
-    expect(cuerpoEnviado(1)).toEqual({ cantidad: 2, nombres: ["Ana", ""], confirmar: true });
+    expect(cuerpoEnviado(1)).toEqual({ jornada: "noche", cantidad: 2, nombres: ["Ana", ""], confirmar: true });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("si la jornada cambió en otra pestaña, muestra el aviso sin pedir confirmación", async () => {
+    montar();
+    responder(409, { error: TEXTOS.jornada.distinta, jornadaDistinta: true });
+    await guardar();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent(TEXTOS.jornada.distinta);
   });
 
   it("muestra el error del servidor si no se pudo guardar", async () => {

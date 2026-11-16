@@ -1,7 +1,7 @@
 // Dev seed (CLAUDE.md → Commands, PRD §15.7): realistic fake evaluations for
-// every Adaptabilidad evaluator × every participant, written through the same
-// validation and upsert as POST /api/evaluaciones. Never run it against
-// production.
+// every Adaptabilidad evaluator × every participant, in every jornada that
+// has a team for it, written through the same validation and upsert as POST
+// /api/evaluaciones. Never run it against production.
 //
 //   npm run db:seed                # upsert the fake evaluations (idempotent)
 //   npm run db:seed -- --limpiar   # TRUNCATE evaluaciones, calificaciones, uso_jev
@@ -25,79 +25,84 @@ const PROPORCION_IA = 0.25;
 const PROPORCION_OBSERVACION = 0.4;
 const MODELO = "jev-1.13.0";
 
-// Hand-written observations per indicator number and level. No names, only
-// observable behavior, as the rating screen asks.
+// Hand-written observations per indicator number and level, matching the
+// rubric in PRD Appendix A (plantilla.xlsx). No names, only observable
+// behavior, as the rating screen asks.
 const OBSERVACIONES: Record<number, Record<number, string[]>> = {
+  // Indicador 1. Actúa de manera rápida y flexible.
   1: {
     1: [
-      "Notó el cambio de procedimiento cuando se le explicó, pero necesitó que le recordaran cada paso.",
-      "Siguió trabajando con el método anterior hasta que alguien lo corrigió.",
+      "Notó que la dinámica había cambiado, pero tardó en reaccionar y esperó instrucciones para continuar.",
+      "Se dio cuenta del cambio de consigna, aunque no actuó hasta que la facilitadora le indicó qué hacer.",
     ],
     2: [
-      "Aplicó el nuevo procedimiento con una sola consulta al equipo.",
-      "Adoptó el cambio, aunque pidió orientación en la segunda parte de la tarea.",
+      "Ante un cambio sencillo en la consigna, respondió siguiendo las indicaciones que se le dieron.",
+      "Ajustó su parte del ejercicio cuando cambió el formato, apoyándose en las instrucciones recibidas.",
     ],
     3: [
-      "Ajustó su forma de trabajar en cuanto recibió las nuevas instrucciones, sin ayuda.",
-      "Reorganizó su método de trabajo por iniciativa propia al conocer el nuevo procedimiento.",
+      "Cuando cambió el orden de la actividad, siguió avanzando con sus tareas sin detenerse.",
+      "Afrontó el cambio de grupo a mitad del ejercicio y mantuvo el ritmo de su trabajo.",
     ],
     4: [
-      "Asumió el cambio de inmediato y explicó al resto del grupo cómo aplicar el nuevo procedimiento.",
-      "Preparó un resumen del nuevo método para que sus compañeros lo adoptaran más rápido.",
+      "Ante un imprevisto difícil que nadie esperaba, reaccionó de inmediato y entregó un trabajo de calidad.",
+      "Asumió con rapidez una situación inesperada de presión y mantuvo un buen desempeño hasta el final.",
     ],
   },
+  // Indicador 2. Modifica su forma de actuar ante cambios.
   2: {
     1: [
-      "Se quedó detenido ante la situación nueva hasta que el grupo le indicó qué hacer.",
-      "Reconoció que algo había cambiado, pero esperó ayuda para responder.",
+      "Siguió trabajando con el método anterior hasta que alguien le indicó el nuevo procedimiento.",
+      "Mantuvo su forma habitual de organizar el material pese al cambio, hasta recibir instrucciones.",
     ],
     2: [
-      "Puso en práctica las nuevas instrucciones con poca ayuda.",
-      "Aceptó la instrucción nueva y la aplicó tras una breve aclaración.",
+      "Aceptó la nueva manera de completar el registro siguiendo las indicaciones de la facilitadora.",
+      "Hizo la tarea con el nuevo formato tal como se le explicó, sin proponer cambios.",
     ],
     3: [
-      "Respondió con rapidez a la situación nueva siguiendo las indicaciones recibidas.",
-      "Actuó en pocos minutos ante el imprevisto, conforme a lo indicado.",
+      "Cambió su forma de trabajar con el nuevo procedimiento y lo aplicó en todas las entregas sin supervisión.",
+      "Adoptó el procedimiento nuevo desde el inicio y lo siguió de forma constante sin que nadie lo revisara.",
     ],
     4: [
-      "Resolvió con rapidez y buen criterio una situación compleja que el grupo no había previsto.",
-      "Tomó decisiones acertadas en segundos cuando la dinámica cambió por completo.",
+      "Adaptó su método a los tres escenarios del ejercicio y en todos mantuvo la calidad del resultado.",
+      "Ajustó su forma de trabajar cuando cambió el caso, y el resultado conservó el mismo nivel de calidad.",
     ],
   },
+  // Indicador 3. Ajusta las prioridades ante las demandas del entorno.
   3: {
     1: [
-      "Identificó que las actividades cambiaron, pero necesitó ayuda para reorganizarlas.",
-      "Mantuvo el orden original de las tareas aunque las prioridades habían cambiado.",
+      "Siguió el orden de tareas original aunque se anunció una entrega más urgente.",
+      "Continuó con la tarea que había empezado, sin atender la nueva prioridad indicada al grupo.",
     ],
     2: [
-      "Reordenó sus tareas ante un cambio sencillo y cumplió parte de los objetivos.",
-      "Ajustó algunas prioridades, aunque dejó pendiente un objetivo.",
+      "Reordenó sus tareas en cuanto la facilitadora le dijo cuál debía atender primero.",
+      "Cambió el orden de su trabajo después de que el grupo le señaló lo más urgente.",
     ],
     3: [
-      "Reorganizó sus actividades por su cuenta y cumplió los objetivos establecidos.",
-      "Planificó de nuevo el tiempo disponible y entregó todo lo acordado.",
+      "Atendió primero la entrega más urgente por decisión propia, sin que nadie se lo indicara.",
+      "Organizó sus tareas según su urgencia e importancia y las completó sin supervisión.",
     ],
     4: [
-      "Reorganizó sus prioridades de forma proactiva y ayudó a otros a entender el nuevo orden.",
-      "Propuso un nuevo plan de trabajo al equipo apenas cambiaron las prioridades.",
+      "Con tres actividades al mismo tiempo, definió el orden por urgencia e importancia y cumplió con todas.",
+      "Cuando surgieron varias solicitudes a la vez, priorizó con criterio y no descuidó ninguna.",
     ],
   },
+  // Indicador 4. Propone soluciones eficaces ante imprevistos o exigencias, actuando con iniciativa.
   4: {
     1: [
-      "Detectó el imprevisto, pero esperó a que otra persona propusiera la solución.",
-      "Señaló el problema y dependió de las instrucciones del grupo para resolverlo.",
+      "Avisó al grupo que faltaba un material y pidió ayuda para resolverlo.",
+      "Comunicó el imprevisto a la facilitadora y esperó apoyo para solucionarlo.",
     ],
     2: [
-      "Sugirió una alternativa sencilla después de recibir orientación.",
-      "Propuso una solución básica al imprevisto con apoyo del grupo.",
+      "Con la guía de una compañera, propuso usar otra hoja para reemplazar la que faltaba.",
+      "Planteó una alternativa sencilla después de recibir orientación de la facilitadora.",
     ],
     3: [
-      "Anticipó un problema en la entrega y propuso una medida preventiva.",
-      "Detectó un posible error antes de que ocurriera y planteó cómo evitarlo.",
+      "Por iniciativa propia propuso dividir el trabajo de otra forma y lo puso en práctica de inmediato.",
+      "Sugirió una solución viable al problema del tiempo y la aplicó sin esperar instrucciones.",
     ],
     4: [
-      "Se anticipó a varios imprevistos, propuso una solución innovadora y guió al equipo para aplicarla.",
-      "Ayudó al grupo a resolver una situación inesperada con una propuesta original.",
+      "Comparó opciones, aplicó la solución más eficaz y verificó con el grupo que el problema quedó resuelto.",
+      "Implementó la mejor alternativa ante el imprevisto y comprobó al final que todo funcionaba.",
     ],
   },
 };
@@ -144,6 +149,7 @@ async function main() {
   const { sql } = await import("drizzle-orm");
   const { obtenerCompetenciaHabilitada } = await import("@/config/competencias");
   const { equipoDeCompetencia } = await import("@/config/equipos");
+  const { JORNADAS } = await import("@/config/jornadas");
   const { getDb } = await import("@/lib/db");
   const { guardarEvaluacion } = await import("@/lib/db/evaluaciones");
   const { obtenerParticipantes } = await import("@/lib/db/participantes");
@@ -158,67 +164,75 @@ async function main() {
   }
 
   const competencia = obtenerCompetenciaHabilitada(COMPETENCIA_ID);
-  const equipo = equipoDeCompetencia(COMPETENCIA_ID);
-  if (!competencia || !equipo) throw new Error(`${COMPETENCIA_ID} is not enabled or has no team`);
-  // The admin's list if one was saved; otherwise the unnamed fallback.
-  const PARTICIPANTES = await obtenerParticipantes();
+  if (!competencia) throw new Error(`${COMPETENCIA_ID} is not enabled`);
 
-  // Each participant has a "true" level per indicator; each evaluator is a bit
-  // stricter or more lenient; every rating adds its own noise.
-  const base = new Map(
-    PARTICIPANTES.map((p) => {
-      const aptitud = entre(1.2, 3.9);
-      return [p.id, competencia.indicadores.map(() => aptitud + entre(-0.6, 0.6))];
-    }),
-  );
-  const severidad = new Map(equipo.integrantes.map((i) => [i.id, entre(-0.4, 0.4)]));
-
-  const pendientes = equipo.integrantes.flatMap((evaluador) =>
-    PARTICIPANTES.map((participante) => {
-      const calificaciones = competencia.indicadores.map((indicador, i) => {
-        const nivel = nivelAcotado(base.get(participante.id)![i] + severidad.get(evaluador.id)! + entre(-0.7, 0.7));
-        const observacion = azar() < PROPORCION_OBSERVACION ? elegir(OBSERVACIONES[indicador.numero][nivel]) : null;
-        if (azar() >= PROPORCION_IA) return { indicadorId: indicador.id, nivel, observacion, origen: "manual" as const };
-
-        // Usually the evaluator applied the suggestion; sometimes they then
-        // picked an adjacent level by hand (origen manual, metadata kept).
-        const corregida = azar() < 0.2;
-        const nivelSugerido = corregida ? nivelAcotado(nivel + (nivel === 4 ? -1 : 1)) : nivel;
-        const p = probabilidades(nivelSugerido);
-        return {
-          indicadorId: indicador.id,
-          nivel,
-          observacion,
-          origen: corregida ? ("manual" as const) : ("ia" as const),
-          ia: { nivelSugerido, probabilidades: p, confianza: redondear(p[String(nivelSugerido)] * entre(0.85, 0.98)), modelo: MODELO },
-        };
-      });
-      const resultado = validarEvaluacion(
-        {
-          competenciaId: competencia.id,
-          evaluadorId: evaluador.id,
-          participanteId: participante.id,
-          calificaciones,
-        },
-        PARTICIPANTES,
-      );
-      if (!resultado.ok) throw new Error(`Invalid seed data for ${evaluador.id}/${participante.id}: ${resultado.error}`);
-      return resultado.datos;
-    }),
-  );
-
-  let guardadas = 0;
-  async function trabajador() {
-    for (let evaluacion = pendientes.shift(); evaluacion; evaluacion = pendientes.shift()) {
-      await guardarEvaluacion(evaluacion);
-      guardadas += 1;
+  for (const { id: jornada } of JORNADAS) {
+    const equipo = equipoDeCompetencia(jornada, COMPETENCIA_ID);
+    if (!equipo) {
+      console.log(`Jornada ${jornada}: sin equipo para ${COMPETENCIA_ID}; se omite.`);
+      continue;
     }
+    // The admin's list for the jornada if one was saved; otherwise the unnamed fallback.
+    const PARTICIPANTES = await obtenerParticipantes(jornada);
+
+    // Each participant has a "true" level per indicator; each evaluator is a bit
+    // stricter or more lenient; every rating adds its own noise.
+    const base = new Map(
+      PARTICIPANTES.map((p) => {
+        const aptitud = entre(1.2, 3.9);
+        return [p.id, competencia.indicadores.map(() => aptitud + entre(-0.6, 0.6))];
+      }),
+    );
+    const severidad = new Map(equipo.integrantes.map((i) => [i.id, entre(-0.4, 0.4)]));
+
+    const pendientes = equipo.integrantes.flatMap((evaluador) =>
+      PARTICIPANTES.map((participante) => {
+        const calificaciones = competencia.indicadores.map((indicador, i) => {
+          const nivel = nivelAcotado(base.get(participante.id)![i] + severidad.get(evaluador.id)! + entre(-0.7, 0.7));
+          const observacion = azar() < PROPORCION_OBSERVACION ? elegir(OBSERVACIONES[indicador.numero][nivel]) : null;
+          if (azar() >= PROPORCION_IA) return { indicadorId: indicador.id, nivel, observacion, origen: "manual" as const };
+
+          // Usually the evaluator applied the suggestion; sometimes they then
+          // picked an adjacent level by hand (origen manual, metadata kept).
+          const corregida = azar() < 0.2;
+          const nivelSugerido = corregida ? nivelAcotado(nivel + (nivel === 4 ? -1 : 1)) : nivel;
+          const p = probabilidades(nivelSugerido);
+          return {
+            indicadorId: indicador.id,
+            nivel,
+            observacion,
+            origen: corregida ? ("manual" as const) : ("ia" as const),
+            ia: { nivelSugerido, probabilidades: p, confianza: redondear(p[String(nivelSugerido)] * entre(0.85, 0.98)), modelo: MODELO },
+          };
+        });
+        const resultado = validarEvaluacion(
+          {
+            competenciaId: competencia.id,
+            evaluadorId: evaluador.id,
+            participanteId: participante.id,
+            calificaciones,
+          },
+          PARTICIPANTES,
+          jornada,
+        );
+        if (!resultado.ok) throw new Error(`Invalid seed data for ${evaluador.id}/${participante.id}: ${resultado.error}`);
+        return resultado.datos;
+      }),
+    );
+
+    let guardadas = 0;
+    async function trabajador() {
+      for (let evaluacion = pendientes.shift(); evaluacion; evaluacion = pendientes.shift()) {
+        await guardarEvaluacion(jornada, evaluacion);
+        guardadas += 1;
+      }
+    }
+    const total = pendientes.length;
+    await Promise.all(Array.from({ length: CONCURRENCIA }, trabajador));
+    console.log(
+      `Jornada ${jornada}: ${guardadas} de ${total} evaluaciones (${equipo.integrantes.length} evaluadores × ${PARTICIPANTES.length} participantes).`,
+    );
   }
-  const total = pendientes.length;
-  await Promise.all(Array.from({ length: CONCURRENCIA }, trabajador));
-  console.log(
-    `Listo: ${guardadas} de ${total} evaluaciones (${equipo.integrantes.length} evaluadores × ${PARTICIPANTES.length} participantes).`,
-  );
 }
 
 main().catch((error: unknown) => {

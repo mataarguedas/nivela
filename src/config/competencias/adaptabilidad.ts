@@ -1,7 +1,9 @@
 import type { Competencia } from "./index";
 
-// Corrected text from PRD Appendix A. Keep it verbatim: it is also the rubric
-// sent to Jev. Open wording questions are tracked in PRD §16 (items 2 and 3).
+// Text from plantilla.xlsx ("Plantilla sistematizada", PRD Appendix A) with
+// only the minimal corrections listed there. Keep it verbatim: it is also the
+// rubric sent to Jev. Ids are positional (adaptabilidad-1 = Indicador 1); the
+// v1.2 template reordered the indicators before any real evaluation existed.
 export const adaptabilidad: Competencia = {
   id: "adaptabilidad",
   nombre: "Adaptabilidad",
@@ -13,45 +15,45 @@ export const adaptabilidad: Competencia = {
     {
       id: "adaptabilidad-1",
       numero: 1,
-      titulo: "Modifica su forma de actuar ante cambios.",
+      titulo: "Actúa de manera rápida y flexible.",
       niveles: {
-        1: "Identifica los cambios cuando se le indican, pero requiere supervisión constante para aplicarlos.",
-        2: "Aplica cambios en los procedimientos con poca ayuda, aunque ocasionalmente necesita orientación.",
-        3: "Adapta de manera autónoma sus métodos de trabajo al recibir nuevos procedimientos o instrucciones.",
-        4: "Se integra proactivamente a los cambios y facilita que otras personas comprendan y adopten la nueva forma de trabajo.",
+        1: "Reconoce los cambios, pero tarda en reaccionar y necesita instrucciones.",
+        2: "Responde a cambios sencillos, siguiendo las indicaciones recibidas.",
+        3: "Afronta cambios y mantiene la continuidad de sus tareas.",
+        4: "Asume situaciones difíciles o inesperadas con rapidez y mantiene un buen desempeño.",
       },
     },
     {
       id: "adaptabilidad-2",
       numero: 2,
-      titulo: "Actúa de manera rápida.",
+      titulo: "Modifica su forma de actuar ante cambios.",
       niveles: {
-        1: "Reconoce los cambios, pero necesita ayuda para responder.",
-        2: "Acepta nuevas instrucciones y las pone en práctica con poca ayuda.",
-        3: "Actúa rápidamente ante situaciones nuevas siguiendo las indicaciones recibidas.",
-        4: "Domina situaciones complejas con rapidez y buen criterio.",
+        1: "Mantiene su forma habitual de trabajar ante un cambio hasta recibir instrucciones.",
+        2: "Acepta la manera de realizar una tarea siguiendo las indicaciones recibidas.",
+        3: "Cambia su manera de trabajar ante nuevos procedimientos y los aplica constantemente, sin supervisión.",
+        4: "Adapta sus métodos de trabajo a distintos escenarios y mantiene la calidad del resultado.",
       },
     },
     {
       id: "adaptabilidad-3",
       numero: 3,
-      titulo: "Ajusta las prioridades.",
+      titulo: "Ajusta las prioridades ante las demandas del entorno.",
       niveles: {
-        1: "Identifica los cambios en sus actividades, pero necesita ayuda para reorganizarlas.",
-        2: "Ajusta sus prioridades ante cambios sencillos, cumpliendo parcialmente los objetivos.",
-        3: "Organiza sus actividades de manera autónoma para cumplir con los objetivos establecidos.",
-        4: "Se desenvuelve proactivamente ante los cambios y facilita que otras personas los comprendan.",
+        1: "Continúa con el orden de tareas establecido aunque surjan nuevas prioridades.",
+        2: "Reordena sus tareas cuando se le indica cuáles deben atenderse primero.",
+        3: "Realiza sus tareas según su urgencia e importancia sin requerir supervisión.",
+        4: "Prioriza las tareas según su importancia y urgencia, incluso cuando surgen varias actividades al mismo tiempo.",
       },
     },
     {
       id: "adaptabilidad-4",
       numero: 4,
-      titulo: "Propone soluciones exigentes y eficaces ante imprevistos, actuando con iniciativa.",
+      titulo: "Propone soluciones eficaces ante imprevistos o exigencias, actuando con iniciativa.",
       niveles: {
-        1: "Identifica los imprevistos, pero depende de las instrucciones de otros para darles solución.",
-        2: "Brinda posibles soluciones con orientación y propone alternativas sencillas ante los imprevistos.",
-        3: "Detecta posibles problemas antes de que ocurran y propone soluciones preventivas.",
-        4: "Se anticipa a posibles imprevistos, propone soluciones innovadoras y ayuda al equipo a resolver situaciones inesperadas.",
+        1: "Comunica el imprevisto y solicita apoyo para resolverlo.",
+        2: "Plantea una alternativa sencilla con orientación de otra persona.",
+        3: "Propone por iniciativa propia soluciones viables y las pone en práctica.",
+        4: "Implementa la solución más eficaz y comprueba que el imprevisto haya sido resuelto.",
       },
     },
   ],

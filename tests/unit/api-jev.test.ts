@@ -40,7 +40,7 @@ function analizar(cuerpo: unknown) {
 let registro: { info: ReturnType<typeof vi.spyOn>; error: ReturnType<typeof vi.spyOn> };
 
 beforeEach(() => {
-  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: SID });
+  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: SID, jornada: "manana" });
   uso.registrarUsoJev.mockResolvedValue({ conteo: 1, segundosRestantes: 1800 });
   jev.sugerirNivel.mockResolvedValue({ ok: true, sugerencia: SUGERENCIA });
   registro = {
@@ -80,12 +80,12 @@ describe("POST /api/jev", () => {
     await analizar({ ...CUERPO, texto: `  ${TEXTO}  `, participanteId: "P07", criterios: ["inyectado"] });
     const [competencia, indicador, texto] = jev.sugerirNivel.mock.calls[0];
     expect(competencia.id).toBe("adaptabilidad");
-    expect(indicador.titulo).toBe("Ajusta las prioridades.");
+    expect(indicador.titulo).toBe("Ajusta las prioridades ante las demandas del entorno.");
     expect(texto).toBe(TEXTO);
   });
 
   it("acepta también el rol docente", async () => {
-    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID });
+    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID, jornada: "manana" });
     expect((await analizar(CUERPO)).status).toBe(200);
   });
 

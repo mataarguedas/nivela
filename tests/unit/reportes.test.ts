@@ -13,6 +13,7 @@ const competencia = obtenerCompetencia("adaptabilidad")!;
 const equipo: Equipo = {
   id: "equipo-prueba",
   numero: 9,
+  jornada: "manana",
   competenciaId: "adaptabilidad",
   integrantes: [
     { id: "e1", nombre: "Ana Núñez", curso: "AGRH 315 Psicología 2" },

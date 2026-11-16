@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/Boton";
 import { Campo, CampoTexto } from "@/components/ui/Campo";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { useToast } from "@/components/ui/Toast";
+import type { JornadaId } from "@/config/jornadas";
 import { CANTIDAD_MAXIMA_PARTICIPANTES, esNombreValido } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
@@ -17,7 +18,9 @@ import type { CuerpoParticipantes } from "@/lib/validacion";
 // state (and in the DB once saved), so raising it again brings them back.
 // "Pegar lista" fills the names from one-per-line text, e.g. a spreadsheet
 // column. Saving PUTs the list; a 409 means hidden participants already have
-// evaluations, and the dialog asks before resending with `confirmar`.
+// evaluations, and the dialog asks before resending with `confirmar`. The
+// list is the jornada's the page loaded (PRD §5.11): the body names it, and
+// the server refuses (409 `jornadaDistinta`) if the session switched since.
 
 type Errores = { cantidad?: string; nombres: Record<number, string>; general?: string };
 type Confirmacion = { ocultos: number; evaluaciones: number };
@@ -35,7 +38,7 @@ function completar(nombres: readonly string[], largo: number): string[] {
   return nombres.length >= largo ? [...nombres] : [...nombres, ...Array.from({ length: largo - nombres.length }, () => "")];
 }
 
-export function EditorParticipantes({ inicial }: { inicial: EstadoParticipantes }) {
+export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParticipantes; jornada: JornadaId }) {
   const { mostrar } = useToast();
   const [textoCantidad, setTextoCantidad] = useState(String(inicial.cantidad));
   const [cantidad, setCantidad] = useState(inicial.cantidad);
@@ -106,6 +109,7 @@ export function EditorParticipantes({ inicial }: { inicial: EstadoParticipantes 
     setGuardando(true);
     setErrores(SIN_ERRORES);
     const cuerpo: CuerpoParticipantes = {
+      jornada,
       cantidad,
       nombres: nombres.slice(0, cantidad).map((n) => n.trim()),
       confirmar,
@@ -120,10 +124,11 @@ export function EditorParticipantes({ inicial }: { inicial: EstadoParticipantes 
         error?: string;
         ocultos?: number;
         evaluacionesAfectadas?: number;
+        jornadaDistinta?: boolean;
       };
       if (respuesta.ok) {
         mostrar(TEXTOS_ADMIN.guardado);
-      } else if (respuesta.status === 409) {
+      } else if (respuesta.status === 409 && !datos.jornadaDistinta) {
         setConfirmacion({ ocultos: datos.ocultos ?? 0, evaluaciones: datos.evaluacionesAfectadas ?? 0 });
       } else {
         setErrores({ nombres: {}, general: datos.error ?? TEXTOS_ADMIN.errorGuardar });

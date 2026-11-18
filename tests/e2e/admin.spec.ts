@@ -14,15 +14,20 @@ const NOMBRES = ["Ana Pérez Solano", "Bruno Céspedes", "Carla Mora", "Diego Va
 // Fake carnets (never real ones in tests): the reports show these, not the names.
 const CARNETS = ["900000001", "900000002", "", "900000004", "900000005"];
 
-let original: { cantidad: number; nombres: string[]; carnets: string[] } | null = null;
+let original: { cantidad: number; nombres: string[]; carnets: string[]; correos: string[] } | null = null;
 
-/** Each row has the name field, then the carnet field. */
+/** Each row has the name field, then the carnet field, then the email field (PRD §5.14). */
 async function leerEditor(page: Page) {
   const cantidad = Number(await page.getByLabel("Cantidad de participantes").inputValue());
   const filas = await page
     .locator("ol li")
     .evaluateAll((items) => items.map((li) => [...li.querySelectorAll("input")].map((c) => c.value)));
-  return { cantidad, nombres: filas.map((f) => f[0] ?? ""), carnets: filas.map((f) => f[1] ?? "") };
+  return {
+    cantidad,
+    nombres: filas.map((f) => f[0] ?? ""),
+    carnets: filas.map((f) => f[1] ?? ""),
+    correos: filas.map((f) => f[2] ?? ""),
+  };
 }
 
 async function sesionAdmin(browser: Browser) {

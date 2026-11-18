@@ -34,7 +34,16 @@ export type EstadoParticipantes = {
   nombres: (string | null)[];
   /** Stored carnet per numero, aligned with `nombres`. */
   carnets: (string | null)[];
+  /**
+   * Stored email per numero, aligned with `nombres` (PRD §5.14). Only the
+   * admin editor receives this: participant emails never reach any other
+   * client bundle.
+   */
+  correos: (string | null)[];
 };
+
+/** A participant's email row: kept apart from FilaParticipante so pages that list participants never read emails. */
+export type FilaCorreo = { numero: number; correo: string | null };
 
 export function sentenciaLeerFilas<B extends Bd>(db: B, jornada: JornadaId) {
   return db
@@ -44,6 +53,15 @@ export function sentenciaLeerFilas<B extends Bd>(db: B, jornada: JornadaId) {
       carnet: participantes.carnet,
       activo: participantes.activo,
     })
+    .from(participantes)
+    .where(eq(participantes.jornada, jornada))
+    .orderBy(asc(participantes.numero));
+}
+
+/** The jornada's stored emails (PRD §5.14), hidden rows included. Only for the admin editor and the results email. */
+export function sentenciaLeerCorreos<B extends Bd>(db: B, jornada: JornadaId) {
+  return db
+    .select({ numero: participantes.numero, correo: participantes.correo })
     .from(participantes)
     .where(eq(participantes.jornada, jornada))
     .orderBy(asc(participantes.numero));
@@ -59,20 +77,41 @@ export function participantesActivos(filas: readonly FilaParticipante[], respald
   return filas.filter((f) => f.activo).map((f) => crearParticipante(f.numero, f.nombre, f.carnet));
 }
 
-export function estadoDesdeFilas(filas: readonly FilaParticipante[], respaldo: number): EstadoParticipantes {
-  if (filas.length === 0) return { cantidad: respaldo, nombres: [], carnets: [] };
+export function estadoDesdeFilas(
+  filas: readonly FilaParticipante[],
+  respaldo: number,
+  filasCorreo: readonly FilaCorreo[] = [],
+): EstadoParticipantes {
+  if (filas.length === 0) return { cantidad: respaldo, nombres: [], carnets: [], correos: [] };
   const maximo = Math.max(...filas.map((f) => f.numero));
   const nombres: (string | null)[] = Array.from({ length: maximo }, () => null);
   const carnets: (string | null)[] = Array.from({ length: maximo }, () => null);
+  const correos: (string | null)[] = Array.from({ length: maximo }, () => null);
   for (const f of filas) {
     nombres[f.numero - 1] = f.nombre;
     carnets[f.numero - 1] = f.carnet;
   }
-  return { cantidad: filas.filter((f) => f.activo).length, nombres, carnets };
+  for (const f of filasCorreo) {
+    if (f.numero >= 1 && f.numero <= maximo) correos[f.numero - 1] = f.correo;
+  }
+  return { cantidad: filas.filter((f) => f.activo).length, nombres, carnets, correos };
 }
 
 export async function obtenerParticipantes(jornada: JornadaId): Promise<Participante[]> {
   return participantesActivos(await sentenciaLeerFilas(getDb(), jornada), cantidadRespaldo());
+}
+
+/**
+ * The active participants' emails by id (PRD §5.14), for the results email
+ * only. A participant without an email is absent from the map.
+ */
+export async function obtenerCorreosParticipantes(jornada: JornadaId): Promise<Map<string, string>> {
+  const db = getDb();
+  const [filas, correos] = await Promise.all([sentenciaLeerFilas(db, jornada), sentenciaLeerCorreos(db, jornada)]);
+  const activos = new Set(filas.filter((f) => f.activo).map((f) => f.numero));
+  return new Map(
+    correos.flatMap((f) => (f.correo && activos.has(f.numero) ? [[idParticipante(f.numero), f.correo] as const] : [])),
+  );
 }
 
 /** Every stored participant, hidden ones included (the CSV keeps their rows). */
@@ -103,7 +142,9 @@ export async function cargarEstadoParticipantes(ruta: string, jornada: JornadaId
   await connection();
   const inicio = Date.now();
   try {
-    return estadoDesdeFilas(await sentenciaLeerFilas(getDb(), jornada), cantidadRespaldo());
+    const db = getDb();
+    const [filas, correos] = await Promise.all([sentenciaLeerFilas(db, jornada), sentenciaLeerCorreos(db, jornada)]);
+    return estadoDesdeFilas(filas, cantidadRespaldo(), correos);
   } catch (error) {
     registrarError(ruta, "GET", inicio, error);
     return null;
@@ -118,12 +159,16 @@ export function sentenciaContarEvaluaciones<B extends Bd>(db: B, jornada: Jornad
     .where(and(eq(evaluaciones.jornada, jornada), inArray(evaluaciones.participanteId, [...ids])));
 }
 
-/** The list the admin saves: names and carnets aligned by position (P01 first). */
-export type ListaParticipantes = { nombres: readonly (string | null)[]; carnets: readonly (string | null)[] };
+/** The list the admin saves: names, carnets and emails aligned by position (P01 first). */
+export type ListaParticipantes = {
+  nombres: readonly (string | null)[];
+  carnets: readonly (string | null)[];
+  correos: readonly (string | null)[];
+};
 
 /**
  * Saving the list as two statements for one transaction (a neon-http batch):
- * upsert P01…P{n} as active with their names and carnets, then hide every row
+ * upsert P01…P{n} as active with their names, carnets and emails, then hide every row
  * above n. Rows are never deleted, so hidden participants keep their data.
  */
 export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: JornadaId, lista: ListaParticipantes) {
@@ -137,12 +182,19 @@ export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: Jor
         numero: i + 1,
         nombre,
         carnet: lista.carnets[i] ?? null,
+        correo: lista.correos[i] ?? null,
         activo: true,
       })),
     )
     .onConflictDoUpdate({
       target: [participantes.jornada, participantes.id],
-      set: { nombre: sql`excluded.nombre`, carnet: sql`excluded.carnet`, activo: true, updatedAt: sql`now()` },
+      set: {
+        nombre: sql`excluded.nombre`,
+        carnet: sql`excluded.carnet`,
+        correo: sql`excluded.correo`,
+        activo: true,
+        updatedAt: sql`now()`,
+      },
     });
   const ocultar = db
     .update(participantes)

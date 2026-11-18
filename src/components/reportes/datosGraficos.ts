@@ -3,7 +3,8 @@ import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
 import { nivelGeneral, proporcion, redondear2, UMBRALES_NIVEL } from "@/lib/puntajes";
-import type { DistribucionIndicador, PosicionRanking, ResumenIndicador } from "@/lib/reportes";
+import type { CifrasGrupo, DistribucionIndicador, IndicadorGrupo, PosicionRanking, ResumenIndicador } from "@/lib/reportes";
+import { textoBrecha } from "@/lib/textoBrecha";
 
 // Chart inputs, built on the server from the report so the charts only draw:
 // every number arrives with its es-CR label. Pure and free of Recharts, so
@@ -206,6 +207,50 @@ export function lineaNivelMasElegido(distribucion: Readonly<Record<NivelValor, n
   const de = formatearEntero(total);
   if (mas.elementos.length > 1) return TEXTOS_REPORTES.empateMasElegido(formatearLista(mas.elementos.map(etiquetaNivel)), n, de);
   return TEXTOS_REPORTES.nivelMasElegido(n, de, etiquetaNivel(mas.elementos[0]));
+}
+
+// --- Resumen del grupo (§11.3): the one-paragraph summary
+
+/** «Actúa de manera rápida» (3,25) for one indicator, "1 y 3" (3,25) for a tie. */
+function frasesExtremo(
+  indicadores: readonly IndicadorGrupo[],
+  uno: (titulo: string, media: string) => string,
+  varios: (numeros: string, media: string) => string,
+): string | null {
+  const media = indicadores[0]?.media;
+  if (media === null || media === undefined) return null;
+  const valor = formatearDecimal(media);
+  return indicadores.length === 1
+    ? uno(sinPuntoFinal(indicadores[0].titulo), valor)
+    : varios(formatearLista(indicadores.map((i) => String(i.numero))), valor);
+}
+
+/**
+ * "El grupo alcanzó un nivel Avanzado (2,84). Le faltan 0,66 puntos para
+ * Experto. El indicador más fuerte es «…» (3,10) y el que más necesita
+ * refuerzo es «…» (2,40)." The indicator sentence is left out when the
+ * indicators can't be averaged together (two rubrics); ties are listed by
+ * number, and equal means get a neutral sentence.
+ */
+export function parrafoResumenGrupo(
+  grupo: Pick<CifrasGrupo, "puntaje" | "nivel" | "brecha" | "indicadores" | "masFuertes" | "masDebiles">,
+): string {
+  const p = TEXTOS_REPORTES.parrafo;
+  if (grupo.puntaje === null || grupo.nivel === null) return TEXTOS_REPORTES.titulos.sinNivelGeneral;
+  const frases = [p.nivel(etiquetaNivel(grupo.nivel), formatearDecimal(grupo.puntaje))];
+  if (grupo.brecha) frases.push(`${textoBrecha(grupo.brecha)}.`);
+
+  const conMedia = grupo.indicadores?.filter((i) => i.media !== null) ?? [];
+  if (conMedia.length > 0 && grupo.masFuertes.length > 0 && grupo.masDebiles.length > 0) {
+    if (grupo.masFuertes.length === conMedia.length) {
+      frases.push(p.indicadoresIguales(formatearDecimal(grupo.masFuertes[0].media as number)));
+    } else {
+      const fuerte = frasesExtremo(grupo.masFuertes, p.masFuerte, p.masFuertes);
+      const debil = frasesExtremo(grupo.masDebiles, p.masDebil, p.masDebiles);
+      if (fuerte && debil) frases.push(`${fuerte} y ${debil}.`);
+    }
+  }
+  return frases.join(" ");
 }
 
 // ---------------------------------------------------------------------------

@@ -16,7 +16,9 @@ export const COLORES_CORREO = {
   primario: "#0071e3",
 } as const;
 
-const FUENTE = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+// Single quotes: it goes inside double-quoted style attributes, where a
+// double quote would end the attribute and drop the whole font stack.
+const FUENTE = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
 
 /** Escapes text for HTML element content and attribute values. */
 export function escaparHtml(texto: string): string {

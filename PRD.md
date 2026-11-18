@@ -146,7 +146,7 @@ Rules:
 
 ### 5.10 Participants (admin only)
 - Each jornada has its own list. `/admin` shows the jornada switch (§5.11) and edits the selected jornada's list. Both jornadas number their participants from P01, and the two lists are independent.
-- `/admin`: "Cantidad de participantes" (1–99), then one row per participant ("Participante 01", "Participante 02"…) with a name field, a carnet field ("Carné · Participante 01") and an optional "Correo electrónico" field (§5.14). "Pegar lista" fills the rows from one-per-line text and sets the count to the number of lines; each line is a name alone, or the carnet and the name separated by a tab or ";" (`100000001<TAB>Nombre Apellidos`, in either order), with the email as one more field once §5.14 is built. A pasted line replaces its row's name and carnet, so an old carnet never stays on a new name.
+- `/admin`: "Cantidad de participantes" (1–99), then one row per participant ("Participante 01", "Participante 02"…) with a name field, a carnet field ("Carné · Participante 01") and an optional "Correo electrónico" field (§5.14). "Pegar lista" fills the rows from one-per-line text and sets the count to the number of lines; each line is a name alone, or the carnet and the name separated by a tab or ";" (`100000001<TAB>Nombre Apellidos`, in either order), with the email as one more field (the one containing "@", §5.14). A pasted line replaces its row's name and carnet, so an old carnet never stays on a new name.
 - Name field: no emails or phone numbers (anything with "@" or 7+ digits is rejected), at most 80 characters. A blank name shows as "Participante NN". Names are written first name first ("Ana Lucía Mora Solís"): evaluators read them and the results email (§5.14) greets the participant by name.
 - Carnet field (v1.4): the university carnet, optional; digits, letters or hyphens, at most 20 characters, unique within the jornada's list. **The reports and the CSV identify participants only by carnet** (§10, §11); evaluators never see it. A blank carnet shows as "Participante NN" in the reports.
 - Email field: optional; a valid address, trimmed and lowercased, at most 254 characters. Used only to send results (§5.14); never shown in the reports or the CSV.
@@ -204,8 +204,9 @@ The code is what stops someone who knows a classmate's email from claiming that 
   - **Recipients**: participants with an email and at least 1 evaluation.
   - **Skipped**, each with its reason: *Sin correo* · *Sin evaluaciones* · *Ausente*.
   - Already sent: "Enviado el {fecha}". They are excluded unless the docente ticks "Reenviar" for them.
-- A rendered **preview** of the exact email for any selected participant, and **"Enviarme una prueba"** to an address the docente types (not stored).
+- Participants are labelled by carnet in these lists, like every report. A rendered **preview** of the exact email for any selected recipient (with its "Para:" address, the only place a participant's address is shown), and **"Enviarme una prueba"** to an address the docente types (not stored, not recorded; the subject starts with "[Prueba]").
 - **"Enviar a {n} participantes"** (the primary button) opens a confirmation dialog, then sends one email per participant. The server recomputes every result; the client never sends scores.
+- Sends go one at a time, paced to stay under Resend's rate limit (a rate-limit answer waits and retries once). Each carries an `Idempotency-Key` of jornada, competencia, participant and the time of their latest evaluation, so a retried request never sends twice; a deliberate "Reenviar" appends the number of earlier successful sends, so it really sends again. After an `error`, the next send retries that participant without "Reenviar".
 - **Email content** (Spanish, "usted"), subject *"Sus resultados de {competencia} · Nivela"*:
   - Greeting by name; competencia and jornada.
   - Nivel general (large) and puntaje general; evaluations received.
@@ -473,7 +474,7 @@ Every read and write is wrapped in try/catch. If storage is unavailable (Safari 
 | GET | `/api/reportes/[competencia]` | docente | Aggregated report JSON (general + per participant, gaps, evaluator progress, attendance). |
 | GET | `/api/reportes/[competencia]/csv` | docente | CSV download (UTF-8 with BOM so Excel opens accents correctly). |
 | GET | `/api/reportes/[competencia]/grupo?jornada=` | docente | Group summary (§11.3). `jornada` is `manana`, `noche` or `ambas`; invalid or missing → the session's. Read-only. |
-| POST | `/api/reportes/[competencia]/enviar` | docente | `{ participantes: string[], reenviar?: boolean }` (§5.14): recomputes results on the server, sends one email per participant, records each in `envios_resultados`, returns `{ enviados, errores: [{ participanteId, motivo }] }`. |
+| POST | `/api/reportes/[competencia]/enviar` | docente | `{ participantes: string[], reenviar?: boolean }` (§5.14): recomputes results on the server, sends one email per participant, records each in `envios_resultados`, returns `{ enviados, errores: [{ participanteId, motivo }] }` (`motivo`: `sin-correo`, `sin-evaluaciones`, `ausente`, `ya-enviado`, `no-existe`, or the email error category). `{ prueba, participanteId }` sends that participant's email, marked "[Prueba]", to the address given (not stored or recorded); `502` if the provider fails. |
 | PUT | `/api/admin/participantes` | admin | Save `{ jornada, cantidad, nombres[], carnets[], correos[], confirmar? }` for the session's jornada (§5.10); the three arrays are aligned by position. A repeated carnet is a `400`. `409 { error, ocultos, evaluacionesAfectadas }` when hiding participants with evaluations without `confirmar`. `409 { error, jornadaDistinta: true }` when `jornada` isn't the session's. |
 | GET, PUT | `/api/admin/cuentas` | admin | List the session jornada's accounts; `PUT { integranteId, correo }` edits an email, `PUT { integranteId, restablecer: true }` resets access (§5.12). |
 | GET | `/api/dev/correos?para=` | — (dev only) | The latest message of the "consola" email transport, for e2e tests. `404` in production. |
@@ -624,7 +625,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 - Sent only server-side from a `server-only` module (`src/lib/correo.ts`) with `fetch` to `POST https://api.resend.com/emails`, a 10 s timeout and an optional `Idempotency-Key`; Resend never needs a CSP entry.
 - Errors are typed: **rechazado** (4xx: bad key, unverified domain, invalid address) · **limite** (429, with `Retry-After`) · **red** (timeout or no connection) · **desconocido** (5xx, missing configuration, unexpected response).
 - `CORREO_MODO`: `resend` or `consola`. Production always uses `resend` (a `consola` there would swallow every code). Elsewhere the default is `consola`, which keeps the last 20 messages in memory and shows them at the dev-only `/dev/correos`; e2e tests read them from `GET /api/dev/correos?para=`.
-- `npm run correo:prueba -- --para <correo>` sends one test code email through Resend, to check delivery and the spam folder at `@est.utn.ac.cr` and Gmail.
+- `npm run correo:prueba -- --para <correo>` sends one test code email through Resend, to check delivery and the spam folder at a UTN student address (`est.utn.ac.cr`) and Gmail.
 - Logs record only the template name, status and latency.
 
 **PWA**:
@@ -680,9 +681,9 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 4. **Who is the docente user**: the professor, the student coordinator, or both? This affects who gets `CODIGO_DOCENTE`.
 5. **Activity date**: needed so the golden-set validation and device QA are scheduled before it.
 6. ~~**Night roster**: the names and courses of the 5 night teams.~~ Resolved in v1.2 (Appendix B). The night numbering differs from the morning one: Adaptabilidad is Equipo 1 at night.
-7. ~~**Email sending domain**~~ Resolved: `correo.nivela.snhware.lat` is verified in Resend (DKIM, sending and DMARC records live at Namecheap, 2026-11-17), and `npm run correo:prueba` reached both a Gmail and an `@est.utn.ac.cr` inbox (§13 Email).
+7. ~~**Email sending domain**~~ Resolved: `correo.nivela.snhware.lat` is verified in Resend (DKIM, sending and DMARC records live at Namecheap, 2026-11-17), and `npm run correo:prueba` reached both a Gmail and a UTN student (`est.utn.ac.cr`) inbox (§13 Email).
 8. **Observations in results emails**: excluded by default because they were written for the docente. Confirm before enabling.
-9. **Missing evaluator emails**: Melany Parrales (mañana, Orientación al detalle). Since v1.3 Orientación al detalle is enabled in the morning, so **Melany Parrales can't sign in until the admin adds her email** (the docente can still rate as her). Yuleissy Vargas Corrales's (noche) email arrived on 2026-11-17 and is in the gitignored import CSV; production gets it with the next `cuentas:importar --produccion` (or the admin enters it at `/admin`).
+9. **Missing evaluator emails**: Melany Parrales (mañana, Orientación al detalle). Since v1.3 Orientación al detalle is enabled in the morning, so **Melany Parrales can't sign in until the admin adds her email** (the docente can still rate as her). Yuleissy Vargas Corrales's (noche) email arrived on 2026-11-17 and is in production (a `cuentas:importar --produccion` on 2026-11-18 found all 66 emails already there, unchanged).
 10. **Addresses that look mistyped** in the roster sheets, to confirm with the students: Wesnlyn García Pérez (domain "gmal.com"), Andy Molina Castro and Karyme Varela Cantillano (domain "est.ac.cr" without "utn.").
 11. **Participants' emails** for §5.14: to be collected and entered by the admin.
 12. **Notice to students**: tell evaluators that their email is used to sign in, and participants that their results will arrive by email.

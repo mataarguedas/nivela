@@ -1,5 +1,5 @@
 // Sends one verification-code email with a fake code through Resend, to check
-// real delivery (inbox vs. spam) at an @est.utn.ac.cr address and at Gmail
+// real delivery (inbox vs. spam) at a UTN student (est.utn.ac.cr) address and at Gmail
 // before students depend on it (PRD §13 Email).
 //
 //   npm run correo:prueba -- --para <correo>

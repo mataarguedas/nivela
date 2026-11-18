@@ -22,6 +22,7 @@
 
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
+import { IDS_JORNADA, type JornadaId, type SeleccionJornada } from "@/config/jornadas";
 import type { EstadoCuenta } from "@/lib/cuentas";
 import { esNivelValor, type NivelValor } from "@/config/niveles";
 import type { Participante } from "@/config/participantes";
@@ -38,6 +39,8 @@ import {
   puntajeIndicador,
   estadoAvance,
   evaluacionesEsperadas,
+  extremos,
+  puntajeGrupo,
   redondear2,
   type Acuerdo,
   type Asistencia,
@@ -96,6 +99,8 @@ export type ReporteParticipante = {
   /** Evaluators who marked this participant absent. */
   marcasAusente: number;
   asistencia: Asistencia | null;
+  /** The latest evaluaciones.updated_at among this participant's evaluations (ISO); null without any. Keys the results email (PRD §5.14). */
+  actualizadoEn: string | null;
 };
 
 export type DistribucionIndicador = {
@@ -271,6 +276,8 @@ export function agregarReporte(
       proporcionIa: proporcion(propias.filter((f) => f.origen === "ia").length, propias.length),
       marcasAusente,
       asistencia: asistenciaParticipante(marcasAusente, recibidas),
+      // ISO strings from the same source compare chronologically.
+      actualizadoEn: propias.reduce<string | null>((ultimo, f) => (ultimo === null || f.actualizadoEn > ultimo ? f.actualizadoEn : ultimo), null),
     };
   });
 
@@ -374,5 +381,165 @@ export function agregarReporte(
       filas: filasCobertura,
     },
     avance: { numeroEquipo: equipo.numero, completos, total: evaluadores, evaluadores: avanceEvaluadores },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resumen del grupo (PRD §11.3)
+// ---------------------------------------------------------------------------
+//
+// Built on top of each jornada's Reporte (agregarReporte above), so every
+// participant figure is the one the Reporte general shows. Participants are
+// keyed by jornada + id (P01 exists in both jornadas): each jornada's
+// participants stay inside their own Reporte, and the combined figures only
+// concatenate those lists, never look a participant up by id across them.
+//
+// Jornadas are compared by competencia, never by team number: each entry
+// carries its own jornada's team (Equipo 4 in the morning, Equipo 1 at night
+// for Adaptabilidad), and evaluator counts come from that team's size.
+
+export type IndicadorGrupo = {
+  indicadorId: string;
+  numero: number;
+  titulo: string;
+  /** Mean of the participants' means for this indicator; null without ratings. */
+  media: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+};
+
+export type CifrasGrupo = {
+  /** Puntaje del grupo (PRD §7); null without evaluated participants. */
+  puntaje: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+  /** Nivel general of every evaluated participant, for "Participantes por nivel". */
+  niveles: NivelValor[];
+  participantesEvaluados: number;
+  participantesTotal: number;
+  ausentes: number;
+  recibidas: number;
+  esperadas: number;
+  cobertura: number | null;
+  evaluadoresCompletos: number;
+  evaluadoresTotal: number;
+  /**
+   * Group mean per indicator. Null for "ambas" when the jornadas rate with
+   * different rubrics: their indicators can't be averaged together.
+   */
+  indicadores: IndicadorGrupo[] | null;
+  /** The strongest and weakest indicators (ties kept); empty without indicator means. */
+  masFuertes: IndicadorGrupo[];
+  masDebiles: IndicadorGrupo[];
+};
+
+export type ResumenJornada = CifrasGrupo & {
+  jornada: JornadaId;
+  /** That jornada's display label for its team ("Mañana · Equipo 4", "Noche · Equipo 1"). */
+  numeroEquipo: number;
+  indicadores: IndicadorGrupo[];
+};
+
+export type ResumenGrupo = {
+  competencia: { id: string; nombre: string };
+  seleccion: SeleccionJornada;
+  /** No evaluation sent in any selected jornada. */
+  vacio: boolean;
+  /** The selected group as a whole (both jornadas together for "ambas"). */
+  grupo: CifrasGrupo;
+  /** One entry per selected jornada, in JORNADAS order. */
+  jornadas: ResumenJornada[];
+  /** Every selected jornada rates with the same indicator ids, so indicator means compare side by side. */
+  mismaRubrica: boolean;
+};
+
+/** One jornada's input: its rubric, its own team and its Reporte. */
+export type EntradaResumen = { jornada: JornadaId; competencia: Competencia; equipo: Equipo; reporte: Reporte };
+
+type BaseIndicador = { indicadorId: string; numero: number; titulo: string };
+
+function indicadorGrupo(base: BaseIndicador, medias: readonly (number | null)[]): IndicadorGrupo {
+  const media = puntajeGrupo(medias.flatMap((m) => (m === null ? [] : [m])));
+  return {
+    indicadorId: base.indicadorId,
+    numero: base.numero,
+    titulo: base.titulo,
+    media,
+    nivel: media === null ? null : nivelGeneral(media),
+    brecha: media === null ? null : brechaSiguienteNivel(media),
+  };
+}
+
+/** Group figures from the participants of one or more jornadas' reports. */
+function cifras(
+  reportes: readonly Reporte[],
+  /** The shared indicators, aligned with every report's participant indicators; null when they differ. */
+  indicadoresBase: readonly BaseIndicador[] | null,
+): CifrasGrupo {
+  const participantes = reportes.flatMap((r) => r.participantes);
+  const evaluados = participantes.filter((p) => p.puntajeGeneral !== null && p.nivelGeneral !== null);
+  const puntaje = puntajeGrupo(evaluados.map((p) => p.puntajeGeneral as number));
+  const indicadores =
+    indicadoresBase?.map((base, i) => indicadorGrupo(base, evaluados.map((p) => p.indicadores[i]?.media ?? null))) ?? null;
+  const extremo = indicadores ? extremos(indicadores.map((i) => i.media)) : null;
+  const suma = (f: (r: Reporte) => number) => reportes.reduce((total, r) => total + f(r), 0);
+  const recibidas = suma((r) => r.kpis.recibidas);
+  const esperadas = suma((r) => r.kpis.esperadas);
+  return {
+    puntaje,
+    nivel: puntaje === null ? null : nivelGeneral(puntaje),
+    brecha: puntaje === null ? null : brechaSiguienteNivel(puntaje),
+    niveles: evaluados.map((p) => p.nivelGeneral as NivelValor),
+    participantesEvaluados: evaluados.length,
+    participantesTotal: participantes.length,
+    ausentes: participantes.filter((p) => p.asistencia === "ausente").length,
+    recibidas,
+    esperadas,
+    cobertura: proporcion(recibidas, esperadas),
+    evaluadoresCompletos: suma((r) => r.kpis.evaluadoresCompletos),
+    evaluadoresTotal: suma((r) => r.kpis.evaluadoresTotal),
+    indicadores,
+    masFuertes: indicadores && extremo ? extremo.maximos.map((i) => indicadores[i]) : [],
+    masDebiles: indicadores && extremo ? extremo.minimos.map((i) => indicadores[i]) : [],
+  };
+}
+
+const basesIndicadores = (competencia: Competencia): BaseIndicador[] =>
+  competencia.indicadores.map((i) => ({ indicadorId: i.id, numero: i.numero, titulo: i.titulo }));
+
+/**
+ * The group summary for one jornada or both (PRD §11.3). Each entry is one
+ * jornada's Reporte with its own rubric and team; with two entries the
+ * selection is "ambas". Throws on no entries, a repeated jornada or entries
+ * of different competencias: the caller resolves the selection first.
+ */
+export function agregarResumenGrupo(entradas: readonly EntradaResumen[]): ResumenGrupo {
+  const [primera] = entradas;
+  if (!primera) throw new Error("agregarResumenGrupo: no jornada");
+  if (new Set(entradas.map((e) => e.jornada)).size !== entradas.length) throw new Error("agregarResumenGrupo: repeated jornada");
+  if (entradas.some((e) => e.competencia.id !== primera.competencia.id)) throw new Error("agregarResumenGrupo: mixed competencias");
+
+  const ordenadas = [...entradas].sort((a, b) => IDS_JORNADA.indexOf(a.jornada) - IDS_JORNADA.indexOf(b.jornada));
+  const jornadas = ordenadas.map((e): ResumenJornada => {
+    const propias = cifras([e.reporte], basesIndicadores(e.competencia));
+    return { ...propias, indicadores: propias.indicadores ?? [], jornada: e.jornada, numeroEquipo: e.equipo.numero };
+  });
+
+  const clave = (e: EntradaResumen) => e.competencia.indicadores.map((i) => i.id).join("|");
+  const mismaRubrica = ordenadas.every((e) => clave(e) === clave(primera));
+
+  return {
+    competencia: { id: primera.competencia.id, nombre: primera.competencia.nombre },
+    seleccion: ordenadas.length > 1 ? "ambas" : primera.jornada,
+    vacio: ordenadas.every((e) => e.reporte.vacio),
+    grupo:
+      ordenadas.length === 1
+        ? jornadas[0]
+        : cifras(
+            ordenadas.map((e) => e.reporte),
+            mismaRubrica ? basesIndicadores(primera.competencia) : null,
+          ),
+    jornadas,
+    mismaRubrica,
   };
 }

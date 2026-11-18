@@ -4,6 +4,7 @@ import {
   barrasPuntajePorIndicador,
   barrasPuntajePorParticipante,
   lineaNivelMasElegido,
+  parrafoResumenGrupo,
   posicionEnEje,
   REFERENCIAS_NIVEL,
   tituloParticipantesPorNivel,
@@ -12,7 +13,8 @@ import {
 } from "@/components/reportes/datosGraficos";
 import type { NivelValor } from "@/config/niveles";
 import { formatearLista } from "@/lib/formato";
-import type { PosicionRanking } from "@/lib/reportes";
+import { brechaSiguienteNivel, nivelGeneral } from "@/lib/puntajes";
+import type { IndicadorGrupo, PosicionRanking } from "@/lib/reportes";
 
 // Simple charts (PRD §11 v1.2): the title sentence states each chart's
 // message, with neutral sentences for ties and empty data.
@@ -170,5 +172,61 @@ describe("nivel más elegido por indicador", () => {
 
   it("sin calificaciones no hay línea", () => {
     expect(lineaNivelMasElegido(conteo(0, 0, 0, 0))).toBeNull();
+  });
+});
+
+describe("párrafo del Resumen del grupo (PRD §11.3)", () => {
+  const indicador = (numero: number, titulo: string, media: number | null): IndicadorGrupo => ({
+    indicadorId: `i${numero}`,
+    numero,
+    titulo,
+    media,
+    nivel: media === null ? null : nivelGeneral(media),
+    brecha: media === null ? null : brechaSiguienteNivel(media),
+  });
+  const grupo = (puntaje: number | null, indicadores: IndicadorGrupo[] | null, fuertes: number[] = [], debiles: number[] = []) => ({
+    puntaje,
+    nivel: puntaje === null ? null : nivelGeneral(puntaje),
+    brecha: puntaje === null ? null : brechaSiguienteNivel(puntaje),
+    indicadores,
+    masFuertes: fuertes.map((n) => indicadores![n - 1]),
+    masDebiles: debiles.map((n) => indicadores![n - 1]),
+  });
+  const cuatro = [
+    indicador(1, "Actúa de manera rápida y flexible.", 3.1),
+    indicador(2, "Ajusta su método.", 2.9),
+    indicador(3, "Mantiene la calma.", 2.4),
+    indicador(4, "Propone soluciones.", 2.96),
+  ];
+
+  it("nivel, brecha, indicador más fuerte y el que más necesita refuerzo", () => {
+    expect(parrafoResumenGrupo(grupo(2.84, cuatro, [1], [3]))).toBe(
+      "El grupo alcanzó un nivel Avanzado (2,84). Le faltan 0,66 puntos para Experto. " +
+        "El indicador más fuerte es «Actúa de manera rápida y flexible» (3,10) y el que más necesita refuerzo es «Mantiene la calma» (2,40).",
+    );
+  });
+
+  it("Experto: nivel máximo alcanzado", () => {
+    expect(parrafoResumenGrupo(grupo(3.5, cuatro, [1], [3]))).toMatch(/^El grupo alcanzó un nivel Experto \(3,50\)\. Nivel máximo alcanzado\. /);
+  });
+
+  it("los empates se nombran por número", () => {
+    const empatados = [indicador(1, "A", 3), indicador(2, "B", 3), indicador(3, "C", 2.5), indicador(4, "D", 2.5)];
+    expect(parrafoResumenGrupo(grupo(2.75, empatados, [1, 2], [3, 4]))).toBe(
+      "El grupo alcanzó un nivel Avanzado (2,75). Le faltan 0,75 puntos para Experto. " +
+        "Los indicadores 1 y 2 son los más fuertes (3,00) y los indicadores 3 y 4 son los que más necesitan refuerzo (2,50).",
+    );
+  });
+
+  it("todos los indicadores iguales: frase neutra", () => {
+    const iguales = [1, 2, 3, 4].map((n) => indicador(n, `T${n}`, 1.5));
+    expect(parrafoResumenGrupo(grupo(1.5, iguales, [1, 2, 3, 4], [1, 2, 3, 4]))).toBe(
+      "El grupo alcanzó un nivel Intermedio (1,50). Le faltan 1,00 puntos para Avanzado. Todos los indicadores tienen el mismo promedio (1,50).",
+    );
+  });
+
+  it("sin indicadores comunes (dos plantillas) omite la frase de indicadores; sin puntaje, frase neutra", () => {
+    expect(parrafoResumenGrupo(grupo(2, null))).toBe("El grupo alcanzó un nivel Intermedio (2,00). Le faltan 0,50 puntos para Avanzado.");
+    expect(parrafoResumenGrupo(grupo(null, null))).toBe("Aún no hay participantes con puntaje general.");
   });
 });

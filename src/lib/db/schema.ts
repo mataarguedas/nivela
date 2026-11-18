@@ -96,6 +96,12 @@ export const participantes = pgTable(
     nombre: text("nombre"),
     /** University carnet (PRD §5.10): the reports' label. Null → "Participante NN". PII, never logged. */
     carnet: text("carnet"),
+    /**
+     * v1.2 (PRD §5.14): where the participant's results are sent. Lowercased,
+     * max 254, validated before writing. Null → "Sin correo". PII: never
+     * logged, never in reports, the CSV or Jev requests.
+     */
+    correo: text("correo"),
     activo: boolean("activo").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -166,5 +172,29 @@ export const codigosVerificacion = pgTable(
   (t) => [
     check("codigos_verificacion_proposito_check", sql`${t.proposito} in ('activar', 'recuperar')`),
     index("codigos_verificacion_integrante_idx").on(t.integranteId, t.createdAt),
+  ],
+);
+
+/**
+ * Results emails sent (PRD §5.14, v1.2): one row per attempt, so the last row
+ * per participant is their status (Enviado / Error) and the number of earlier
+ * "enviado" rows numbers a deliberate re-send. Never the address or the body.
+ */
+export const enviosResultados = pgTable(
+  "envios_resultados",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    jornada: text("jornada", { enum: IDS_JORNADA }).notNull(),
+    competenciaId: text("competencia_id").notNull(),
+    participanteId: text("participante_id").notNull(),
+    estado: text("estado", { enum: ["enviado", "error"] }).notNull(),
+    /** Error category only (lib/correo.ts TipoErrorCorreo); null when sent. */
+    motivo: text("motivo"),
+    enviadoEn: timestamp("enviado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("envios_resultados_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+    check("envios_resultados_estado_check", sql`${t.estado} in ('enviado', 'error')`),
+    index("envios_resultados_participante_idx").on(t.jornada, t.competenciaId, t.participanteId),
   ],
 );

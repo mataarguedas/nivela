@@ -4,7 +4,8 @@ import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { estadoCuenta } from "@/lib/cuentas";
-import { agregarReporte, type FilaReporte, type InfoCuenta, type Reporte } from "@/lib/reportes";
+import { agregarReporte, agregarResumenGrupo, type FilaReporte, type InfoCuenta, type Reporte, type ResumenGrupo } from "@/lib/reportes";
+import type { JornadaResumen } from "@/lib/validacion";
 import { leerAusenciasReporte } from "./asistencia";
 import { cuentasPorIds } from "./cuentas";
 import { getDb } from "./index";
@@ -13,7 +14,7 @@ import { calificaciones, evaluaciones } from "./schema";
 
 // Reads for the report routes, always for one jornada (its team, its
 // participants, its evaluations): one join over a competencia's evaluaciones and
-// calificaciones (a few hundred rows for 8 evaluators × 20 participants).
+// calificaciones (a few hundred rows for one team of evaluators × ~20 participants).
 // Aggregation lives in lib/reportes.ts, so it is unit-tested without a DB.
 
 export async function leerFilasReporte(jornada: JornadaId, competenciaId: string): Promise<FilaReporte[]> {
@@ -45,6 +46,16 @@ export async function obtenerReporte(jornada: JornadaId, competencia: Competenci
     leerCuentasEquipo(equipo),
   ]);
   return agregarReporte(competencia, equipo, participantes, filas, ausencias, cuentas);
+}
+
+/**
+ * The group summary (PRD §11.3) for the jornadas validarSeleccionResumen()
+ * resolved: each jornada's own report (its team, participants, evaluations),
+ * read in parallel, then combined. Read-only.
+ */
+export async function obtenerResumenGrupo(jornadas: readonly JornadaResumen[]): Promise<ResumenGrupo> {
+  const reportes = await Promise.all(jornadas.map((j) => obtenerReporte(j.jornada, j.competencia, j.equipo)));
+  return agregarResumenGrupo(jornadas.map((j, i) => ({ ...j, reporte: reportes[i] })));
 }
 
 /**

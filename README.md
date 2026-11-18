@@ -4,7 +4,7 @@
 
 Nivela es una aplicación web pensada para el teléfono (se puede instalar como app desde el navegador). Cada integrante de un equipo califica a participantes de otro curso (con los nombres que define la administración) en la competencia de su equipo: 4 indicadores, cada uno con 4 niveles de conducta (Básico, Intermedio, Avanzado, Experto). Si la persona evaluadora no está segura del nivel, puede describir lo que observó y **Jev** (el modelo de decisión de TypeSafe AI) le sugiere el nivel más probable con su porcentaje. La sugerencia nunca se aplica sola: la persona evaluadora siempre decide.
 
-Las evaluaciones enviadas se guardan en Postgres. Con el código docente se consultan los reportes (general e individual), se descarga el CSV y se imprime o guarda en PDF.
+Las personas evaluadoras ingresan con su correo y una contraseña propia, y marcan a cada participante como presente o ausente. Las evaluaciones enviadas se guardan en Postgres. Con el código docente se consultan los reportes (general, individual y resumen del grupo), se ve qué evaluadores ya terminaron y cuánto le falta a cada participante para el siguiente nivel, se descarga el CSV, se imprime o guarda en PDF y, al final de la actividad, se envía a cada participante su resultado por correo.
 
 Cada equipo redacta la **rúbrica** (la plantilla sistematizada) de su competencia, así que la rúbrica depende de la jornada. De **mañana** están habilitadas las cinco competencias. De **noche** solo **Adaptabilidad** (con la plantilla del equipo de la mañana); las otras cuatro aparecen como «Próximamente» hasta que los equipos de la noche entreguen sus plantillas.
 
@@ -63,9 +63,14 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `CODIGO_ADMIN` | Código de administración (rol admin: solo `/admin`, donde se definen la cantidad, los nombres y los carnés de los participantes). |
 | `SESSION_SECRET` | Secreto para firmar la cookie de sesión: al menos 32 bytes aleatorios. |
 | `CANTIDAD_PARTICIPANTES` | Participantes sin nombre que se muestran mientras la administración no guarde la lista real (predeterminado: 20). |
+| `RESEND_API_KEY` | Clave de Resend con permiso solo de envío («Sending access»). Solo en el servidor. En Vercel se agrega a mano (Production, Preview y Development); localmente viene en `.env`. |
+| `CORREO_REMITENTE` | Remitente de los correos: `Nivela <no-responder@correo.nivela.snhware.lat>`. El dominio debe estar verificado en Resend (ver «Dominio de correo»). |
+| `CORREO_MODO` | `resend` envía de verdad; `consola` (predeterminado fuera de producción) guarda los últimos 20 mensajes en memoria y los muestra en `/dev/correos`. En producción siempre se envía con Resend. |
 | `E2E_CONTRASENA` | Solo desarrollo: contraseña de las cuentas de prueba `<id>@ejemplo.test`. Nunca en Vercel. |
 
-Los evaluadores no usan códigos: ingresan con su correo y una contraseña que crean la primera vez, después de verificar el correo con un código de 6 dígitos.
+Los evaluadores no usan códigos: ingresan con su correo y una contraseña que crean la primera vez, después de verificar el correo con un código de 6 dígitos. Los códigos de clase de la v1.1 (`CODIGO_ACCESO`, `CODIGO_ACCESO_NOCHE`) ya no existen; si siguen en Vercel, bórrelos.
+
+**No ejecute `vercel env pull .env.local`**: sobrescribiría el `DATABASE_URL` de la rama de desarrollo.
 
 Nunca suba archivos `.env*` al repositorio, salvo `.env.example`.
 
@@ -82,10 +87,61 @@ Localmente, edite los mismos nombres en `.env.local` y reinicie `npm run dev`.
 ## Cómo definir los participantes
 
 1. Ingrese en `/acceso` con el código de administración (`CODIGO_ADMIN`). La app lo lleva a **Participantes** (`/admin`).
-2. Escriba la cantidad de participantes y el nombre y el carné de cada uno, o use **Pegar lista** para pegar desde una hoja de cálculo dos columnas (carné y nombre, separadas por tabulación o por «;») o solo los nombres, una persona por línea.
+2. Escriba la cantidad de participantes y el nombre, el carné y (opcional) el correo de cada uno, o use **Pegar lista** para pegar desde una hoja de cálculo las columnas carné, nombre y correo (separadas por tabulación o por «;», en cualquier orden; el campo con «@» se toma como correo) o solo los nombres, una persona por línea.
 3. Toque **Guardar cambios**. Las personas evaluadoras y los reportes ven la lista nueva al cargar la siguiente página; no hace falta volver a desplegar.
 
-Escriba primero el nombre de pila y después los apellidos («Ana Lucía Mora Solís»): así lo ven las personas evaluadoras y así saluda el correo de resultados. El campo de nombre rechaza correos y números de teléfono; un nombre vacío se muestra como «Participante 07». **Los reportes y el CSV muestran solo el carné, nunca el nombre**; sin carné, el reporte muestra «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones.
+Escriba primero el nombre de pila y después los apellidos («Ana Lucía Mora Solís»): así lo ven las personas evaluadoras y así saluda el correo de resultados. El campo de nombre rechaza correos y números de teléfono; un nombre vacío se muestra como «Participante 07». **Los reportes y el CSV muestran solo el carné, nunca el nombre**; sin carné, el reporte muestra «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones. El correo del participante solo sirve para enviarle sus resultados; nunca aparece en los reportes ni en el CSV.
+
+## Cuentas de los evaluadores
+
+Cada integrante de los equipos en `src/config/equipos.ts` tiene una cuenta (tabla `cuentas`). Su jornada y su competencia salen de su equipo, así que solo ve los participantes de su jornada y solo califica su competencia.
+
+**Cómo activa su cuenta un evaluador**
+
+1. Abre la app, escribe su correo y toca **Continuar**.
+2. La primera vez recibe un código de 6 dígitos por correo (vence en 10 minutos; si no llega, que revise la carpeta de correo no deseado y use **Reenviar código** después de 60 s).
+3. Escribe el código, crea su contraseña (al menos 8 caracteres) y toca **Crear contraseña y entrar**.
+4. Las siguientes veces ingresa con correo y contraseña. Si la olvida, **¿Olvidó su contraseña?** le envía otro código para crear una nueva.
+
+Un correo que no está en la lista ve la misma pantalla, pero no recibe nada. Cinco contraseñas incorrectas seguidas bloquean la cuenta 15 minutos.
+
+**Cómo cargar los correos (CSV)**
+
+Los correos reales nunca se suben al repositorio: viven en la carpeta `privado/` (en `.gitignore`).
+
+1. Prepare `privado/correos-evaluadores.csv` con las columnas `integranteId,correo` (el `integranteId` es el `id` del integrante en `equipos.ts`; deje el correo vacío si no lo tiene).
+2. Pruebe primero contra la rama de desarrollo: `npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv`. El script valida todo antes de escribir, muestra el host de la base y conteos (nunca correos).
+3. Para producción: `npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv --produccion` y confirme. Si un correo cambia, esa cuenta vuelve a «Pendiente de activar».
+
+**Cómo edita la administración los correos y restablece el acceso**
+
+Con el código de administración, en `/admin`, elija la jornada y baje a **Cuentas de evaluadores**. Cada integrante muestra su equipo («Equipo 4 · Adaptabilidad» de mañana, «Equipo 1 · Adaptabilidad» de noche), su curso, su correo, su estado (**Sin correo**, **Pendiente de activar** o **Activa**) y su último ingreso.
+
+- Para cambiar o agregar un correo, edítelo y confirme. La cuenta vuelve a «Pendiente de activar».
+- **Restablecer acceso** borra la contraseña: la persona vuelve a activar su cuenta con un código nuevo.
+
+## Cómo enviar los resultados por correo
+
+1. Asegúrese de que la administración haya escrito el correo de cada participante en `/admin`.
+2. Ingrese con el código docente, elija la jornada y abra **Reportes →** la competencia **→ Enviar resultados por correo**.
+3. Revise las listas: **Destinatarios** (con correo y al menos una evaluación) y **Omitidos** con su motivo (*Sin correo*, *Sin evaluaciones*, *Ausente*). La vista previa muestra el correo exacto que recibirá el participante elegido.
+4. Si quiere verlo en su bandeja, use **Enviarme una prueba** con su propio correo (no se guarda; el asunto empieza con «[Prueba]»).
+5. Toque **Enviar a {n} participantes** y confirme. Los envíos van de uno en uno, al ritmo que permite Resend.
+
+El correo incluye el nivel general, el puntaje, cuántas evaluaciones recibió y, por indicador, el promedio, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general muestra Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
+
+## Dominio de correo
+
+Los correos salen de `no-responder@correo.nivela.snhware.lat`, un subdominio dedicado en el equipo de Resend de la persona propietaria (región `us-east-1`). Sus registros DNS están en Namecheap, en la zona `snhware.lat`:
+
+| Tipo | Host | Para qué |
+|---|---|---|
+| TXT | `resend._domainkey.correo.nivela` | DKIM (firma) |
+| CNAME | `send.correo.nivela` | Envío (SPF) |
+| CNAME | `rsend.correo.nivela` | Envío (SPF) |
+| TXT | `_dmarc.correo.nivela` | DMARC: `v=DMARC1; p=none;` |
+
+Los cuatro deben aparecer como «Verified» en Resend → Domains. Si el dominio pierde la verificación, Resend solo entrega al correo de la cuenta propietaria y los códigos nunca llegarían a los estudiantes. Para comprobar la entrega: `npm run correo:prueba -- --para <su-correo>` y revise la bandeja de entrada y la de correo no deseado.
 
 ## Cómo habilitar una competencia en una jornada
 
@@ -113,30 +169,35 @@ Termina con error si no alcanza las metas. Usa `TYPESAFE_API_KEY` y `JEV_MODEL` 
 
 Ingrese con el **código docente**, elija la jornada y abra **Reportes →** la competencia (por ejemplo, **Adaptabilidad**).
 
-- **Descargar CSV**: un archivo `nivela-adaptabilidad-aaaa-mm-dd.csv` con una fila por calificación (columnas: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
+- **Descargar CSV**: un archivo `nivela-adaptabilidad-{jornada}-aaaa-mm-dd.csv` con una fila por calificación (columnas: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
 - **Imprimir o guardar PDF**: abre el diálogo de impresión con un formato limpio (sin menú ni botones, gráficos en blanco). Elija «Guardar como PDF» para obtener el archivo.
-- Ambas opciones están en el Reporte general y en cada Reporte individual.
+- Ambas opciones están en el Reporte general y en cada Reporte individual. El **Resumen del grupo** (desde el Reporte general) también se imprime, y permite ver Mañana, Noche o Ambas jornadas.
 
 ## Despliegue
 
-```bash
-npm run lint && npm run typecheck && npm test   # antes de desplegar
-vercel --prod                                     # despliega a producción
-```
-
-Si cambió el esquema de la base de datos, aplique la migración a producción de forma deliberada, indicando la URL de producción explícitamente:
+Producción es https://nivela.snhware.lat. Vercel despliega automáticamente cada `git push origin main`.
 
 ```bash
-DATABASE_URL_MIGRACION="<DATABASE_URL de producción>" npm run db:migrate -- --produccion
+npm run lint && npm run typecheck && npm test && npm run test:e2e   # antes de desplegar
+git push origin main                                                # despliega a producción
 ```
 
-`drizzle.config.ts` muestra el host de destino antes de migrar; verifíquelo. Los scripts que escriben en la base (`db:migrate`, `db:seed`, `cuentas:prueba`, `cuentas:importar`) comparan el host con el de producción (el `DATABASE_URL` de `.env`) y se niegan a continuar si coincide, salvo que se pase `--produccion`. `db:seed` y `cuentas:prueba` nunca aceptan producción. **Nunca** ejecute `npm run db:seed` contra producción.
+Si cambió el esquema de la base de datos, aplique la migración a producción **antes** del push, de forma deliberada, indicando la URL de producción explícitamente (en PowerShell):
+
+```powershell
+$env:DATABASE_URL_MIGRACION = "<DATABASE_URL de producción>"; npm run db:migrate -- --produccion; $LASTEXITCODE
+Remove-Item Env:DATABASE_URL_MIGRACION
+```
+
+`drizzle.config.ts` muestra el host de destino antes de migrar; verifíquelo. La migración usa el controlador `pg` (dependencia de desarrollo); un aviso de SSL puede tapar el mensaje de éxito, así que confíe en `$LASTEXITCODE` (0 = aplicada) y compruebe con una consulta de solo lectura a `drizzle.__drizzle_migrations`. Los scripts que escriben en la base (`db:migrate`, `db:seed`, `cuentas:prueba`, `cuentas:importar`) comparan el host con el de producción (el `DATABASE_URL` de `.env`) y se niegan a continuar si coincide, salvo que se pase `--produccion`. `db:seed` y `cuentas:prueba` nunca aceptan producción. **Nunca** ejecute `npm run db:seed` contra producción.
 
 ## Privacidad y seguridad
 
-- Solo se guardan nombres; nunca correos ni teléfonos. Los nombres de quienes evalúan están en la configuración. Los de los participantes los escribe la administración y se guardan en la tabla `participantes`. Fuera de eso, la base de datos guarda identificadores, niveles, observaciones y metadatos de la IA.
-- A Jev solo se envía el texto de la observación y la rúbrica del indicador. Nunca el código del participante, el nombre de quien evalúa ni la sesión. La interfaz recuerda: «No incluya nombres en la descripción.»
-- Los registros del servidor solo incluyen ruta, estado, tiempo y modelo; nunca el texto de las observaciones.
+- Nunca se guardan teléfonos. Los nombres de quienes evalúan están en la configuración. Los nombres, carnés y correos de los participantes los escribe la administración y se guardan solo en la tabla `participantes`; los correos de los evaluadores, solo en `cuentas`. Ningún correo ni carné está en el repositorio (los archivos con la lista viven en `privado/`).
+- Los reportes y el CSV identifican a cada participante solo por su carné; nunca muestran nombres ni correos. El correo de un participante solo aparece en la vista previa del envío de resultados.
+- A Jev solo se envía el texto de la observación y la rúbrica del indicador. Nunca el código del participante, nombres, correos ni la sesión. La interfaz recuerda: «No incluya nombres en la descripción.»
+- Los registros del servidor solo incluyen ruta, estado, tiempo, modelo o plantilla de correo; nunca correos, códigos, contraseñas, nombres ni el texto de las observaciones.
+- Contraseñas con `scrypt` y sal por cuenta; los códigos de verificación se guardan solo como hash, son de un solo uso y vencen en 10 minutos.
 - La sesión es una cookie httpOnly firmada (12 h). La app envía CSP y otros encabezados de seguridad (ver `next.config.ts`).
 
 ## App instalable (PWA)

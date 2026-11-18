@@ -105,10 +105,81 @@ export const TEXTOS_REPORTES = {
   desviacion: (valor: string) => `DE ${valor}`,
   sinObservaciones: "Sin observaciones para este indicador.",
   sinEvaluacionesParticipante: "Este participante aún no tiene evaluaciones.",
+  // Group summary (PRD §11.3, Appendix C "Resumen del grupo"). Values come formatted.
+  resumenGrupo: "Resumen del grupo",
+  ambasJornadas: "Ambas jornadas",
+  puntajePromedioPorIndicador: "Puntaje promedio por indicador",
+  puntajeGrupo: "Puntaje del grupo",
+  nivelDetalle: (nivel: string) => `Nivel ${nivel}`,
+  cobertura: "Cobertura",
+  /** "28 de 36 evaluaciones" */
+  evaluacionesDe: (n: string, total: string) => `${n} de ${total} evaluaciones`,
+  /** The gap tile's detail: "para Experto". */
+  paraNivel: (nivel: string) => `para ${nivel}`,
+  resumenTitulo: "En pocas palabras",
+  comparacionTitulo: "Mañana y Noche",
+  comparacionDescripcion: "Cada columna es el equipo de esa jornada para esta competencia.",
+  comparacionRubricasDistintas: "Las jornadas usan plantillas distintas: cada columna muestra sus propios indicadores.",
+  medida: "Medida",
+  /** Column header: "Mañana · Equipo 4". */
+  columnaJornada: (jornada: string, numero: number) => `${jornada} · Equipo ${numero}`,
+  parrafo: {
+    nivel: (nivel: string, puntaje: string) => `El grupo alcanzó un nivel ${nivel} (${puntaje}).`,
+    indicadoresIguales: (media: string) => `Todos los indicadores tienen el mismo promedio (${media}).`,
+    masFuerte: (titulo: string, media: string) => `El indicador más fuerte es «${titulo}» (${media})`,
+    /** Ties name the indicators by number, as the chart titles do. */
+    masFuertes: (numeros: string, media: string) => `Los indicadores ${numeros} son los más fuertes (${media})`,
+    masDebil: (titulo: string, media: string) => `el que más necesita refuerzo es «${titulo}» (${media})`,
+    masDebiles: (numeros: string, media: string) => `los indicadores ${numeros} son los que más necesitan refuerzo (${media})`,
+  },
   volverGeneral: "Volver al Reporte general",
   volverReportes: "Volver a Reportes",
   otrosParticipantes: "Otros participantes",
   acciones: "Acciones del reporte",
   errorCarga: "No se pudo cargar el reporte. Intente de nuevo.",
   errorCsv: "No se pudo generar el CSV. Intente de nuevo.",
+} as const;
+
+// Results by email (PRD §5.14, Appendix C "Envío de resultados"). Report-only
+// copy, like TEXTOS_REPORTES. Values come formatted.
+const participantesN = (n: number) => (n === 1 ? "1 participante" : `${n} participantes`);
+
+export const TEXTOS_ENVIO = {
+  titulo: "Enviar resultados por correo",
+  descripcion:
+    "Cada participante recibe solo sus propios resultados: nivel general, puntaje, evaluaciones recibidas y, por indicador, el promedio y lo que le falta para el siguiente nivel. El correo no incluye nombres de evaluadores, calificaciones individuales ni observaciones.",
+  destinatarios: "Destinatarios",
+  destinatariosAyuda: "Participantes con correo y al menos una evaluación. A quien ya recibió sus resultados no se le envía de nuevo, salvo que marque «Reenviar».",
+  sinDestinatarios: "Aún no hay participantes con correo y evaluaciones.",
+  omitidos: "No se les enviará",
+  sinOmitidos: "Todos los participantes recibirán sus resultados.",
+  motivos: { "sin-correo": "Sin correo", "sin-evaluaciones": "Sin evaluaciones", ausente: "Ausente" },
+  evaluaciones: (n: string) => (n === "1" ? "1 evaluación" : `${n} evaluaciones`),
+  enviadoEl: (fecha: string) => `Enviado el ${fecha}`,
+  errorEl: (fecha: string) => `Error al enviar el ${fecha}`,
+  pendiente: "Pendiente",
+  reenviar: "Reenviar",
+  vistaPrevia: "Vista previa",
+  participantePrevia: "Participante",
+  para: (correo: string) => `Para: ${correo}`,
+  asunto: (asunto: string) => `Asunto: ${asunto}`,
+  marcoPrevia: (etiqueta: string) => `Vista previa del correo para ${etiqueta}`,
+  prueba: "Enviarme una prueba",
+  pruebaCampo: "Su correo electrónico",
+  pruebaAyuda: "Recibirá el correo de la vista previa, marcado como prueba. Esta dirección no se guarda.",
+  pruebaEnviada: "Prueba enviada",
+  pruebaError: "No se pudo enviar la prueba. Intente de nuevo.",
+  enviarA: (n: number) => `Enviar a ${participantesN(n)}`,
+  confirmarTitulo: (n: number) => `¿Enviar los resultados a ${participantesN(n)}?`,
+  confirmarDescripcion:
+    "Cada persona recibirá un correo solo con sus propios resultados. Cada envío queda registrado.",
+  confirmar: "Enviar",
+  enviando: "Enviando…",
+  resumenEnviados: (n: number) => (n === 1 ? "Se envió 1 correo." : `Se enviaron ${n} correos.`),
+  resumenErrores: (n: number) => (n === 1 ? "1 correo no se pudo enviar." : `${n} correos no se pudieron enviar.`),
+  errorEnvio: "No se pudieron enviar los resultados. Intente de nuevo.",
+  sinEvaluaciones: "Ese participante aún no tiene evaluaciones.",
+  // The "Correo" column of the Reporte general (PRD §11.2).
+  columna: "Correo",
+  estados: { enviado: "Enviado", error: "Error", pendiente: "Pendiente" },
 } as const;

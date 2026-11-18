@@ -15,7 +15,7 @@ const plural = (n: number, uno: string, varios: string) => (n === 1 ? `1 ${uno}`
 export const TEXTOS_ADMIN = {
   titulo: "Participantes",
   descripcion:
-    "Indique cuántas personas serán evaluadas y escriba su nombre y carné. Las personas evaluadoras verán los nombres; los reportes muestran solo el carné.",
+    "Indique cuántas personas serán evaluadas y escriba su nombre, carné y correo. Las personas evaluadoras verán los nombres; los reportes muestran solo el carné; el correo solo se usa para enviarle sus resultados.",
   cantidad: "Cantidad de participantes",
   ayudaCantidad: `Un número entre 1 y ${CANTIDAD_MAXIMA_PARTICIPANTES}.`,
   nombres: "Nombres y carnés",
@@ -25,10 +25,12 @@ export const TEXTOS_ADMIN = {
   nombre: "Nombre",
   carne: "Carné",
   carneDe: (numero: number) => `Carné · ${etiquetaNumero(numero)}`,
+  /** PRD §5.14: optional, only for sending the participant their results. */
+  correoDe: (numero: number) => `Correo electrónico · ${etiquetaNumero(numero)}`,
   pegarLista: "Pegar lista",
   pegarTitulo: "Pegar lista de participantes",
   pegarAyuda:
-    "Una persona por línea: el carné y el nombre separados por una tabulación o por «;» (por ejemplo, copiados de una hoja de cálculo), o solo el nombre. La cantidad se ajusta al número de líneas.",
+    "Una persona por línea: el carné, el nombre y, si lo tiene, el correo, separados por una tabulación o por «;» (por ejemplo, copiados de una hoja de cálculo), o solo el nombre. La cantidad se ajusta al número de líneas.",
   usarLista: "Usar esta lista",
   guardar: "Guardar cambios",
   guardando: "Guardando…",
@@ -45,6 +47,8 @@ export const TEXTOS_ADMIN = {
   carneInvalido: (numero: number) =>
     `Revise el carné del participante ${numeroParticipante(numero)}: solo números, letras o guiones, con un máximo de ${LARGO_MAXIMO_CARNET} caracteres.`,
   carneRepetido: (numero: number) => `El carné del participante ${numeroParticipante(numero)} ya está en la lista.`,
+  correoInvalido: (numero: number) =>
+    `Revise el correo del participante ${numeroParticipante(numero)}: ingrese un correo electrónico válido o déjelo vacío.`,
   listaInvalida: "Los datos de la lista de participantes no son válidos.",
 } as const;
 

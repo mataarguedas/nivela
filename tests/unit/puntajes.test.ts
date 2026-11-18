@@ -9,11 +9,13 @@ import {
   distribucion,
   estadoAvance,
   evaluacionesEsperadas,
+  extremos,
   nivelGeneral,
   promedio,
   proporcion,
   puntajeEvaluacion,
   puntajeGeneral,
+  puntajeGrupo,
   puntajeIndicador,
   redondear2,
 } from "@/lib/puntajes";
@@ -206,5 +208,37 @@ describe("estadoAvance (PRD §7)", () => {
 
   it("sin nada esperado (todos ausentes) es Completo", () => {
     expect(estadoAvance(0, 0)).toBe("completo");
+  });
+});
+
+describe("puntajeGrupo y extremos (PRD §7, §11.3)", () => {
+  it("el puntaje del grupo es el promedio de los puntajes generales recibidos", () => {
+    expect(puntajeGrupo([])).toBeNull();
+    expect(puntajeGrupo([3.83, 2.125])).toBeCloseTo(2.9775, 10);
+  });
+
+  it("extremos compara a 2 decimales, ignora los nulos y conserva los empates", () => {
+    expect(extremos([])).toBeNull();
+    expect(extremos([null, null])).toBeNull();
+    expect(extremos([3.25, null, 2.1, 2.5])).toEqual({ maximos: [0], minimos: [2] });
+    // 2,4999 se muestra como 2,50: empata con 2,5.
+    expect(extremos([2.5, 3, 2.4999, 3])).toEqual({ maximos: [1, 3], minimos: [0, 2] });
+    expect(extremos([2.75, 2.75])).toEqual({ maximos: [0, 1], minimos: [0, 1] });
+  });
+});
+
+describe("puntajeGrupo y extremos (PRD §7, §11.3)", () => {
+  it("el puntaje del grupo es el promedio de los puntajes generales recibidos", () => {
+    expect(puntajeGrupo([])).toBeNull();
+    expect(puntajeGrupo([3.83, 2.125])).toBeCloseTo(2.9775, 10);
+  });
+
+  it("extremos compara a 2 decimales, ignora los nulos y conserva los empates", () => {
+    expect(extremos([])).toBeNull();
+    expect(extremos([null, null])).toBeNull();
+    expect(extremos([3.25, null, 2.1, 2.5])).toEqual({ maximos: [0], minimos: [2] });
+    // 2,4999 is shown as 2,50: a tie with 2,5.
+    expect(extremos([2.5, 3, 2.4999, 3])).toEqual({ maximos: [1, 3], minimos: [0, 2] });
+    expect(extremos([2.75, 2.75])).toEqual({ maximos: [0, 1], minimos: [0, 1] });
   });
 });

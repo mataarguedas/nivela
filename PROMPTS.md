@@ -325,7 +325,7 @@ Use plan mode first. Load the vercel:marketplace skill and follow it to add Rese
 - src/lib/correo.ts (import "server-only"): enviarCorreo({ para, asunto, html, texto, idempotencia? }) with a 10 s timeout and typed errors (rechazado, limite, red, desconocido). Never log recipients, subjects or bodies: log only the template name, status and latency.
 - Two transports chosen by CORREO_MODO: "resend" (production) and "consola" (the default in dev and tests). "consola" keeps the last 20 messages in memory; a dev-only page /dev/correos (404 in production) lists them rendered, and a dev-only GET /api/dev/correos?para= returns the latest one as JSON so Playwright can read verification codes without a real inbox.
 - src/lib/correos/: templates as plain TS functions returning { asunto, html, texto }. HTML email-safe: table layout, inline styles, system font stack, DESIGN.md colors (#1d1d1f text, #f5f5f7 canvas, one #0071e3 button at most), no images, no Apple marks, a plain-text version always. Spanish, usted. Start with `codigoVerificacion({ codigo, minutos })` ("Su código de Nivela es {codigo}. Vence en {minutos} minutos. Si usted no lo solicitó, ignore este mensaje.").
-- npm run correo:prueba -- --para <correo>: sends the verification template with a fake code through Resend so I can check delivery to an @est.utn.ac.cr inbox and to Gmail, including the spam folder. Help me verify the sending domain (SPF, DKIM, DMARC) before that.
+- npm run correo:prueba -- --para <correo>: sends the verification template with a fake code through Resend so I can check delivery to a UTN student (est.utn.ac.cr) inbox and to Gmail, including the spam folder. Help me verify the sending domain (SPF, DKIM, DMARC) before that.
 - CSP stays unchanged: Resend is only called server-side. Confirm it.
 
 Tests: unit tests for correo.ts with the Resend client mocked (success, 429, timeout, rejected) and a snapshot of the template's text version. Run lint, typecheck and test. Then run correo:prueba once to my address and tell me the result.
@@ -426,7 +426,7 @@ Tests: unit for the title sentences; e2e: default view shows the simple charts, 
 
 ---
 
-## Prompt 18 — Group summary report (feature 8)
+## Prompt 18 — Group summary report (feature 8) - DONE
 
 ```text
 Use plan mode first. Implement PRD §11.3 (v1.2) "Resumen del grupo" at /reportes/[competencia]/grupo.
@@ -441,7 +441,7 @@ Tests: unit for agregarResumenGrupo with fixtures for each jornada and both (no 
 
 ---
 
-## Prompt 19 — Personal results by email (feature 4)
+## Prompt 19 — Personal results by email (feature 4) - DONE
 
 > **⚠ Before this prompt:** the participants' (evaluados') emails will come later. You can build and test this now with fake addresses; the admin enters the real ones at `/admin` when you have them. Decide whether the peers' observations go into the email (the default is no).
 
@@ -470,7 +470,7 @@ Finish v1.2 per PRD §13 and §15 (v1.2), repeating Prompt 10's QA for the new f
 3. Accessibility and copy pass over every new screen (back button, login steps, attendance dialog, progress table, charts, group summary, send page): WCAG 2.2 AA, focus order, labelled controls, Spanish "usted" only.
 4. Run the full Playwright suite on the three mobile projects plus desktop Chromium, and walk PRD §15 v1.2 marking each item pass/fail with evidence. Walk the evaluator flow in both jornadas: a morning Equipo 4 member and a night Equipo 1 member both rate Adaptabilidad, see only their jornada's participants, and appear in the right "Avance de evaluadores" section. Re-run the grep for team-number lookups (`numero ===` on teams, "Equipo 4", "8 evaluadores") and confirm none are left.
 5. README.md (Spanish): how evaluators activate their account, how the admin edits emails and resets access, how to import the CSV, how to send results, the new env vars, and the email domain setup.
-6. Deploy, asking me before each production step: set RESEND_API_KEY, CORREO_REMITENTE and CORREO_MODO=resend in Vercel and remove CODIGO_ACCESO / CODIGO_ACCESO_NOCHE; apply migrations 0003–0005 to production with the established procedure (DATABASE_URL_MIGRACION with the pg driver, check $LASTEXITCODE, verify with a read-only query); run cuentas:importar --produccion with privado/correos-evaluadores.csv; vercel --prod. Smoke test as docente (reports, group summary, a test results email to my address) and ask me which evaluator account to use for a login smoke test. Never run db:seed against production.
+6. Deploy, asking me before each production step: set RESEND_API_KEY, CORREO_REMITENTE and CORREO_MODO=resend in Vercel and remove CODIGO_ACCESO / CODIGO_ACCESO_NOCHE; apply migrations 0003–0006 to production with the established procedure (DATABASE_URL_MIGRACION with the pg driver, check $LASTEXITCODE, verify with a read-only query); run cuentas:importar --produccion with privado/correos-evaluadores.csv; vercel --prod. Smoke test as docente (reports, group summary, a test results email to my address) and ask me which evaluator account to use for a login smoke test. Never run db:seed against production.
 
 Report the production URL, the acceptance results, bundle sizes, and what's left open in PRD §16 (missing emails, observations in emails, etc.).
 ```

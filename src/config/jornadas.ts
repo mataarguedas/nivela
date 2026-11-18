@@ -13,6 +13,14 @@ export type JornadaId = (typeof JORNADAS)[number]["id"];
 
 export const IDS_JORNADA = JORNADAS.map((j) => j.id) as [JornadaId, ...JornadaId[]];
 
+/**
+ * What the docente's group summary covers (PRD §11.3): one jornada or both.
+ * Only that read-only page takes a jornada from the request (§5.11).
+ */
+export type SeleccionJornada = JornadaId | "ambas";
+
+export const SELECCIONES_JORNADA = [...IDS_JORNADA, "ambas"] as [SeleccionJornada, ...SeleccionJornada[]];
+
 /** Docente and admin sessions start here; sessions signed before jornadas existed are morning ones. */
 export const JORNADA_PREDETERMINADA: JornadaId = "manana";
 

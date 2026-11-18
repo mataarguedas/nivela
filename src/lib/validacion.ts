@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { obtenerCompetenciaHabilitada, obtenerIndicador, type Competencia, type Indicador } from "@/config/competencias";
 import { equipoDeCompetencia, obtenerEvaluador, type Equipo } from "@/config/equipos";
-import { IDS_JORNADA, type JornadaId } from "@/config/jornadas";
+import { IDS_JORNADA, SELECCIONES_JORNADA, type JornadaId, type SeleccionJornada } from "@/config/jornadas";
 import {
   LARGO_MAXIMO_DESCRIPCION_IA,
   LARGO_MAXIMO_OBSERVACION,
   LARGO_MINIMO_DESCRIPCION_IA,
 } from "@/config/limites";
 import { VALORES_NIVEL } from "@/config/niveles";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esNombreValido } from "@/config/participantes";
+import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esIdParticipante, esNombreValido } from "@/config/participantes";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { formatearEntero } from "@/lib/formato";
 
@@ -17,7 +17,8 @@ import { formatearEntero } from "@/lib/formato";
 // cross-checks against src/config (and the participant list from the DB).
 // The jornada always comes from the session, never from the request: the
 // checks below take it as an argument so a request can't reach the other
-// cohort's team or participants.
+// cohort's team or participants. The one exception is the docente's
+// read-only group summary (validarSeleccionResumen, PRD §11.3).
 // Every rejection carries a Spanish message for the `{ error }` body. Client
 // code may `import type` from here; importing values would ship zod to the
 // rating pages.
@@ -33,6 +34,12 @@ export const LARGO_MAXIMO_CORREO = 254;
 
 /** An email as stored (PRD §5.12, §9.2): trimmed, lowercased, valid, ≤ 254. */
 export const esquemaCorreo = z.string().trim().toLowerCase().max(LARGO_MAXIMO_CORREO).pipe(z.email());
+
+/** A trimmed email (or "", meaning none) the admin may save for a participant (PRD §5.10). */
+export function esCorreoParticipanteValido(texto: string): boolean {
+  const limpio = texto.trim();
+  return limpio === "" || esquemaCorreo.safeParse(limpio).success;
+}
 
 export const MENSAJES_VALIDACION = {
   cuerpo: "Los datos de la evaluación no son válidos.",
@@ -52,7 +59,10 @@ export const MENSAJES_VALIDACION = {
   nombreParticipante: TEXTOS_ADMIN.nombreInvalido,
   carnetParticipante: TEXTOS_ADMIN.carneInvalido,
   carnetRepetido: TEXTOS_ADMIN.carneRepetido,
+  correoParticipante: TEXTOS_ADMIN.correoInvalido,
   listaParticipantes: TEXTOS_ADMIN.listaInvalida,
+  envio: "Los datos del envío no son válidos.",
+  correoPrueba: "Ingrese un correo electrónico válido para la prueba.",
 } as const;
 
 const id = z.string().trim().min(1).max(100);
@@ -237,6 +247,57 @@ export function validarCompetenciaReporte(valor: unknown, jornada: JornadaId): R
   return { ok: true, datos: { competencia, equipo } };
 }
 
+export type JornadaResumen = CompetenciaReporte & { jornada: JornadaId };
+
+export type SeleccionResumen = {
+  seleccion: SeleccionJornada;
+  /** What the "Jornada" selector offers: the jornadas with this competencia, plus "ambas" when it is in all of them. */
+  opciones: SeleccionJornada[];
+  /** The selected jornadas, each with its own rubric and team, in JORNADAS order. */
+  jornadas: JornadaResumen[];
+};
+
+const esquemaSeleccionJornada = z.enum(SELECCIONES_JORNADA);
+
+/**
+ * The group summary's `?jornada=manana|noche|ambas` (PRD §11.3): the single
+ * place a jornada comes from the request (§5.11). It only selects what a
+ * read-only page shows; it never writes and never changes the session.
+ * Missing, invalid or not offered for this competencia (e.g. "ambas" when one
+ * jornada has no rubric for it) falls back to the session's jornada. An error
+ * (a 404) only when the competencia isn't available in the session's jornada
+ * either.
+ */
+export function validarSeleccionResumen(
+  competenciaId: unknown,
+  valor: unknown,
+  jornadaSesion: JornadaId,
+): Resultado<SeleccionResumen> {
+  const disponibles = IDS_JORNADA.flatMap((jornada): JornadaResumen[] => {
+    const validacion = validarCompetenciaReporte(competenciaId, jornada);
+    return validacion.ok ? [{ jornada, ...validacion.datos }] : [];
+  });
+  const opciones: SeleccionJornada[] = disponibles.map((d) => d.jornada);
+  if (disponibles.length === IDS_JORNADA.length) opciones.push("ambas");
+
+  const pedida = esquemaSeleccionJornada.safeParse(valor);
+  const seleccion =
+    pedida.success && opciones.includes(pedida.data)
+      ? pedida.data
+      : opciones.includes(jornadaSesion)
+        ? jornadaSesion
+        : undefined;
+  if (seleccion === undefined) return { ok: false, error: MENSAJES_VALIDACION.competencia };
+  return {
+    ok: true,
+    datos: {
+      seleccion,
+      opciones,
+      jornadas: seleccion === "ambas" ? disponibles : disponibles.filter((d) => d.jornada === seleccion),
+    },
+  };
+}
+
 const esquemaParticipantes = z.object({
   // The jornada the editor was loaded for; the route compares it with the session's.
   jornada: z.enum(IDS_JORNADA),
@@ -261,6 +322,17 @@ const esquemaParticipantes = z.object({
         .transform((t) => (t ? t : null)),
     )
     .max(CANTIDAD_MAXIMA_PARTICIPANTES),
+  // One email (or blank) per name, same order (PRD §5.10, §5.14): trimmed,
+  // lowercased, ≤ 254. Only for the results email.
+  correos: z
+    .array(
+      z
+        .string()
+        .trim()
+        .refine(esCorreoParticipanteValido)
+        .transform((t) => (t ? t.toLowerCase() : null)),
+    )
+    .max(CANTIDAD_MAXIMA_PARTICIPANTES),
   confirmar: z.boolean().optional().default(false),
 });
 
@@ -269,6 +341,7 @@ export type ParticipantesValidos = {
   jornada: JornadaId;
   nombres: (string | null)[];
   carnets: (string | null)[];
+  correos: (string | null)[];
   confirmar: boolean;
 };
 
@@ -284,7 +357,7 @@ export function indiceCarnetRepetido(carnets: readonly (string | null)[]): numbe
   return -1;
 }
 
-/** PUT /api/admin/participantes body: one name and one carnet (each may be blank) per participant, in order. */
+/** PUT /api/admin/participantes body: one name, one carnet and one email (each may be blank) per participant, in order. */
 export function validarParticipantes(datos: unknown): Resultado<ParticipantesValidos> {
   const forma = esquemaParticipantes.safeParse(datos);
   if (!forma.success) {
@@ -296,13 +369,44 @@ export function validarParticipantes(datos: unknown): Resultado<ParticipantesVal
     if (ruta[0] === "carnets" && typeof ruta[1] === "number") {
       return { ok: false, error: MENSAJES_VALIDACION.carnetParticipante(ruta[1] + 1) };
     }
+    if (ruta[0] === "correos" && typeof ruta[1] === "number") {
+      return { ok: false, error: MENSAJES_VALIDACION.correoParticipante(ruta[1] + 1) };
+    }
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
-  const { jornada, cantidad, nombres, carnets, confirmar } = forma.data;
-  if (nombres.length !== cantidad || carnets.length !== cantidad) {
+  const { jornada, cantidad, nombres, carnets, correos, confirmar } = forma.data;
+  if (nombres.length !== cantidad || carnets.length !== cantidad || correos.length !== cantidad) {
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
   const repetido = indiceCarnetRepetido(carnets);
   if (repetido >= 0) return { ok: false, error: MENSAJES_VALIDACION.carnetRepetido(repetido + 1) };
-  return { ok: true, datos: { jornada, nombres, carnets, confirmar } };
+  return { ok: true, datos: { jornada, nombres, carnets, correos, confirmar } };
+}
+
+const idParticipanteValido = z.string().trim().refine(esIdParticipante);
+
+const esquemaEnvioResultados = z.union([
+  z.object({
+    participantes: z.array(idParticipanteValido).min(1).max(CANTIDAD_MAXIMA_PARTICIPANTES),
+    reenviar: z.boolean().optional().default(false),
+  }),
+  // "Enviarme una prueba": one participant's email to an address the docente typed (never stored).
+  z.object({ prueba: esquemaCorreo, participanteId: idParticipanteValido }),
+]);
+
+export type CuerpoEnvioResultados = z.input<typeof esquemaEnvioResultados>;
+export type EnvioResultadosValido =
+  | { tipo: "envio"; participantes: string[]; reenviar: boolean }
+  | { tipo: "prueba"; para: string; participanteId: string };
+
+/** POST /api/reportes/[competencia]/enviar body (PRD §10, §5.14). Scores never come from the client. */
+export function validarEnvioResultados(datos: unknown): Resultado<EnvioResultadosValido> {
+  const forma = esquemaEnvioResultados.safeParse(datos);
+  if (!forma.success) {
+    const conPrueba = typeof datos === "object" && datos !== null && "prueba" in datos;
+    return { ok: false, error: conPrueba ? MENSAJES_VALIDACION.correoPrueba : MENSAJES_VALIDACION.envio };
+  }
+  return "prueba" in forma.data
+    ? { ok: true, datos: { tipo: "prueba", para: forma.data.prueba, participanteId: forma.data.participanteId } }
+    : { ok: true, datos: { tipo: "envio", participantes: forma.data.participantes, reenviar: forma.data.reenviar } };
 }

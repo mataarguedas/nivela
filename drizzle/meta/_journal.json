@@ -43,6 +43,13 @@
       "when": 1794960943214,
       "tag": "0005_carnet",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794978319714,
+      "tag": "0006_resultados_correo",
+      "breakpoints": true
     }
   ]
 }

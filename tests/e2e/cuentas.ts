@@ -19,6 +19,18 @@ export function correoDePrueba(integranteId: string): string {
   return `${integranteId}@${DOMINIO_PRUEBA}`;
 }
 
+/**
+ * Fake participant emails (PRD §5.14) for the results-email specs:
+ * `participante-07.manana@ejemplo.test`. `npm run cuentas:prueba` gives one
+ * to every stored participant except number SIN_CORREO_PRUEBA, which stays
+ * "Sin correo". Never real addresses.
+ */
+export function correoParticipantePrueba(jornada: JornadaId, numero: number): string {
+  return `participante-${String(numero).padStart(2, "0")}.${jornada}@${DOMINIO_PRUEBA}`;
+}
+
+export const SIN_CORREO_PRUEBA = 2;
+
 export function contrasenaDePrueba(): string {
   const valor = process.env.E2E_CONTRASENA;
   if (!valor || valor.length < 8) throw new Error("E2E_CONTRASENA is not set (8+ chars): add it to .env.local");

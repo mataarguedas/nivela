@@ -159,6 +159,34 @@ export function brechaSiguienteNivel(puntaje: number): Brecha {
   return { nivelActual, siguiente: (nivelActual + 1) as NivelValor, umbral, faltante: redondear2(umbral - p) };
 }
 
+/**
+ * Puntaje del grupo (PRD §7): mean of the puntajes generales of the
+ * participants with at least 1 evaluation (pass only those). The group's
+ * nivel and brecha come from nivelGeneral() and brechaSiguienteNivel().
+ * The same mean gives the group's mean per indicator, over the participants'
+ * indicator means.
+ */
+export function puntajeGrupo(puntajes: readonly number[]): number | null {
+  return promedio(puntajes);
+}
+
+/**
+ * The positions of the highest and lowest values (e.g. the group's strongest
+ * and weakest indicator, PRD §11.3), compared at display precision so values
+ * shown as equal are a tie. Nulls (no data) are skipped; null if none has data.
+ * When every value is equal, both lists hold every position.
+ */
+export function extremos(valores: readonly (number | null)[]): { maximos: number[]; minimos: number[] } | null {
+  const conDatos = valores.flatMap((v, i) => (v === null ? [] : [{ i, v: redondear2(v) }]));
+  if (conDatos.length === 0) return null;
+  const maximo = Math.max(...conDatos.map((d) => d.v));
+  const minimo = Math.min(...conDatos.map((d) => d.v));
+  return {
+    maximos: conDatos.filter((d) => d.v === maximo).map((d) => d.i),
+    minimos: conDatos.filter((d) => d.v === minimo).map((d) => d.i),
+  };
+}
+
 export type EstadoAvance = "sin-iniciar" | "en-progreso" | "completo";
 
 /**

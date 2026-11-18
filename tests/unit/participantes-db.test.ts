@@ -7,6 +7,7 @@ import {
   estadoDesdeFilas,
   participantesActivos,
   sentenciaContarEvaluaciones,
+  sentenciaLeerCorreos,
   sentenciaLeerFilas,
   sentenciasGuardarParticipantes,
 } from "@/lib/db/participantes";
@@ -27,9 +28,10 @@ async function guardar(
   nombres: (string | null)[],
   jornada: JornadaId = "manana",
   carnets: (string | null)[] = nombres.map(() => null),
+  correos: (string | null)[] = nombres.map(() => null),
 ) {
   await db.transaction(async (tx) => {
-    for (const sentencia of sentenciasGuardarParticipantes(tx, jornada, { nombres, carnets })) await sentencia;
+    for (const sentencia of sentenciasGuardarParticipantes(tx, jornada, { nombres, carnets, correos })) await sentencia;
   });
 }
 
@@ -56,7 +58,7 @@ describe("participantes en la base de datos", () => {
       "Participante 03",
       "Participante 04",
     ]);
-    expect(estadoDesdeFilas(filas, 4)).toEqual({ cantidad: 4, nombres: [], carnets: [] });
+    expect(estadoDesdeFilas(filas, 4)).toEqual({ cantidad: 4, nombres: [], carnets: [], correos: [] });
   });
 
   it("guarda la cantidad y los nombres en orden (P01…)", async () => {
@@ -89,14 +91,33 @@ describe("participantes en la base de datos", () => {
     const filas = await leer();
     expect(filas).toHaveLength(4); // never deleted
     expect(participantesActivos(filas, 20).map((p) => p.etiqueta)).toEqual(["Ana", "Beatriz"]);
-    expect(estadoDesdeFilas(filas, 20)).toEqual({
+    expect(estadoDesdeFilas(filas, 20, await sentenciaLeerCorreos(db, "manana"))).toEqual({
       cantidad: 2,
       nombres: ["Ana", "Beatriz", "Carlos", "Dani"],
       carnets: ["1", "2", "3", "4"],
+      correos: [null, null, null, null],
     });
 
     await guardar(["Ana", "Beatriz", "Carlos", "Dani"]);
     expect(participantesActivos(await leer(), 20).map((p) => p.id)).toEqual(["P01", "P02", "P03", "P04"]);
+  });
+
+  it("guarda el correo aparte de la lista: solo lo leen el editor y el envío de resultados (PRD §5.14)", async () => {
+    await guardar(["Ana", "Bea", "Carlos"], "manana", [null, null, null], ["ana@ejemplo.test", null, "carlos@ejemplo.test"]);
+    // The participant list pages read has no email field.
+    const activos = participantesActivos(await leer(), 20);
+    expect(activos.every((p) => !("correo" in p))).toBe(true);
+    expect(await sentenciaLeerCorreos(db, "manana")).toEqual([
+      { numero: 1, correo: "ana@ejemplo.test" },
+      { numero: 2, correo: null },
+      { numero: 3, correo: "carlos@ejemplo.test" },
+    ]);
+
+    // Hiding a participant keeps their email for when the count goes back up; another jornada has none.
+    await guardar(["Ana"], "manana", [null], ["ana.mora@ejemplo.test"]);
+    const estado = estadoDesdeFilas(await leer(), 20, await sentenciaLeerCorreos(db, "manana"));
+    expect(estado.correos).toEqual(["ana.mora@ejemplo.test", null, "carlos@ejemplo.test"]);
+    expect(await sentenciaLeerCorreos(db, "noche")).toEqual([]);
   });
 
   it("cuenta las evaluaciones de los participantes que se ocultarían, solo de su jornada", async () => {

@@ -55,7 +55,7 @@ npm run db:seed        # dev only: fake evaluations for every rubric's team x N 
 npm run jev:evaluar    # golden-set accuracy check against live Jev, every rubric (PRD §8.5); `-- --competencia <id>` for one
 npm run correo:prueba -- --para <correo>   # v1.2 (Prompt 13): send a sample email through Resend
 npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv [--produccion]   # v1.2: load evaluator emails (prints counts and host, never emails)
-npm run cuentas:prueba # dev/e2e: reset every evaluator account to <id>@ejemplo.test + E2E_CONTRASENA (the e2e global setup runs it)
+npm run cuentas:prueba # dev/e2e: reset every evaluator account to <id>@ejemplo.test + E2E_CONTRASENA, and give every stored participant participante-NN.<jornada>@ejemplo.test except P02 (the e2e global setup runs it)
 ```
 
 Before declaring a task done, run `lint`, `typecheck` and `test`. Also run `test:e2e` for UI changes.
@@ -126,8 +126,10 @@ src/
     acceso.ts               # v1.2: shared by /api/acceso/* (schemas, failure delay, code email after the response)
     importarCuentas.ts      # v1.2: CSV validation for cuentas:importar
     correo.ts               # v1.2, server-only: send email (Resend | consola)
-    correos/                # v1.2: email templates { asunto, html, texto }
-    db/{index.ts,schema.ts,participantes.ts,cuentas.ts}  # participantes.ts: the admin's list per jornada; cuentas.ts: account statements
+    correos/                # v1.2: email templates { asunto, html, texto } (codigoVerificacion, resultados)
+    resultados.ts           # v1.2: pure parts of the results email (data, recipients, idempotency key)
+    envioResultados.ts      # v1.2, server-only: load, preview and send results (paced, recorded)
+    db/{index.ts,schema.ts,participantes.ts,cuentas.ts,envios.ts}  # participantes.ts: the admin's list per jornada (emails read apart); cuentas.ts: account statements; envios.ts: envios_resultados
     jornadaActual.ts        # the session's jornada (and contextoEvaluacion: team + evaluador id) for Server Components
     puntajes.ts             # pure scoring (PRD §7)
     reportes.ts             # aggregation for report routes

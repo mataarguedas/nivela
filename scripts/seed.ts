@@ -310,9 +310,10 @@ async function main() {
   }
 
   const { contrasenaDePrueba, CUENTAS_PENDIENTES } = await import("../tests/e2e/cuentas");
-  const { prepararCuentasPrueba } = await import("./cuentasPrueba");
+  const { prepararCorreosParticipantes, prepararCuentasPrueba } = await import("./cuentasPrueba");
   const cuentas = await prepararCuentasPrueba(getDb(), contrasenaDePrueba(), CUENTAS_PENDIENTES);
   console.log(`Cuentas de prueba: ${cuentas.total} (${cuentas.pendientes} pendientes de activar).`);
+  console.log(`Participantes con correo de prueba: ${await prepararCorreosParticipantes(getDb())} filas.`);
 }
 
 main().catch((error: unknown) => {

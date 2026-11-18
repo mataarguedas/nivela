@@ -7,12 +7,13 @@ import { obtenerNivel, type NivelValor } from "@/config/niveles";
 import type { Asistencia, Brecha } from "@/lib/puntajes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 import { TEXTOS } from "@/config/textos";
-import { TEXTOS_REPORTES } from "@/config/textosReportes";
+import { TEXTOS_ENVIO, TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero } from "@/lib/formato";
 
 // "Tabla de participantes" (PRD §11.2): code, the indicator means, puntaje
 // and nivel general, the gap to the next level, evaluations and attendance ("Ausente" / "Asistencia en
-// conflicto" with the counts, PRD §5.13). Every column sorts (a <button> in the
+// conflicto" with the counts, PRD §5.13) and the results email status
+// ("Correo": Enviado / Error / Pendiente, §5.14). Every column sorts (a <button> in the
 // header, aria-sort on the <th>); participants without evaluations always
 // sort last. The code links to the Reporte individual. Receives codes and
 // numbers only, no names. Too wide for a phone, so its wrapper scrolls.
@@ -29,9 +30,24 @@ export type FilaTablaParticipantes = {
   marcasAusente: number;
   /** Gap from the puntaje general to the next level (PRD §7); null without evaluations. */
   brecha: Brecha | null;
+  /** Latest results email (PRD §5.14): its outcome, "pendiente" without one, null if unknown (read failed). */
+  correo: EstadoCorreo | null;
 };
 
-type Columna = "participante" | `indicador-${number}` | "puntaje" | "nivel" | "brecha" | "evaluaciones" | "asistencia";
+export type EstadoCorreo = "enviado" | "error" | "pendiente";
+
+type Columna =
+  | "participante"
+  | `indicador-${number}`
+  | "puntaje"
+  | "nivel"
+  | "brecha"
+  | "evaluaciones"
+  | "asistencia"
+  | "correo";
+
+// Sorting "Correo" descending lists errors first, then sent, then pending.
+const ORDEN_CORREO: Record<EstadoCorreo, number> = { error: 3, enviado: 2, pendiente: 1 };
 
 // Sorting "Asistencia" descending lists the absent first, then the conflicts.
 const ORDEN_ASISTENCIA: Record<Asistencia, number> = { ausente: 2, conflicto: 1 };
@@ -47,6 +63,7 @@ function valor(fila: FilaTablaParticipantes, columna: Columna): number | string 
   // Experto has nothing left (0); without evaluations there is no gap (sorted last).
   if (columna === "brecha") return fila.brecha ? (fila.brecha.faltante ?? 0) : null;
   if (columna === "asistencia") return fila.asistencia ? ORDEN_ASISTENCIA[fila.asistencia] : null;
+  if (columna === "correo") return fila.correo ? ORDEN_CORREO[fila.correo] : null;
   return fila.medias[Number(columna.slice("indicador-".length))] ?? null;
 }
 
@@ -108,6 +125,7 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
     { id: "brecha", titulo: TEXTOS_REPORTES.paraSiguienteNivel, numerica: true },
     { id: "evaluaciones", titulo: TEXTOS_REPORTES.evaluaciones, numerica: true },
     { id: "asistencia", titulo: TEXTOS_REPORTES.asistencia, numerica: false },
+    { id: "correo", titulo: TEXTOS_ENVIO.columna, numerica: false },
   ];
 
   function alternar(columna: Columna) {
@@ -121,7 +139,7 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
 
   return (
     <div role="region" aria-labelledby={etiquetadaPor} tabIndex={0} className="desplazable relative -mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
-      <table aria-labelledby={etiquetadaPor} className="w-full min-w-[920px] border-separate border-spacing-0 text-[14px]">
+      <table aria-labelledby={etiquetadaPor} className="w-full min-w-[1000px] border-separate border-spacing-0 text-[14px]">
         <thead>
           <tr>
             {columnas.map((c) => {
@@ -179,6 +197,9 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
               <td className="px-2 text-right tabular-nums">{formatearEntero(fila.evaluaciones)}</td>
               <td className="px-2">
                 <CeldaAsistencia fila={fila} />
+              </td>
+              <td className={`px-2 whitespace-nowrap ${fila.correo === "enviado" ? "text-link" : fila.correo === "error" ? "font-semibold text-ink" : "text-ink-2"}`}>
+                {fila.correo ? TEXTOS_ENVIO.estados[fila.correo] : "—"}
               </td>
             </tr>
           ))}

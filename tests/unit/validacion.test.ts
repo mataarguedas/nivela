@@ -6,6 +6,7 @@ import {
   validarConsultaEnviadas,
   validarEvaluacion,
   validarParticipantes,
+  validarSeleccionResumen,
   validarSolicitudJev,
 } from "@/lib/validacion";
 
@@ -265,13 +266,20 @@ describe("validarParticipantes (PUT /api/admin/participantes)", () => {
     cantidad: nombres.length,
     nombres,
     carnets: nombres.map(() => ""),
+    correos: nombres.map(() => ""),
     ...extra,
   });
 
   it("acepta nombres con tildes, recorta y guarda los vacíos como null", () => {
     expect(validarParticipantes(lista(["  Ana Pérez ", "", "José Ñúñez Solís"]))).toEqual({
       ok: true,
-      datos: { jornada: "manana", nombres: ["Ana Pérez", null, "José Ñúñez Solís"], carnets: [null, null, null], confirmar: false },
+      datos: {
+        jornada: "manana",
+        nombres: ["Ana Pérez", null, "José Ñúñez Solís"],
+        carnets: [null, null, null],
+        correos: [null, null, null],
+        confirmar: false,
+      },
     });
     expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
   });
@@ -309,5 +317,51 @@ describe("validarParticipantes (PUT /api/admin/participantes)", () => {
       ok: false,
       error: MENSAJES_VALIDACION.nombreParticipante(2),
     });
+  });
+});
+
+describe("validarSeleccionResumen (?jornada= del Resumen del grupo, PRD §11.3)", () => {
+  const seleccion = (competencia: string, valor: unknown, sesion: JornadaId) => {
+    const r = validarSeleccionResumen(competencia, valor, sesion);
+    return r.ok ? { seleccion: r.datos.seleccion, opciones: r.datos.opciones, jornadas: r.datos.jornadas.map((j) => j.jornada) } : null;
+  };
+
+  it("Adaptabilidad tiene plantilla en ambas jornadas: ofrece Mañana, Noche y Ambas", () => {
+    expect(seleccion("adaptabilidad", "ambas", "manana")).toEqual({
+      seleccion: "ambas",
+      opciones: ["manana", "noche", "ambas"],
+      jornadas: ["manana", "noche"],
+    });
+    expect(seleccion("adaptabilidad", "noche", "manana")?.jornadas).toEqual(["noche"]);
+  });
+
+  it("cada jornada trae su propio equipo: Equipo 4 en la mañana, Equipo 1 en la noche", () => {
+    const r = validarSeleccionResumen("adaptabilidad", "ambas", "noche");
+    expect(r.ok && r.datos.jornadas.map((j) => [j.jornada, j.equipo.jornada, j.equipo.competenciaId])).toEqual([
+      ["manana", "manana", "adaptabilidad"],
+      ["noche", "noche", "adaptabilidad"],
+    ]);
+  });
+
+  it.each([undefined, null, "", "tarde", "AMBAS", ["noche", "ambas"], 1])("un valor ausente o inválido (%j) usa la jornada de la sesión", (valor) => {
+    expect(seleccion("adaptabilidad", valor, "noche")?.seleccion).toBe("noche");
+    expect(seleccion("adaptabilidad", valor, "manana")?.seleccion).toBe("manana");
+  });
+
+  it("«ambas» no se ofrece si una jornada no tiene plantilla: vuelve a la jornada de la sesión", () => {
+    // Pensamiento crítico has a morning rubric only (PRD Appendix A).
+    expect(seleccion("pensamiento-critico", "ambas", "manana")).toEqual({
+      seleccion: "manana",
+      opciones: ["manana"],
+      jornadas: ["manana"],
+    });
+  });
+
+  it("404 solo si la competencia no está en la jornada pedida ni en la de la sesión", () => {
+    expect(seleccion("pensamiento-critico", undefined, "noche")).toBeNull();
+    expect(seleccion("pensamiento-critico", "noche", "noche")).toBeNull();
+    // An explicit jornada that has it is still a valid read-only view.
+    expect(seleccion("pensamiento-critico", "manana", "noche")?.seleccion).toBe("manana");
+    expect(seleccion("no-existe", "manana", "manana")).toBeNull();
   });
 });

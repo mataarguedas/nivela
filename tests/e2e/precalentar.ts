@@ -23,10 +23,14 @@ const RUTAS = [
   "/reportes",
   "/reportes/adaptabilidad",
   "/reportes/adaptabilidad/P01",
+  "/reportes/adaptabilidad/grupo",
+  "/reportes/adaptabilidad/grupo?jornada=ambas",
+  "/reportes/adaptabilidad/enviar",
   "/reportes/pensamiento-critico",
   "/reportes/no-existe",
   "/api/reportes/adaptabilidad",
   "/api/reportes/adaptabilidad/csv",
+  "/api/reportes/adaptabilidad/grupo",
   "/dev/ui",
   "/ruta-inexistente",
   "/pensamiento-critico",
@@ -40,6 +44,8 @@ const RUTAS = [
   "/api/acceso/contrasena",
   "/api/acceso/recuperar",
   "/api/dev/correos",
+  "/api/reportes/adaptabilidad/enviar",
+  "/dev/correos",
   // PUT-only (PRD §5.13).
   "/api/asistencia",
 ];

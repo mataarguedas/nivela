@@ -5,7 +5,7 @@ import { ProveedorToast } from "@/components/ui/Toast";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 
-// The admin's editor: count, names and carnets, the paste shortcut,
+// The admin's editor: count, names, carnets and emails, the paste shortcut,
 // client-side checks, and the 409 → confirm → resend flow.
 
 const fetchSimulado = vi.fn<typeof fetch>();
@@ -23,16 +23,18 @@ function montar(
   cantidad = 3,
   nombres: (string | null)[] = ["Ana", null, "Carlos", "Dani"],
   carnets: (string | null)[] = nombres.map(() => null),
+  correos: (string | null)[] = nombres.map(() => null),
 ) {
   render(
     <ProveedorToast>
-      <EditorParticipantes inicial={{ cantidad, nombres, carnets }} jornada="noche" />
+      <EditorParticipantes inicial={{ cantidad, nombres, carnets, correos }} jornada="noche" />
     </ProveedorToast>,
   );
 }
 
 const campoNombre = (n: number) => screen.queryByLabelText(TEXTOS_ADMIN.participante(n));
 const campoCarne = (n: number) => screen.queryByLabelText(TEXTOS_ADMIN.carneDe(n));
+const campoCorreo = (n: number) => screen.queryByLabelText(TEXTOS_ADMIN.correoDe(n));
 const campoCantidad = () => screen.getByLabelText(TEXTOS_ADMIN.cantidad);
 
 function responder(status: number, cuerpo: object) {
@@ -99,11 +101,26 @@ describe("EditorParticipantes", () => {
   });
 
   it("leerLineaPegada separa carné y nombre sin confundir un nombre de una palabra", () => {
-    expect(leerLineaPegada("100000001\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "100000001" });
-    expect(leerLineaPegada("Ana Mora;100000001")).toEqual({ nombre: "Ana Mora", carnet: "100000001" });
-    expect(leerLineaPegada("Ana Mora")).toEqual({ nombre: "Ana Mora", carnet: "" });
-    expect(leerLineaPegada("Ana\tMora")).toEqual({ nombre: "Ana Mora", carnet: "" });
-    expect(leerLineaPegada("A-12345\tAna")).toEqual({ nombre: "Ana", carnet: "A-12345" });
+    expect(leerLineaPegada("100000001\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "100000001", correo: "" });
+    expect(leerLineaPegada("Ana Mora;100000001")).toEqual({ nombre: "Ana Mora", carnet: "100000001", correo: "" });
+    expect(leerLineaPegada("Ana Mora")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "" });
+    expect(leerLineaPegada("Ana\tMora")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "" });
+    expect(leerLineaPegada("A-12345\tAna")).toEqual({ nombre: "Ana", carnet: "A-12345", correo: "" });
+  });
+
+  it("leerLineaPegada toma como correo el campo con «@», en cualquier posición", () => {
+    expect(leerLineaPegada("100000001\tAna Mora\tana@ejemplo.test")).toEqual({
+      nombre: "Ana Mora",
+      carnet: "100000001",
+      correo: "ana@ejemplo.test",
+    });
+    expect(leerLineaPegada("ana@ejemplo.test;Ana Mora;100000001")).toEqual({
+      nombre: "Ana Mora",
+      carnet: "100000001",
+      correo: "ana@ejemplo.test",
+    });
+    // Without a carnet, the email still isn't taken for part of the name.
+    expect(leerLineaPegada("Ana Mora\tana2@ejemplo.test")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "ana2@ejemplo.test" });
   });
 
   it("guarda solo los participantes visibles, recortados", async () => {
@@ -117,6 +134,7 @@ describe("EditorParticipantes", () => {
       cantidad: 3,
       nombres: ["Ana", "Bea Solís", "Carlos"],
       carnets: ["", "", ""],
+      correos: ["", "", ""],
       confirmar: false,
     });
     expect(await screen.findByText(TEXTOS_ADMIN.guardado)).toBeInTheDocument();
@@ -155,6 +173,35 @@ describe("EditorParticipantes", () => {
     expect(cuerpoEnviado().carnets).toEqual(["100000001", "", "100000002"]);
   });
 
+  it("muestra y guarda el correo recortado; no envía uno inválido (PRD §5.14)", async () => {
+    montar(3, ["Ana", null, "Carlos"], [null, null, null], ["ana@ejemplo.test", null, null]);
+    expect(campoCorreo(1)).toHaveValue("ana@ejemplo.test");
+    expect(campoCorreo(1)).toHaveAttribute("type", "email");
+    fireEvent.change(campoCorreo(3)!, { target: { value: "carlos@" } });
+    await guardar();
+    expect(campoCorreo(3)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText(TEXTOS_ADMIN.correoInvalido(3))).toBeInTheDocument();
+    expect(fetchSimulado).not.toHaveBeenCalled();
+
+    fireEvent.change(campoCorreo(3)!, { target: { value: " carlos@ejemplo.test " } });
+    responder(200, { cantidad: 3 });
+    await guardar();
+    expect(cuerpoEnviado().correos).toEqual(["ana@ejemplo.test", "", "carlos@ejemplo.test"]);
+  });
+
+  it("pegar una línea reemplaza también el correo: uno viejo nunca queda con otro nombre", async () => {
+    montar(2, ["Ana", "Bea"], [null, null], ["ana@ejemplo.test", "bea@ejemplo.test"]);
+    fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.pegarLista }));
+    fireEvent.change(screen.getByLabelText(TEXTOS_ADMIN.pegarTitulo), {
+      target: { value: "100000001\tCarla Mora\tcarla@ejemplo.test\nDiego Solís" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.usarLista }));
+    expect(campoNombre(1)).toHaveValue("Carla Mora");
+    expect(campoCorreo(1)).toHaveValue("carla@ejemplo.test");
+    expect(campoNombre(2)).toHaveValue("Diego Solís");
+    expect(campoCorreo(2)).toHaveValue("");
+  });
+
   it("si se ocultarían evaluaciones, pide confirmación y reenvía con confirmar", async () => {
     montar(4);
     fireEvent.change(campoCantidad(), { target: { value: "2" } });
@@ -167,7 +214,14 @@ describe("EditorParticipantes", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.confirmar }));
     });
-    expect(cuerpoEnviado(1)).toEqual({ jornada: "noche", cantidad: 2, nombres: ["Ana", ""], carnets: ["", ""], confirmar: true });
+    expect(cuerpoEnviado(1)).toEqual({
+      jornada: "noche",
+      cantidad: 2,
+      nombres: ["Ana", ""],
+      carnets: ["", ""],
+      correos: ["", ""],
+      confirmar: true,
+    });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

@@ -18,19 +18,22 @@ const { PUT } = await import("@/app/api/admin/participantes/route");
 const SID = "0123456789abcdef0123";
 const NOMBRES = ["Ana Pérez", "", "Carlos Peña"];
 const CARNETS = ["100000001", " 200000002 ", ""];
-/** What the db layer receives for NOMBRES + CARNETS: trimmed, blanks as null. */
-const LISTA = { nombres: ["Ana Pérez", null, "Carlos Peña"], carnets: ["100000001", "200000002", null] };
+/** What the db layer receives for NOMBRES + CARNETS (no emails): trimmed, blanks as null. */
+const LISTA = { nombres: ["Ana Pérez", null, "Carlos Peña"], carnets: ["100000001", "200000002", null], correos: [null, null, null] };
 
 function guardar(cuerpo: unknown) {
   return PUT(
     new Request("http://localhost/api/admin/participantes", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      // The editor always names the jornada it loaded and sends a carnet per
-      // name; tests may override both.
+      // The editor always names the jornada it loaded and sends a carnet and
+      // an email per name; tests may override them.
       body: JSON.stringify(
         cuerpo && typeof cuerpo === "object"
-          ? { jornada: "manana", carnets: ((cuerpo as { nombres?: unknown[] }).nombres ?? []).map(() => ""), ...cuerpo }
+          ? (() => {
+              const vacios = ((cuerpo as { nombres?: unknown[] }).nombres ?? []).map(() => "");
+              return { jornada: "manana", carnets: vacios, correos: vacios, ...cuerpo };
+            })()
           : cuerpo,
       ),
     }),
@@ -79,6 +82,28 @@ describe("PUT /api/admin/participantes", () => {
     expect(corta.status).toBe(400);
     await expect(corta.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.listaParticipantes });
     expect(db.guardarParticipantes).not.toHaveBeenCalled();
+  });
+
+  it("guarda los correos recortados y en minúsculas; 400 con uno inválido; nunca los registra (PRD §5.14)", async () => {
+    const respuesta = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS, correos: [" Ana.Perez@Ejemplo.TEST ", "", "carlos@ejemplo.test"] });
+    expect(respuesta.status).toBe(200);
+    expect(db.guardarParticipantes).toHaveBeenCalledWith(
+      "manana",
+      { ...LISTA, correos: ["ana.perez@ejemplo.test", null, "carlos@ejemplo.test"] },
+      false,
+    );
+
+    const invalido = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS, correos: ["", "carlos@", ""] });
+    expect(invalido.status).toBe(400);
+    await expect(invalido.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.correoParticipante(2) });
+    const corta = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS, correos: [""] });
+    expect(corta.status).toBe(400);
+    await expect(corta.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.listaParticipantes });
+
+    const consola = vi.spyOn(console, "error").mockImplementation(() => {});
+    db.guardarParticipantes.mockRejectedValueOnce(new Error('Failed query: params: "carlos@ejemplo.test"'));
+    await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS, correos: ["", "", "carlos@ejemplo.test"] });
+    expect(consola.mock.calls.flat().join(" ")).not.toContain("carlos@ejemplo.test");
   });
 
   it("guarda la lista de la jornada de la sesión", async () => {

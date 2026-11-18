@@ -31,7 +31,8 @@ import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { nivelGeneral, proporcion } from "@/lib/puntajes";
 import { CANTIDAD_MEJORES, type Reporte } from "@/lib/reportes";
-import { cargarReporte } from "../cargarReporte";
+import type { UltimoEnvio } from "@/lib/resultados";
+import { cargarEstadosCorreo, cargarReporte } from "../cargarReporte";
 import { exigirDocente } from "../exigirDocente";
 
 // Reporte general (PRD §11.2, FR-11): KPI tiles (with "Ausentes", §5.13),
@@ -70,7 +71,10 @@ export default function PaginaReporteGeneral({ params }: PageProps<"/reportes/[c
 async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia]">, "params">) {
   const { competencia: id } = await params;
   const jornada = await exigirDocente(`/reportes/${id}`);
-  const { competencia, reporte } = await cargarReporte(jornada, id, "/reportes/[competencia]");
+  const [{ competencia, reporte }, envios] = await Promise.all([
+    cargarReporte(jornada, id, "/reportes/[competencia]"),
+    cargarEstadosCorreo(jornada, id, "/reportes/[competencia]"),
+  ]);
 
   return (
     <>
@@ -87,7 +91,7 @@ async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia
         </p>
         <h1 className="mt-2 text-h2 font-semibold md:text-display">{TEXTOS.reportes.general}</h1>
       </header>
-      <AccionesReporte competenciaId={competencia.id} />
+      <AccionesReporte competenciaId={competencia.id} general />
 
       {reporte === null ? (
         <p role="alert" className="mt-10 text-center text-body text-ink">
@@ -96,13 +100,22 @@ async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia
       ) : reporte.vacio ? (
         <p className="mt-10 text-center text-sub text-ink-3">{TEXTOS.reportes.vacio}</p>
       ) : (
-        <Contenido competencia={competencia} reporte={reporte} />
+        <Contenido competencia={competencia} reporte={reporte} envios={envios} />
       )}
     </>
   );
 }
 
-function Contenido({ competencia, reporte }: { competencia: Competencia; reporte: Reporte }) {
+function Contenido({
+  competencia,
+  reporte,
+  envios,
+}: {
+  competencia: Competencia;
+  reporte: Reporte;
+  /** Latest results email per participant (PRD §5.14); null if it couldn't be read. */
+  envios: ReadonlyMap<string, UltimoEnvio> | null;
+}) {
   const { kpis } = reporte;
   const total = (n: number, de: number) => TEXTOS_REPORTES.deTotal(formatearEntero(n), formatearEntero(de));
   const indicadores = competencia.indicadores.map(({ numero, titulo }) => ({ numero, titulo }));
@@ -198,6 +211,7 @@ function Contenido({ competencia, reporte }: { competencia: Competencia; reporte
             asistencia: p.asistencia,
             marcasAusente: p.marcasAusente,
             brecha: p.brecha,
+            correo: envios === null ? null : (envios.get(p.id)?.estado ?? "pendiente"),
           }))}
         />
         <ClaveIndicadores indicadores={indicadores} />

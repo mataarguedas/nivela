@@ -13,6 +13,7 @@ describe("destinoVolver", () => {
     ["/reportes/adaptabilidad/enviar", "/reportes/adaptabilidad", "Reporte general"],
     ["/reportes/adaptabilidad", "/reportes", "Reportes"],
     ["/reportes/consolidado", "/reportes", "Reportes"],
+    ["/reportes/consolidado/P07", "/reportes/consolidado", "Reporte consolidado"],
     ["/reportes", "/", "Inicio"],
   ])("%s → %s (%s)", (ruta, href, etiqueta) => {
     expect(destinoVolver(ruta)).toEqual({ href, etiqueta });

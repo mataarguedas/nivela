@@ -3,8 +3,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { BarrasHorizontales } from "@/components/reportes/BarrasHorizontales";
 import { BotonImprimir } from "@/components/reportes/BotonImprimir";
-import { barrasParticipantesPorNivel, barrasPuntajePorCompetencia } from "@/components/reportes/datosGraficos";
+import {
+  barrasParticipantesPorNivel,
+  barrasPuntajePorCompetencia,
+  parrafoConsolidado,
+} from "@/components/reportes/datosGraficos";
 import { FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { MapaNiveles } from "@/components/reportes/MapaNiveles";
 import { TablaConsolidada } from "@/components/reportes/TablaConsolidada";
 import { clasesBoton } from "@/components/ui/Boton";
 import { IconoChevron } from "@/components/ui/iconos";
@@ -12,15 +17,16 @@ import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
+import { formatearDecimal, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
 import { proporcion } from "@/lib/puntajes";
-import type { CompetenciaConsolidada, ReporteConsolidado } from "@/lib/reportes";
+import { tableroConsolidado, type CompetenciaConsolidada, type ParticipanteAtencion, type ReporteConsolidado } from "@/lib/reportes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 import { cargarConsolidado } from "../cargarReporte";
 import { exigirDocente } from "../exigirDocente";
 
 // Reporte consolidado (PRD §11.4): the five competencias of the session's
-// jornada together. KPI tiles, the group's puntaje per competencia (simple
+// jornada together. KPI tiles, then the dashboard ("Tablero": a plain-language
+// summary, the "Mapa de niveles" heatmap and "Requieren atención"), the group's puntaje per competencia (simple
 // bars plus a table linking to each Reporte general), participants per level
 // by their promedio entre competencias, and one sortable table with every
 // participant's puntaje general in each competencia. Everything comes from
@@ -97,6 +103,7 @@ function Contenido({ reporte }: { reporte: ReporteConsolidado }) {
   const disponibles = reporte.competencias.flatMap((c, i) => (c.disponible ? [{ competencia: c, indice: i }] : []));
   const porCompetencia = barrasPuntajePorCompetencia(disponibles.map((d) => d.competencia));
   const porNivel = barrasParticipantesPorNivel(reporte.participantes.flatMap((p) => (p.nivel === null ? [] : [p.nivel])));
+  const tablero = tableroConsolidado(reporte);
 
   return (
     <div className="mt-8 flex flex-col gap-4">
@@ -123,6 +130,19 @@ function Contenido({ reporte }: { reporte: ReporteConsolidado }) {
         />
         <Kpi etiqueta={TEXTOS_REPORTES.evaluadoresCompletos} valor={total(kpis.evaluadoresCompletos, kpis.evaluadoresTotal)} />
       </dl>
+
+      <SeccionReporte id="en-pocas-palabras" titulo={t.resumenTitulo}>
+        <p className="text-body text-ink">{parrafoConsolidado(reporte, tablero)}</p>
+      </SeccionReporte>
+
+      <SeccionReporte id="mapa" titulo={t.mapaNiveles} mensaje={t.mapaNivelesMensaje}>
+        <MapaNiveles reporte={reporte} etiquetadaPor="mapa-titulo mapa-mensaje" />
+      </SeccionReporte>
+
+      <SeccionReporte id="atencion" titulo={t.atencionTitulo}>
+        <p className="-mt-2 mb-4 text-caption text-ink-2">{t.atencionNota}</p>
+        <ListaAtencion atencion={tablero.atencion} />
+      </SeccionReporte>
 
       <SeccionReporte id="por-competencia" titulo={t.puntajePorCompetencia} mensaje={porCompetencia.titulo}>
         <FiguraGrafico
@@ -268,5 +288,33 @@ function TablaCompetencias({ competencias, etiquetadaPor }: { competencias: Comp
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** "Requieren atención": each participant with a competencia in Básico, linking to their report. */
+function ListaAtencion({ atencion }: { atencion: readonly ParticipanteAtencion[] }) {
+  const t = TEXTOS_REPORTES.consolidado;
+  if (atencion.length === 0) return <p className="text-body text-ink-3">{t.atencionVacio}</p>;
+  return (
+    <ul className="grid gap-2 md:grid-cols-2">
+      {atencion.map((p) => (
+        <li key={p.id} className="rounded-tile bg-canvas p-4">
+          <Link
+            href={`/reportes/consolidado/${p.id}`}
+            className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-pill px-2 font-semibold text-link hover:underline"
+          >
+            {p.etiqueta}
+            <IconoChevron className="shrink-0" />
+          </Link>
+          {p.promedio !== null && p.nivel !== null && (
+            <p className="text-caption text-ink-3">{t.promedioValor(formatearDecimal(p.promedio), obtenerNivel(p.nivel).etiqueta)}</p>
+          )}
+          <p className="mt-2 text-[14px] text-ink">
+            <span className="font-semibold">{t.basicoEn}</span>{" "}
+            {formatearLista(p.competencias.map((c) => `${c.nombre} (${formatearDecimal(c.puntaje)})`))}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }

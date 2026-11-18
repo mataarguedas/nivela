@@ -161,6 +161,8 @@ export const TEXTOS = {
   reportes: {
     enlace: "Reportes",
     general: "Reporte general",
+    /** The nav's "Volver a Reporte consolidado" (PRD §11.5); the page copy is in TEXTOS_REPORTES.consolidado. */
+    consolidado: "Reporte consolidado",
     individual: "Reporte individual",
     nivelGeneral: "Nivel general",
     puntajeGeneral: "Puntaje general",

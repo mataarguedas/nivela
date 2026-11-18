@@ -622,6 +622,7 @@ export type ReporteConsolidado = {
     /** Mean of the participants' promedios entre competencias (puntajeGrupo). */
     promedioGrupo: number | null;
     nivelGrupo: NivelValor | null;
+    brechaGrupo: Brecha | null;
     evaluadoresCompletos: number;
     evaluadoresTotal: number;
   };
@@ -727,8 +728,155 @@ export function agregarConsolidado(
       cobertura: proporcion(recibidas, esperadas),
       promedioGrupo,
       nivelGrupo: promedioGrupo === null ? null : nivelGeneral(promedioGrupo),
+      brechaGrupo: promedioGrupo === null ? null : brechaSiguienteNivel(promedioGrupo),
       evaluadoresCompletos: suma((c) => c.evaluadoresCompletos),
       evaluadoresTotal: suma((c) => c.evaluadoresTotal),
     },
+  };
+}
+
+// --- Dashboard of the Reporte consolidado (PRD §11.4) -----------------------
+
+/** A competencia named in a dashboard sentence, with its score. */
+export type CompetenciaDestacada = { id: string; nombre: string; puntaje: number };
+
+/** A participant with at least one competencia in nivel Básico ("Requieren atención"). */
+export type ParticipanteAtencion = {
+  id: string;
+  etiqueta: string;
+  promedio: number | null;
+  nivel: NivelValor | null;
+  /** The competencias where their puntaje general is Básico, in config order. */
+  competencias: CompetenciaDestacada[];
+};
+
+export type TableroConsolidado = {
+  /** The competencias with the highest and lowest puntaje del grupo (ties kept); empty without scores. */
+  masFuertes: CompetenciaDestacada[];
+  masDebiles: CompetenciaDestacada[];
+  /** Participants by nivel of their promedio entre competencias. */
+  conteoNiveles: Record<NivelValor, number>;
+  /** Lowest promedio first, then id. */
+  atencion: ParticipanteAtencion[];
+};
+
+function destacadas(candidatas: readonly { id: string; nombre: string; puntaje: number | null }[]) {
+  const extremo = extremos(candidatas.map((c) => c.puntaje));
+  const tomar = (indices: number[]) =>
+    indices.map((i) => ({ id: candidatas[i].id, nombre: candidatas[i].nombre, puntaje: candidatas[i].puntaje as number }));
+  return extremo ? { masFuertes: tomar(extremo.maximos), masDebiles: tomar(extremo.minimos) } : { masFuertes: [], masDebiles: [] };
+}
+
+/** The dashboard figures, from the consolidated report alone (no new math: levels come from puntajes.ts). */
+export function tableroConsolidado(reporte: ReporteConsolidado): TableroConsolidado {
+  const disponibles = reporte.competencias.filter((c) => c.disponible);
+  const atencion = reporte.participantes
+    .map((p) => ({
+      id: p.id,
+      etiqueta: p.etiqueta,
+      promedio: p.promedio,
+      nivel: p.nivel,
+      competencias: p.celdas.flatMap((celda, i) =>
+        celda?.puntaje != null && celda.nivel === 1
+          ? [{ id: reporte.competencias[i].id, nombre: reporte.competencias[i].nombre, puntaje: celda.puntaje }]
+          : [],
+      ),
+    }))
+    .filter((p) => p.competencias.length > 0)
+    .sort((a, b) => redondear2(a.promedio ?? 0) - redondear2(b.promedio ?? 0) || a.id.localeCompare(b.id));
+  return {
+    ...destacadas(disponibles),
+    conteoNiveles: distribucion(reporte.participantes.flatMap((p) => (p.nivel === null ? [] : [p.nivel]))),
+    atencion,
+  };
+}
+
+// --- Reporte del participante (PRD §11.5) ----------------------------------
+//
+// One participant across every competencia of the jornada, built on each
+// competencia's Reporte so every figure matches that competencia's Reporte
+// individual. Identified by carnet, never by name.
+
+export type IndicadorParticipante = { numero: number; titulo: string; media: number | null; nivel: NivelValor | null };
+
+export type CompetenciaParticipante = {
+  id: string;
+  nombre: string;
+  /** It has a rubric and a team in this jornada. */
+  disponible: boolean;
+  puntaje: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+  evaluaciones: number;
+  asistencia: Asistencia | null;
+  /** Empty when not available. */
+  indicadores: IndicadorParticipante[];
+  /** Highest and lowest indicator means (ties kept); empty without ratings. */
+  indicadoresFuertes: IndicadorParticipante[];
+  indicadoresDebiles: IndicadorParticipante[];
+};
+
+export type ReporteParticipanteConsolidado = {
+  id: string;
+  etiqueta: string;
+  promedio: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+  competenciasEvaluadas: number;
+  competenciasDisponibles: number;
+  /** Evaluations received, summed over the competencias. */
+  evaluaciones: number;
+  /** Every competencia in config order, available or not. */
+  competencias: CompetenciaParticipante[];
+  masFuertes: CompetenciaDestacada[];
+  masDebiles: CompetenciaDestacada[];
+};
+
+/** Null when the participant isn't in the jornada's active list. */
+export function agregarParticipanteConsolidado(
+  participantes: readonly Pick<Participante, "id" | "etiquetaReporte">[],
+  entradas: readonly EntradaConsolidado[],
+  participanteId: string,
+): ReporteParticipanteConsolidado | null {
+  const participante = participantes.find((p) => p.id === participanteId);
+  if (!participante) return null;
+
+  const competencias = entradas.map(({ id, nombre, reporte }): CompetenciaParticipante => {
+    const propio = reporte?.participantes.find((p) => p.id === participanteId);
+    const indicadores = (propio?.indicadores ?? []).map((i) => ({
+      numero: i.numero,
+      titulo: i.titulo,
+      media: i.media,
+      nivel: i.media === null ? null : nivelGeneral(i.media),
+    }));
+    const extremo = extremos(indicadores.map((i) => i.media));
+    return {
+      id,
+      nombre,
+      disponible: reporte !== null,
+      puntaje: propio?.puntajeGeneral ?? null,
+      nivel: propio?.nivelGeneral ?? null,
+      brecha: propio?.brecha ?? null,
+      evaluaciones: propio?.evaluaciones ?? 0,
+      asistencia: propio?.asistencia ?? null,
+      indicadores,
+      indicadoresFuertes: extremo ? extremo.maximos.map((i) => indicadores[i]) : [],
+      indicadoresDebiles: extremo ? extremo.minimos.map((i) => indicadores[i]) : [],
+    };
+  });
+
+  const puntajes = competencias.flatMap((c) => (c.puntaje === null ? [] : [c.puntaje]));
+  const promedio = puntajeEntreCompetencias(puntajes);
+  return {
+    id: participante.id,
+    etiqueta: participante.etiquetaReporte,
+    promedio,
+    nivel: promedio === null ? null : nivelGeneral(promedio),
+    brecha: promedio === null ? null : brechaSiguienteNivel(promedio),
+    competenciasEvaluadas: puntajes.length,
+    competenciasDisponibles: competencias.filter((c) => c.disponible).length,
+    evaluaciones: competencias.reduce((suma, c) => suma + c.evaluaciones, 0),
+    competencias,
+    ...destacadas(competencias.filter((c) => c.disponible)),
   };
 }

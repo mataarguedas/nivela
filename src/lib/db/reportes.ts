@@ -7,12 +7,15 @@ import type { Participante } from "@/config/participantes";
 import { estadoCuenta } from "@/lib/cuentas";
 import {
   agregarConsolidado,
+  agregarParticipanteConsolidado,
   agregarReporte,
   agregarResumenGrupo,
+  type EntradaConsolidado,
   type FilaReporte,
   type InfoCuenta,
   type Reporte,
   type ReporteConsolidado,
+  type ReporteParticipanteConsolidado,
   type ResumenGrupo,
 } from "@/lib/reportes";
 import type { JornadaResumen } from "@/lib/validacion";
@@ -69,12 +72,13 @@ async function reporteSobre(
 }
 
 /**
- * The Reporte consolidado (PRD §11.4): every competencia of the session's
- * jornada, each over its own rubric and team, all over the jornada's one
- * participant list (read once). A competencia without a rubric or a team in
- * the jornada is listed as not available. Read-only.
+ * Every competencia of the jornada, each over its own rubric and team, all
+ * over the jornada's one participant list (read once). A competencia without
+ * a rubric or a team in the jornada comes back with `reporte: null`.
  */
-export async function obtenerReporteConsolidado(jornada: JornadaId): Promise<ReporteConsolidado> {
+async function leerEntradasConsolidado(
+  jornada: JornadaId,
+): Promise<{ participantes: Participante[]; entradas: EntradaConsolidado[] }> {
   const participantes = await obtenerParticipantes(jornada);
   const entradas = await Promise.all(
     competenciasDeJornada(jornada).map(async (competencia) => {
@@ -86,7 +90,30 @@ export async function obtenerReporteConsolidado(jornada: JornadaId): Promise<Rep
       };
     }),
   );
+  return { participantes, entradas };
+}
+
+/** The Reporte consolidado (PRD §11.4) of the session's jornada. Read-only. */
+export async function obtenerReporteConsolidado(jornada: JornadaId): Promise<ReporteConsolidado> {
+  const { participantes, entradas } = await leerEntradasConsolidado(jornada);
   return agregarConsolidado(participantes, entradas);
+}
+
+/**
+ * The Reporte del participante (PRD §11.5): one participant across every
+ * competencia of the session's jornada, plus the active list (carnet labels)
+ * for the previous/next links. `reporte` is null when the id isn't active in
+ * the jornada. Read-only.
+ */
+export async function obtenerParticipanteConsolidado(
+  jornada: JornadaId,
+  participanteId: string,
+): Promise<{ reporte: ReporteParticipanteConsolidado | null; lista: { id: string; etiqueta: string }[] }> {
+  const { participantes, entradas } = await leerEntradasConsolidado(jornada);
+  return {
+    reporte: agregarParticipanteConsolidado(participantes, entradas, participanteId),
+    lista: participantes.map((p) => ({ id: p.id, etiqueta: p.etiquetaReporte })),
+  };
 }
 
 /**

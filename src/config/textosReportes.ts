@@ -159,10 +159,62 @@ export const TEXTOS_REPORTES = {
     verIndividual: (participante: string, competencia: string) => `Reporte individual de ${participante} en ${competencia}`,
     titulos: {
       sinPuntajes: "Aún no hay puntajes por competencia.",
-      unaCompetencia: (nombre: string, valor: string) => `Solo «${nombre}» tiene puntaje del grupo (${valor})`,
+      unaCompetencia: (nombre: string, valor: string) => `Solo «${nombre}» tiene puntaje (${valor})`,
       masAlta: (nombre: string, valor: string) => `La competencia con el puntaje más alto es «${nombre}» (${valor})`,
       empateAltas: (nombres: string, valor: string) => `${nombres} empatan con el puntaje más alto (${valor})`,
-      todasIguales: (valor: string) => `Todas las competencias tienen el mismo puntaje del grupo (${valor})`,
+      todasIguales: (valor: string) => `Todas las competencias tienen el mismo puntaje (${valor})`,
+    },
+    // Dashboard (PRD §11.4 "Tablero").
+    resumenTitulo: "En pocas palabras",
+    parrafo: {
+      grupo: (nivel: string, valor: string) => `El grupo alcanzó un nivel ${nivel} (${valor}) como promedio entre competencias.`,
+      participante: (valor: string, nivel: string, n: string, total: string) =>
+        `El promedio entre competencias es ${valor} (${nivel}), en ${n} de ${total} competencias.`,
+      sinPromedio: "Aún no hay puntajes para calcular el promedio entre competencias.",
+      /** Two halves joined with " y ", so a single strongest and tied weakest read right. */
+      fuerte: (competencia: string) => `La competencia más fuerte es ${competencia}`,
+      fuertes: (competencias: string) => `Las competencias más fuertes son ${competencias}`,
+      debil: (competencia: string) => `la que más necesita refuerzo es ${competencia}`,
+      debiles: (competencias: string) => `las que más necesitan refuerzo son ${competencias}`,
+      iguales: (valor: string) => `Todas las competencias tienen el mismo puntaje (${valor}).`,
+      /** "«Adaptabilidad» (3,10)" */
+      competencia: (nombre: string, valor: string) => `«${nombre}» (${valor})`,
+      atencion: (n: number) =>
+        n === 0
+          ? "Ningún participante tiene competencias en nivel Básico."
+          : n === 1
+            ? "1 participante tiene al menos una competencia en nivel Básico."
+            : `${n} participantes tienen al menos una competencia en nivel Básico.`,
+    },
+    mapaNiveles: "Mapa de niveles",
+    mapaNivelesMensaje: "Cada fila es un participante y cada columna una competencia",
+    mapaNivelesNota: "Cada celda muestra el puntaje general; el color indica el nivel. Ordenado por promedio entre competencias.",
+    celdaMapa: (competencia: string, valor: string, nivel: string) => `${competencia}: ${valor} · ${nivel}`,
+    ausenteCorto: "Aus.",
+    atencionTitulo: "Requieren atención",
+    atencionNota: "Participantes con al menos una competencia en nivel Básico, del promedio más bajo al más alto.",
+    atencionVacio: "Ningún participante tiene competencias en nivel Básico.",
+    basicoEn: "Básico en:",
+    promedioValor: (valor: string, nivel: string) => `Promedio ${valor} · ${nivel}`,
+    // Reporte del participante (PRD §11.5).
+    participante: {
+      titulo: "Reporte del participante",
+      verReporte: "Ver reporte del participante",
+      volver: "Volver al Reporte consolidado",
+      subtitulo: (jornada: string) => `Todas las competencias · ${jornada}`,
+      puntajePorCompetencia: "Puntaje por competencia",
+      detalle: "Detalle por competencia",
+      sinEvaluaciones: "Este participante aún no tiene evaluaciones en esta jornada.",
+      sinEvaluacionesCompetencia: "Aún no tiene evaluaciones en esta competencia.",
+      ausenteCompetencia: "Marcado ausente en esta competencia.",
+      indicadorMasAlto: (n: number) => (n === 1 ? "Indicador más alto" : "Indicadores más altos"),
+      indicadorMasBajo: (n: number) => (n === 1 ? "Indicador más bajo" : "Indicadores más bajos"),
+      /** "Ind. 2 «Actúa de manera rápida» (3,50)" */
+      indicadorValor: (numero: number, titulo: string, valor: string) => `Ind. ${numero} «${titulo}» (${valor})`,
+      todosIguales: (valor: string) => `Todos los indicadores tienen el mismo promedio (${valor})`,
+      verIndividual: "Ver reporte individual",
+      verIndividualDe: (competencia: string) => `Ver reporte individual de ${competencia}`,
+      verTodas: "Ver todas sus competencias",
     },
   },
   volverGeneral: "Volver al Reporte general",

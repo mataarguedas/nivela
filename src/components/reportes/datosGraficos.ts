@@ -6,6 +6,10 @@ import { nivelGeneral, proporcion, redondear2, UMBRALES_NIVEL } from "@/lib/punt
 import type {
   CifrasGrupo,
   CompetenciaConsolidada,
+  CompetenciaDestacada,
+  ReporteConsolidado,
+  ReporteParticipanteConsolidado,
+  TableroConsolidado,
   DistribucionIndicador,
   IndicadorGrupo,
   PosicionRanking,
@@ -226,6 +230,61 @@ export function barrasPuntajePorCompetencia(competencias: readonly PuntajeCompet
     referencias: [...REFERENCIAS_NIVEL],
     barras: competencias.map((c) => barraPuntaje(c.id, c.nombre, c.puntaje)),
   };
+}
+
+// --- Dashboard sentences (Reporte consolidado §11.4, Reporte del participante §11.5)
+
+const listaCompetencias = (competencias: readonly CompetenciaDestacada[]) =>
+  formatearLista(competencias.map((c) => TEXTOS_REPORTES.consolidado.parrafo.competencia(c.nombre, formatearDecimal(c.puntaje))));
+
+/**
+ * "La competencia más fuerte es «A» (3,10) y la que más necesita refuerzo es
+ * «B» (2,19)." Null with fewer than 2 competencias with a score; equal scores
+ * get a neutral sentence; ties list every competencia.
+ */
+export function fraseFuertesDebiles(
+  masFuertes: readonly CompetenciaDestacada[],
+  masDebiles: readonly CompetenciaDestacada[],
+  conPuntaje: number,
+): string | null {
+  const p = TEXTOS_REPORTES.consolidado.parrafo;
+  if (conPuntaje < 2 || masFuertes.length === 0 || masDebiles.length === 0) return null;
+  if (masFuertes.length === conPuntaje) return p.iguales(formatearDecimal(masFuertes[0].puntaje));
+  const fuerte = masFuertes.length === 1 ? p.fuerte(listaCompetencias(masFuertes)) : p.fuertes(listaCompetencias(masFuertes));
+  const debil = masDebiles.length === 1 ? p.debil(listaCompetencias(masDebiles)) : p.debiles(listaCompetencias(masDebiles));
+  return `${fuerte} y ${debil}.`;
+}
+
+/** The consolidated report's "En pocas palabras": the group's level, its gap, the strongest/weakest competencias and how many need attention. */
+export function parrafoConsolidado(reporte: Pick<ReporteConsolidado, "kpis" | "competencias">, tablero: TableroConsolidado): string {
+  const p = TEXTOS_REPORTES.consolidado.parrafo;
+  const { promedioGrupo, nivelGrupo, brechaGrupo } = reporte.kpis;
+  if (promedioGrupo === null || nivelGrupo === null) return p.sinPromedio;
+  const frases = [p.grupo(etiquetaNivel(nivelGrupo), formatearDecimal(promedioGrupo))];
+  if (brechaGrupo) frases.push(`${textoBrecha(brechaGrupo)}.`);
+  const conPuntaje = reporte.competencias.filter((c) => c.puntaje !== null).length;
+  const extremos = fraseFuertesDebiles(tablero.masFuertes, tablero.masDebiles, conPuntaje);
+  if (extremos) frases.push(extremos);
+  frases.push(p.atencion(tablero.atencion.length));
+  return frases.join(" ");
+}
+
+/** The participant report's "En pocas palabras". */
+export function parrafoParticipante(reporte: ReporteParticipanteConsolidado): string {
+  const p = TEXTOS_REPORTES.consolidado.parrafo;
+  if (reporte.promedio === null || reporte.nivel === null) return p.sinPromedio;
+  const frases = [
+    p.participante(
+      formatearDecimal(reporte.promedio),
+      etiquetaNivel(reporte.nivel),
+      formatearEntero(reporte.competenciasEvaluadas),
+      formatearEntero(reporte.competenciasDisponibles),
+    ),
+  ];
+  if (reporte.brecha) frases.push(`${textoBrecha(reporte.brecha)}.`);
+  const extremos = fraseFuertesDebiles(reporte.masFuertes, reporte.masDebiles, reporte.competenciasEvaluadas);
+  if (extremos) frases.push(extremos);
+  return frases.join(" ");
 }
 
 // --- Most chosen level per indicator (Reporte individual §11.1)

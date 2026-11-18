@@ -102,6 +102,63 @@ test.describe("como docente", () => {
     expect(lineas[1]).toMatch(/^Mañana,P01,/);
   });
 
+  test("el tablero resume al grupo y lleva al reporte de cada participante", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(RUTA);
+
+    // Dashboard (PRD §11.4): a plain-language summary, the level map and who needs attention.
+    await expect(
+      principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d,\d{2}\) como promedio entre competencias\./),
+    ).toBeVisible();
+    const mapa = principal(page).getByRole("table", { name: /^Mapa de niveles/ });
+    await expect(mapa.getByRole("columnheader")).toHaveText(["Participante", ...disponibles("manana").map((c) => c.nombre), "Promedio"]);
+    const filas = await mapa.getByRole("row").count();
+    expect(filas).toBeGreaterThan(1);
+    // Every colored cell also shows its score (color never carries the level alone).
+    await expect(mapa.getByRole("cell").first()).toHaveText(/^(\d,\d{2} · (Básico|Intermedio|Avanzado|Experto)|—|Aus\.Ausente)$/);
+    await expect(principal(page).getByRole("heading", { level: 2, name: "Requieren atención" })).toBeVisible();
+    await sinDesborde(page);
+
+    // The first row of the map is the highest promedio; its carnet opens the Reporte del participante.
+    const primero = mapa.getByRole("rowheader").first().getByRole("link");
+    const etiqueta = (await primero.textContent())!.trim();
+    const href = await primero.getAttribute("href");
+    expect(href).toMatch(/^\/reportes\/consolidado\/P\d{2}$/);
+    const id = href!.split("/").at(-1)!;
+    await page.goto(href!);
+
+    await expect(principal(page).getByRole("heading", { level: 1, name: etiqueta })).toBeVisible();
+    await expect(principal(page).getByText(/^El promedio entre competencias es \d,\d{2} \(/)).toBeVisible();
+    await expect(principal(page).getByText("Competencias evaluadas", { exact: true })).toBeVisible();
+    const tarjetas = principal(page).locator(".tarjeta-competencia");
+    await expect(tarjetas).toHaveCount(competenciasDeJornada("manana").length);
+    for (const c of disponibles("manana")) {
+      await expect(principal(page).getByRole("link", { name: `Ver reporte individual de ${c.nombre}` })).toHaveAttribute(
+        "href",
+        `/reportes/${c.id}/${id}`,
+      );
+    }
+    await sinDesborde(page);
+
+    const volver = page.getByRole("navigation", { name: "Navegación principal" }).getByRole("link", { name: /^Volver a / });
+    await expect(volver).toHaveAccessibleName("Volver a Reporte consolidado");
+
+    // From a competencia's Reporte individual, back to all of this participant's competencias.
+    const competencia = disponibles("manana")[0];
+    await page.goto(`/reportes/${competencia.id}/${id}`);
+    await expect(principal(page).getByRole("link", { name: "Ver todas sus competencias" })).toHaveAttribute(
+      "href",
+      `/reportes/consolidado/${id}`,
+    );
+  });
+
+  test("un participante que no está en la lista responde 404", async ({ page }) => {
+    await page.goto(`${RUTA}/P99`);
+    await expect(principal(page).getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
+    const mal = await page.goto(`${RUTA}/no-es-un-id`);
+    expect(mal?.status()).toBe(404);
+  });
+
   test("en la noche, las competencias sin plantilla aparecen como no disponibles", async ({ page }) => {
     expect((await page.request.post("/api/jornada", { data: { jornada: "noche" } })).status()).toBe(200);
     await page.goto(RUTA);

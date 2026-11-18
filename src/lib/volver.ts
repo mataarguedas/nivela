@@ -23,6 +23,8 @@ export function destinoVolver(pathname: string): DestinoVolver | null {
   if (segmentos[0] === "reportes") {
     const [, competencia, hijo, ...resto] = segmentos;
     if (resto.length > 0) return null;
+    // /reportes/consolidado/[p] (Reporte del participante, PRD §11.5) → Reporte consolidado.
+    if (hijo && competencia === "consolidado") return { href: "/reportes/consolidado", etiqueta: TEXTOS.reportes.consolidado };
     // /reportes/[c]/[p], /reportes/[c]/grupo and /reportes/[c]/enviar → Reporte general.
     if (hijo) return { href: `/reportes/${competencia}`, etiqueta: TEXTOS.reportes.general };
     if (competencia) return { href: "/reportes", etiqueta: TEXTOS.reportes.enlace };

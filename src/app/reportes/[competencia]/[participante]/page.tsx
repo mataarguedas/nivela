@@ -108,6 +108,15 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
           </div>
         )}
         {datos?.asistencia && <AvisoAsistencia datos={datos} />}
+        {datos && (
+          <Link
+            href={`/reportes/consolidado/${datos.id}`}
+            className="mt-4 inline-flex min-h-11 items-center gap-1 rounded-pill px-1 text-[14px] text-link hover:underline print:hidden"
+          >
+            {TEXTOS_REPORTES.consolidado.participante.verTodas}
+            <IconoChevron className="shrink-0" />
+          </Link>
+        )}
       </header>
       <AccionesReporte competenciaId={competencia.id} />
 

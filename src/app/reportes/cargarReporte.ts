@@ -4,10 +4,10 @@ import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { leerUltimosEnvios } from "@/lib/db/envios";
-import { obtenerReporte, obtenerReporteConsolidado, obtenerResumenGrupo } from "@/lib/db/reportes";
+import { obtenerParticipanteConsolidado, obtenerReporte, obtenerReporteConsolidado, obtenerResumenGrupo } from "@/lib/db/reportes";
 import { cargarContextoEnvio, type ContextoEnvio } from "@/lib/envioResultados";
 import { registrarError } from "@/lib/registro";
-import type { Reporte, ReporteConsolidado, ResumenGrupo } from "@/lib/reportes";
+import type { Reporte, ReporteConsolidado, ReporteParticipanteConsolidado, ResumenGrupo } from "@/lib/reportes";
 import type { UltimoEnvio } from "@/lib/resultados";
 import { validarCompetenciaReporte, type JornadaResumen } from "@/lib/validacion";
 
@@ -60,6 +60,28 @@ export async function cargarConsolidado(jornada: JornadaId, ruta: string): Promi
     registrarError(ruta, "GET", inicio, error);
     return null;
   }
+}
+
+/**
+ * The Reporte del participante (PRD §11.5) of the session's jornada. A DB
+ * failure becomes `null` (logged without PII); an id that isn't active in the
+ * jornada is a 404.
+ */
+export async function cargarParticipanteConsolidado(
+  jornada: JornadaId,
+  participanteId: string,
+  ruta: string,
+): Promise<{ reporte: ReporteParticipanteConsolidado; lista: { id: string; etiqueta: string }[] } | null> {
+  const inicio = Date.now();
+  let datos: Awaited<ReturnType<typeof obtenerParticipanteConsolidado>>;
+  try {
+    datos = await obtenerParticipanteConsolidado(jornada, participanteId);
+  } catch (error) {
+    registrarError(ruta, "GET", inicio, error);
+    return null;
+  }
+  if (datos.reporte === null) notFound();
+  return { reporte: datos.reporte, lista: datos.lista };
 }
 
 /**

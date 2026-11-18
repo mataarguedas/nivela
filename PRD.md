@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias and its CSV (§5.9, §7, §10, §11.4). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
+| Version | 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias, its CSV and a dashboard (§5.9, §7, §10, §11.4), and the Reporte del participante, one student across every competencia (§11.5). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
 | Date | 2026-11-18 |
 | Owner | Emmanuel (engineering) |
 | Status | Approved for build (see §16 for open items) |
@@ -141,6 +141,7 @@ Rules:
 ### 5.9 Reports (docente only)
 - `/reportes`: **Reporte consolidado** (all five competencias together, §11.4), then the competencia picker (the competencias with a rubric in the session's jornada) → **Reporte general**.
 - From the ranking table, tap a participant → **Reporte individual**.
+- From the Reporte consolidado (its level map, "Requieren atención" or its table), tap a participant → **Reporte del participante** (§11.5), every competencia of that student; each Reporte individual links to it with "Ver todas sus competencias".
 - From the Reporte general: **Resumen del grupo** (§11.3) and **"Enviar resultados por correo"** (§5.14).
 - "Descargar CSV" and "Imprimir o guardar PDF" are available in both views and in the Reporte consolidado. Printing is also available in the group summary.
 
@@ -247,7 +248,8 @@ The code is what stops someone who knows a classmate's email from claiming that 
 | FR-25 | Group summary for one jornada or both (§11.3). | P1 |
 | FR-26 | Personal results by email with preview, test send, confirmation and send tracking (§5.14). | P0 |
 | FR-27 | Email delivery through Resend, with a "consola" transport for development and tests (§13 Email). | P0 |
-| FR-28 | Reporte consolidado: all five competencias of the jornada in one report, with its CSV (§11.4). | P1 |
+| FR-28 | Reporte consolidado: all five competencias of the jornada in one report, with its CSV and dashboard (§11.4). | P1 |
+| FR-29 | Reporte del participante: one student across every competencia, as a dashboard (§11.5). | P1 |
 
 ## 7. Scoring rules
 
@@ -552,11 +554,25 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 `/reportes/consolidado`, docente only, linked first on `/reportes`. The five competencias of the session's jornada together, for the professors' general report. Like §11.2 it covers only the session's jornada (§5.11).
 - Hero "Reporte consolidado" with *"Todas las competencias · Jornada: {nombre}"*; actions "Descargar CSV" (primary, §10) and "Imprimir o guardar PDF".
 - KPI tiles: competencias con evaluaciones (*"{n} de {m}"*, m = those with a rubric and a team in the jornada; when m < 5, *"{m} de 5 con plantilla en esta jornada"*), participantes evaluados (in at least one competencia), evaluaciones recibidas / esperadas with cobertura (summed over the competencias), promedio entre competencias of the group (§7) and its nivel, evaluadores completos (summed over the teams).
+- **Tablero** (dashboard, right after the KPI tiles), so the docente reads the group at a glance:
+  - **En pocas palabras**: one paragraph generated from the data, e.g. *"El grupo alcanzó un nivel Intermedio (2,48) como promedio entre competencias. Le faltan 0,02 puntos para Avanzado. La competencia más fuerte es «Orientación a resultados» (2,62) y la que más necesita refuerzo es «Orientación al detalle» (2,19). 6 participantes tienen al menos una competencia en nivel Básico."* Ties list every competencia; equal scores and missing data get neutral sentences.
+  - **Mapa de niveles**: a heatmap table, one row per participant (carnet, linking to §11.5) from the highest promedio entre competencias to the lowest, one column per competencia with a rubric plus "Promedio". Each cell is filled with the level color **and shows the score** (the level name is in its tooltip and for screen readers): Básico and Intermedio are too close in lightness to be told apart by color alone. No data shows "—", an absent participant "Aus.". A level legend sits under it.
+  - **Requieren atención**: the participants with at least one competencia in nivel Básico, lowest promedio first, each naming those competencias with their scores and linking to §11.5. Empty: *"Ningún participante tiene competencias en nivel Básico."*
 - **Puntaje del grupo por competencia**: horizontal bars on the 1–4 axis with the threshold lines (§11 simpler charts), one per competencia with a rubric; the title names the highest one, e.g. *"La competencia con el puntaje más alto es «Adaptabilidad» (3,10)"*.
 - **Resumen por competencia**: one row per competencia in config order: name (linking to its Reporte general), that jornada's team label ("Equipo {numero}", from config), puntaje del grupo, nivel, "Para el siguiente nivel", participantes evaluados, cobertura, evaluadores completos. A competencia without a rubric or team in the jornada stays listed with *"Sin plantilla en esta jornada"*.
 - **Participantes por nivel (promedio entre competencias)**: the 4-bar chart over each participant's nivel by promedio entre competencias.
-- **Participantes en todas las competencias**: one row per participant (carnet, never the name), one column per competencia with a rubric (puntaje general and nivel, linking to that competencia's Reporte individual; "Ausente" or "—" without a puntaje), then "Competencias evaluadas" (*"{n} de {m}"*), "Promedio", "Nivel" and "Para el siguiente nivel". Sortable like §11.2; default promedio descending.
+- **Participantes en todas las competencias**: one row per participant (carnet, never the name, linking to §11.5), one column per competencia with a rubric (puntaje general and nivel, linking to that competencia's Reporte individual; "Ausente" or "—" without a puntaje), then "Competencias evaluadas" (*"{n} de {m}"*), "Promedio", "Nivel" and "Para el siguiente nivel". Sortable like §11.2; default promedio descending.
 - Every figure comes from each competencia's own aggregation (§11.2), so it matches that competencia's Reporte general. Empty state: *"Aún no hay evaluaciones enviadas en esta jornada."* "Volver" goes to Reportes; printable.
+
+### 11.5 Reporte del participante
+`/reportes/consolidado/[participante]`, docente only. One participant across every competencia of the session's jornada, as a dashboard: what the docente needs to talk to that student, without opening five reports.
+- Header: the carnet (never the name), *"Todas las competencias · Jornada: {nombre} · Reporte del participante"*, the nivel by promedio entre competencias (large) and its gap (§7). Action: "Imprimir o guardar PDF" (primary; there is no CSV).
+- KPI tiles: promedio entre competencias and its nivel, "Para el siguiente nivel", competencias evaluadas (*"{n} de {m}"*), evaluaciones recibidas (summed over the competencias).
+- **En pocas palabras**: e.g. *"El promedio entre competencias es 3,15 (Avanzado), en 5 de 5 competencias. Le faltan 0,35 puntos para Experto. La competencia más fuerte es «Pensamiento crítico y analítico» (3,67) y la que más necesita refuerzo es «Orientación a resultados» (2,58)."* With one competencia evaluated, the comparison is left out.
+- **Puntaje por competencia**: horizontal bars on the 1–4 axis with the threshold lines, one per competencia with a rubric, titled by the highest one.
+- **Detalle por competencia**: one card per competencia in config order: puntaje general and nivel, the gap, evaluations received, the highest and lowest indicator (ties listed; *"Todos los indicadores tienen el mismo promedio (x)"* when equal), and "Ver reporte individual" to that competencia's §11.1. Without a rubric: *"Sin plantilla en esta jornada"*; absent: *"Marcado ausente en esta competencia."*; without evaluations: *"Aún no tiene evaluaciones en esta competencia."*
+- No observations or evaluator names here: they stay in each Reporte individual.
+- Previous / next participant links (carnet labels); "Volver" goes to the Reporte consolidado. A participant who isn't active in the jornada is a 404. Printable.
 
 Reports are rendered from one server aggregation (`src/lib/reportes.ts`) that is unit-tested against fixtures.
 
@@ -687,7 +703,8 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 17. The docente previews and sends results by email; each participant receives only their own results, with no evaluator names; statuses show in the table.
 18. No email address appears in git, logs, the CSV, reports or `/api/jev` payloads.
 19. The reports and the CSV identify each participant by carnet ("Participante NN" without one) and never show a participant's name; evaluators still see names.
-20. The Reporte consolidado shows the five competencias of the jornada together (the ones without a rubric marked "Sin plantilla en esta jornada"), each competencia's figures match its Reporte general, and its CSV opens in Excel with one row per participant.
+20. The Reporte consolidado shows the five competencias of the jornada together (the ones without a rubric marked "Sin plantilla en esta jornada"), each competencia's figures match its Reporte general, and its CSV opens in Excel with one row per participant. Its dashboard summarizes the group in one paragraph, shows the level map (every colored cell also shows its score) and lists who has a competencia in Básico.
+21. From the Reporte consolidado or any Reporte individual, the docente opens a participant's Reporte del participante: every competencia with its level, gap and strongest/weakest indicator, identified by carnet only.
 
 ## 16. Open questions
 
@@ -976,7 +993,7 @@ Ordered by the night team numbers. A team with no members would leave its compet
 | Avance | "Avance de evaluadores · Equipo {numero}" · "{n} de {total} evaluadores completaron" · "Sin iniciar" · "En progreso" · "Completo" · "Sin correo" · "Pendiente de activar" · "Activa" · "Solo se cuentan las evaluaciones enviadas; los borradores quedan en el teléfono de cada evaluador." · KPI "Ausentes" · KPI "Evaluadores completos" |
 | Gráficos | "Participantes por nivel" · "Puntaje por indicador" · "{n} de {total} evaluadores eligieron {nivel}" · "Ver gráficos detallados" |
 | Resumen del grupo | "Resumen del grupo" · "Jornada" · "Mañana" · "Noche" · "Ambas jornadas" · "Puntaje promedio por indicador" |
-| Reporte consolidado | "Reporte consolidado" · "Las cinco competencias juntas" · "Todas las competencias" · "Competencias con evaluaciones" · "Promedio entre competencias" · "Puntaje del grupo por competencia" · "Resumen por competencia" · "Participantes en todas las competencias" · "Competencias evaluadas" · "Sin plantilla en esta jornada" · "Aún no hay evaluaciones enviadas en esta jornada." |
+| Reporte consolidado | "En pocas palabras" · "Mapa de niveles" · "Requieren atención" · "Básico en:" · "Ningún participante tiene competencias en nivel Básico." · "Reporte del participante" · "Volver al Reporte consolidado" · "Detalle por competencia" · "Puntaje por competencia" · "Indicador más alto" · "Indicador más bajo" · "Ver reporte individual" · "Ver todas sus competencias" · "Reporte consolidado" · "Las cinco competencias juntas" · "Todas las competencias" · "Competencias con evaluaciones" · "Promedio entre competencias" · "Puntaje del grupo por competencia" · "Resumen por competencia" · "Participantes en todas las competencias" · "Competencias evaluadas" · "Sin plantilla en esta jornada" · "Aún no hay evaluaciones enviadas en esta jornada." |
 | Admin · participantes | "Nombres y carnés" · "Carné · Participante {nn}" · "Pegar lista de participantes" · "El carné del participante {nn} ya está en la lista." |
 | Admin · cuentas | "Cuentas de evaluadores" · "Equipo {numero} · {competencia}" · "Correo electrónico" · "Restablecer acceso" · "Último ingreso" |
 | Envío de resultados | "Enviar resultados por correo" · "Enviarme una prueba" · "Enviar a {n} participantes" · "Reenviar" · "Enviado el {fecha}" · "Sin correo" · "Sin evaluaciones" · "Ausente" · subject "Sus resultados de {competencia} · Nivela" |

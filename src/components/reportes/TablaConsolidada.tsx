@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { IconoChevron } from "@/components/ui/iconos";
 import { obtenerNivel, type NivelValor } from "@/config/niveles";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero } from "@/lib/formato";
@@ -9,7 +10,8 @@ import type { Brecha } from "@/lib/puntajes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 
 // "Participantes en todas las competencias" (PRD §11.4): one row per
-// participant (carnet only, never a name), one column per competencia with a
+// participant (carnet only, never a name, linking to the Reporte del
+// participante, §11.5), one column per competencia with a
 // rubric in the jornada (its puntaje general and nivel, linking to that
 // competencia's Reporte individual), then how many competencias were
 // evaluated, the promedio entre competencias, its nivel and its gap. Every
@@ -156,8 +158,14 @@ export function TablaConsolidada({ competencias, filas, etiquetadaPor }: Props) 
         <tbody>
           {ordenadas.map((fila) => (
             <tr key={fila.id} className="even:bg-canvas">
-              <th scope="row" className="px-2 text-left font-normal whitespace-nowrap">
-                {fila.etiqueta}
+              <th scope="row" className="p-0 text-left font-normal">
+                <Link
+                  href={`/reportes/consolidado/${fila.id}`}
+                  className="inline-flex min-h-11 items-center gap-1 rounded-pill px-2 whitespace-nowrap text-link hover:underline"
+                >
+                  {fila.etiqueta}
+                  <IconoChevron className="shrink-0" />
+                </Link>
               </th>
               {fila.celdas.map((celda, i) => (
                 <td key={competencias[i].id} className="px-0 text-right">

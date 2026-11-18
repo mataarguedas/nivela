@@ -36,18 +36,16 @@ async function calificarTodo(page: Page, niveles: [string, string, string, strin
   for (const [i, nivel] of niveles.entries()) await radio(page, i + 1, nivel).click();
 }
 
-test("camino completo: código → Adaptabilidad → evaluador → 4 indicadores → Enviado", async ({ page }, info) => {
+test("camino completo: cuenta → Adaptabilidad → 4 indicadores → Enviado", async ({ page }, info) => {
   const evaluador = EVALUADOR_POR_PROYECTO[info.project.name];
   test.skip(!evaluador, `no evaluator assigned to project ${info.project.name}`);
   const inicio = Date.now();
 
-  await iniciarSesion(page);
+  // The account says who is rating (PRD §5.12): no evaluator step.
+  await iniciarSesion(page, { integranteId: evaluador.id });
   await page.goto("/");
   await esperarHidratacion(page);
   await page.getByRole("link", { name: /Adaptabilidad/ }).click();
-  await expect(page).toHaveURL(/\/adaptabilidad\/evaluador$/);
-  await esperarHidratacion(page);
-  await page.getByRole("button", { name: evaluador.nombre }).click();
   await expect(page).toHaveURL(/\/adaptabilidad$/);
 
   await page.getByRole("link", { name: /Participante 20/ }).click();
@@ -63,7 +61,8 @@ test("camino completo: código → Adaptabilidad → evaluador → 4 indicadores
   await expect(toast(page)).toBeVisible();
   await expect(page).toHaveURL(/\/adaptabilidad$/);
   await expect(fila(page, "Participante 20").getByText("Enviado")).toBeVisible();
-  await expect(page.getByText(/^\d+ de 20 enviadas$/)).toBeVisible();
+  // The seed marks two participants absent for most evaluators: they leave the total (PRD §5.4).
+  await expect(page.getByText(/^\d+ de \d+ enviadas( · \d+ ausentes?)?$/)).toBeVisible();
 
   // The server has it, with a fresh updated_at.
   const consulta = await page.request.get(`/api/evaluaciones?competencia=adaptabilidad&evaluador=${evaluador.id}`);
@@ -77,7 +76,7 @@ test("camino completo: código → Adaptabilidad → evaluador → 4 indicadores
   await fila(page, "Participante 20").getByRole("link").click();
   await esperarCalificacion(page);
   await radio(page, 2, "Avanzado").click();
-  await page.getByRole("link", { name: "Volver a Participantes" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Volver a Participantes" }).click();
   await expect(fila(page, "Participante 20").getByText("Completado")).toBeVisible();
 
   await fila(page, "Participante 20").getByRole("link").click();
@@ -138,7 +137,7 @@ test.describe("con el envío simulado", () => {
   test("una sesión expirada lleva a /acceso y vuelve al participante", async ({ page }) => {
     await page.route("**/api/evaluaciones", (ruta) =>
       ruta.request().method() === "POST"
-        ? ruta.fulfill({ status: 401, json: { error: "Debe ingresar el código de acceso para continuar." } })
+        ? ruta.fulfill({ status: 401, json: { error: "Debe ingresar para continuar." } })
         : ruta.fallback(),
     );
     await page.goto("/adaptabilidad/P08");
@@ -150,6 +149,6 @@ test.describe("con el envío simulado", () => {
     const url = new URL(page.url());
     expect(url.searchParams.get("next")).toBe("/adaptabilidad/P08");
     expect(url.searchParams.get("motivo")).toBe("expirada");
-    await expect(page.getByText("Su sesión expiró. Ingrese el código nuevamente.")).toBeVisible();
+    await expect(page.getByText("Su sesión expiró. Ingrese nuevamente.")).toBeVisible();
   });
 });

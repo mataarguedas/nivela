@@ -12,7 +12,8 @@ export const TEXTOS = {
     comenzar: "Comenzar",
   },
   acceso: {
-    instruccion: "Ingrese el código de acceso de su clase",
+    // Docente / admin code form (PRD §5.1).
+    instruccion: "Ingrese su código de docente o administración",
     entrar: "Entrar",
     error: "El código no es válido. Verifique con su docente.",
     // Not in PRD Appendix C; needed by the access form and /api/acceso.
@@ -20,10 +21,40 @@ export const TEXTOS = {
     demasiadosIntentos: (segundos: number) =>
       `Demasiados intentos. Espere ${segundos} s para intentar de nuevo.`,
     sinConexion: "No fue posible conectarse. Revise su conexión e intente de nuevo.",
+    // Evaluadores: email + password (PRD §5.12, Appendix C).
+    tituloCorreo: "Ingrese con su correo electrónico",
+    correo: "Correo electrónico",
+    continuar: "Continuar",
+    contrasena: "Contraseña",
+    olvido: "¿Olvidó su contraseña?",
+    codigoEnviado: (correo: string) =>
+      `Le enviamos un código de 6 dígitos a ${correo}. Revise también la carpeta de correo no deseado.`,
+    codigoVerificacion: "Código de verificación",
+    creeContrasena: "Cree su contraseña",
+    confirmeContrasena: "Confirme su contraseña",
+    crearYEntrar: "Crear contraseña y entrar",
+    reenviar: "Reenviar código",
+    contrasenaCorta: "Debe tener al menos 8 caracteres.",
+    noCoinciden: "Las contraseñas no coinciden.",
+    codigoInvalido: "El código no es válido o expiró.",
+    credenciales: "Correo o contraseña incorrectos.",
+    bloqueada: "Demasiados intentos. Intente de nuevo en 15 minutos.",
+    conCodigo: "Ingresar con código de docente o administración",
+    // Not in PRD Appendix C: validation, the resend countdown and the way back.
+    correoInvalido: "Ingrese un correo electrónico válido.",
+    contrasenaRequerida: "Ingrese su contraseña.",
+    contrasenaLarga: "Debe tener como máximo 200 caracteres.",
+    codigoFormato: "Ingrese los 6 dígitos del código.",
+    reenviarEn: (segundos: number) => `Podrá pedir otro código en ${segundos} s.`,
+    codigoReenviado: "Le enviamos un código nuevo.",
+    otroCorreo: "Usar otro correo",
+    conCorreo: "Ingresar con correo electrónico",
   },
   competencias: {
     disponible: "Disponible",
     proximamente: "Próximamente",
+    noAsignada: "No asignada",
+    sinDisponible: "La competencia de su equipo aún no está disponible.",
     // Not in PRD Appendix C: heading of the Inicio list.
     titulo: "Competencias",
   },
@@ -51,6 +82,24 @@ export const TEXTOS = {
     enProgreso: "En progreso",
     completado: "Completado",
     enviado: "Enviado",
+    ausente: "Ausente",
+  },
+  // PRD §5.13 (Appendix C "Asistencia").
+  asistencia: {
+    marcarAusente: "Marcar ausente",
+    confirmar: (nombre: string) =>
+      `¿Marcar a ${nombre} como ausente? No podrá enviar su evaluación mientras esté marcada así.`,
+    marcada: "Marcó a esta persona como ausente.",
+    marcarPresente: "Marcar presente",
+    yaEnviada: "Ya envió una evaluación para esta persona.",
+    error: "No se pudo guardar la asistencia. Intente de nuevo.",
+    /** "12 de 18 enviadas · 2 ausentes" (PRD §5.4). */
+    resumen: (n: number, total: number, ausentes: number) =>
+      `${n} de ${total} enviadas · ${ausentes === 1 ? "1 ausente" : `${ausentes} ausentes`}`,
+    // Not in PRD Appendix C: POST /api/evaluaciones for an absent participant,
+    // and the busy label while a mark is saved.
+    noEnviarAusente: "Marcó a esta persona como ausente. Márquela presente para enviar su evaluación.",
+    guardando: "Guardando…",
   },
   calificacion: {
     indicador: (n: number) => `Indicador ${n}`,
@@ -129,9 +178,10 @@ export const TEXTOS = {
   },
   sesion: {
     salir: "Salir",
-    expirada: "Su sesión expiró. Ingrese el código nuevamente.",
+    expirada: "Su sesión expiró. Ingrese nuevamente.",
     // Not in PRD Appendix C: API 401/403 bodies and the docente gate notice.
-    requerida: "Debe ingresar el código de acceso para continuar.",
+    requerida: "Debe ingresar para continuar.",
+    otroEvaluador: "Solo puede registrar evaluaciones a su nombre.",
     soloDocente: "Esta sección requiere el código docente.",
     soloAdmin: "Esta sección requiere el código de administración.",
     noParaAdmin: "Con el código de administración solo puede gestionar los participantes.",
@@ -144,7 +194,7 @@ export const TEXTOS = {
     cambiar: "Cambiar jornada",
     error: "No se pudo cambiar la jornada. Intente de nuevo.",
     invalida: "La jornada no es válida.",
-    soloDocenteOAdmin: "Su jornada la define el código de acceso de su clase.",
+    soloDocenteOAdmin: "Su jornada la define su cuenta.",
     distinta: "La jornada cambió en otra pestaña. Recargue la página.",
   },
   // Not in PRD Appendix C: 404 page (unknown or disabled competencias, etc.).

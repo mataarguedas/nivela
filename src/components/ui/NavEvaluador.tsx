@@ -9,10 +9,12 @@ import { useEvaluadorSeleccionado } from "@/lib/borrador";
 // the root layout, but the selection is per competencia and only in
 // localStorage, so the [competencia] layout publishes its team here and the
 // nav reads it. Team names therefore ship only with the routes that show
-// them, never with /acceso. The name links to the evaluator step to switch.
+// them, never with /acceso. For the docente the name links to the evaluator
+// step to switch; a signed-in evaluador (`fijo`) is who their account says,
+// so their name is plain text.
 
 type Integrante = { id: string; nombre: string };
-type Equipo = { competenciaId: string; integrantes: readonly Integrante[] };
+type Equipo = { competenciaId: string; integrantes: readonly Integrante[]; fijo: string | null };
 
 let publicado: Equipo | null = null;
 const oyentes = new Set<() => void>();
@@ -30,14 +32,14 @@ function publicar(equipo: Equipo | null) {
 }
 
 /** Renders nothing; makes `integrantes` available to the nav while mounted. */
-export function PublicarEvaluadorNav({ competenciaId, integrantes }: Equipo) {
+export function PublicarEvaluadorNav({ competenciaId, integrantes, fijo }: Equipo) {
   useEffect(() => {
-    const equipo = { competenciaId, integrantes };
+    const equipo = { competenciaId, integrantes, fijo };
     publicar(equipo);
     return () => {
       if (publicado === equipo) publicar(null);
     };
-  }, [competenciaId, integrantes]);
+  }, [competenciaId, integrantes, fijo]);
   return null;
 }
 
@@ -48,6 +50,15 @@ export function NavEvaluador() {
     () => null,
   );
   if (!equipo) return null;
+  if (equipo.fijo) {
+    const nombre = equipo.integrantes.find((i) => i.id === equipo.fijo)?.nombre;
+    return nombre ? (
+      <span className="inline-flex min-h-11 min-w-0 items-center px-2 text-[14px] text-ink-3">
+        <span className="sr-only">{TEXTOS.evaluador.enNav} </span>
+        <span className="truncate">{nombre}</span>
+      </span>
+    ) : null;
+  }
   return <NombreEvaluador equipo={equipo} />;
 }
 

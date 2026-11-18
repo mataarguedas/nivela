@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { Chip } from "@/components/ui/Chip";
 import { SelectorJornada } from "@/components/ui/SelectorJornada";
 import { IconoChevron } from "@/components/ui/iconos";
-import { COMPETENCIAS, type Competencia } from "@/config/competencias";
+import { competenciasDeJornada, type Competencia } from "@/config/competencias";
 import { competenciaDisponible } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { TEXTOS } from "@/config/textos";
@@ -12,7 +12,7 @@ import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { exigirDocente } from "./exigirDocente";
 
 // Reportes (PRD §5.9, §5.11): jornada switch, then the competencia picker.
-// Same rows as Inicio: competencias with a team in the session's jornada open
+// Same rows as Inicio: competencias with a rubric and a team in the session's jornada open
 // their Reporte general; the others are visible but inert ("Próximamente",
 // aria-disabled, no href).
 
@@ -43,7 +43,7 @@ async function SelectorCompetencia() {
         <SelectorJornada actual={jornada} />
       </div>
       <ul className="flex flex-col gap-2">
-        {COMPETENCIAS.map((competencia) => (
+        {competenciasDeJornada(jornada).map((competencia) => (
           <li key={competencia.id}>
             <FilaCompetencia competencia={competencia} jornada={jornada} />
           </li>
@@ -54,7 +54,7 @@ async function SelectorCompetencia() {
 }
 
 function FilaCompetencia({ competencia, jornada }: { competencia: Competencia; jornada: JornadaId }) {
-  if (!competenciaDisponible(jornada, competencia)) {
+  if (!competenciaDisponible(jornada, competencia.id)) {
     return (
       <a role="link" aria-disabled="true" className={`${FILA} cursor-not-allowed`}>
         <span className="min-w-0 flex-1 text-body text-ink-2">{competencia.nombre}</span>

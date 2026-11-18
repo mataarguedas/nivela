@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PublicarEvaluadorNav } from "@/components/ui/NavEvaluador";
-import { COMPETENCIAS, obtenerCompetenciaHabilitada } from "@/config/competencias";
-import { competenciaConEquipo, equipoDeCompetencia } from "@/config/equipos";
-import { jornadaActual } from "@/lib/jornadaActual";
+import { DEFINICIONES_COMPETENCIA } from "@/config/competencias";
+import { competenciaConEquipo } from "@/config/equipos";
+import { contextoEvaluacion } from "@/lib/jornadaActual";
 
 // Shared by every /[competencia] route (evaluator step, participant list,
 // rating screen). Unknown or disabled competencias get a real 404 here: the
-// check runs before anything streams. It is config-only (a team in some
-// jornada); whether the session's jornada has a team for it needs the cookie,
+// check runs before anything streams. It is config-only (a rubric and a team
+// in some jornada); whether the session's jornada has them needs the cookie,
 // so each page checks that behind its Suspense boundary. A notFound() inside a page's Suspense
 // boundary would arrive after the shell, as a 200. The price is that entering
 // a competencia from outside blocks on this (config-only) render, hence
@@ -31,18 +31,17 @@ export const instant = false;
 
 // Cache Components needs sample params to prerender.
 export function generateStaticParams() {
-  return COMPETENCIAS.filter(competenciaConEquipo).map((c) => ({ competencia: c.id }));
+  return DEFINICIONES_COMPETENCIA.filter((d) => competenciaConEquipo(d.id)).map((d) => ({ competencia: d.id }));
 }
 
 export default async function LayoutCompetencia({ children, params }: LayoutProps<"/[competencia]">) {
   const { competencia: id } = await params;
-  const competencia = obtenerCompetenciaHabilitada(id);
-  if (!competencia || !competenciaConEquipo(competencia)) notFound();
+  if (!competenciaConEquipo(id)) notFound();
 
   return (
     <>
       <Suspense fallback={null}>
-        <EquipoNav competenciaId={competencia.id} />
+        <EquipoNav competenciaId={id} />
       </Suspense>
       {children}
     </>
@@ -51,9 +50,9 @@ export default async function LayoutCompetencia({ children, params }: LayoutProp
 
 /** The session jornada's team for the nav; only that cohort's names reach the client. */
 async function EquipoNav({ competenciaId }: { competenciaId: string }) {
-  const equipo = equipoDeCompetencia(await jornadaActual(), competenciaId);
-  if (!equipo) return null;
+  const contexto = await contextoEvaluacion(competenciaId);
+  if (!contexto) return null;
   // Only id and name reach the client: never more than the evaluator list shows.
-  const integrantes = equipo.integrantes.map(({ id, nombre }) => ({ id, nombre }));
-  return <PublicarEvaluadorNav competenciaId={competenciaId} integrantes={integrantes} />;
+  const integrantes = contexto.equipo.integrantes.map(({ id, nombre }) => ({ id, nombre }));
+  return <PublicarEvaluadorNav competenciaId={competenciaId} integrantes={integrantes} fijo={contexto.evaluadorSesion} />;
 }

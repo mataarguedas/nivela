@@ -11,6 +11,10 @@ import { TEXTOS } from "@/config/textos";
 // hear progress. After a failed send the same button reads "Reintentar" and
 // the failure message is announced as an alert. Render it as the last child
 // of <main> (see BarraInferior).
+//
+// While this evaluator has the participant marked absent (PRD §5.13), the
+// notice "Marcó a esta persona como ausente." and the secondary "Marcar
+// presente" replace the send button: an absent participant can't be sent.
 
 type BarraEnvioProps = {
   faltan: number;
@@ -19,9 +23,41 @@ type BarraEnvioProps = {
   enviando?: boolean;
   /** The last send failed: show the message and offer "Reintentar". */
   error?: boolean;
+  /** Marked absent by this evaluator (PRD §5.13). */
+  ausente?: boolean;
+  alMarcarPresente?: () => void;
+  /** PUT /api/asistencia in flight. */
+  guardandoAsistencia?: boolean;
 };
 
-export function BarraEnvio({ faltan, alEnviar, enviando = false, error = false }: BarraEnvioProps) {
+export function BarraEnvio({
+  faltan,
+  alEnviar,
+  enviando = false,
+  error = false,
+  ausente = false,
+  alMarcarPresente,
+  guardandoAsistencia = false,
+}: BarraEnvioProps) {
+  if (ausente) {
+    return (
+      <BarraInferior etiqueta={TEXTOS.calificacion.envio}>
+        <p aria-live="polite" className="min-w-0 flex-1 text-[14px] text-ink">
+          {TEXTOS.asistencia.marcada}
+        </p>
+        <Boton
+          variante="secundario"
+          onClick={alMarcarPresente}
+          cargando={guardandoAsistencia}
+          textoCargando={TEXTOS.asistencia.guardando}
+          className="shrink-0"
+        >
+          {TEXTOS.asistencia.marcarPresente}
+        </Boton>
+      </BarraInferior>
+    );
+  }
+
   const completo = faltan === 0;
   const fallo = error && completo;
   return (

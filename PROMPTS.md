@@ -315,7 +315,7 @@ Check at 360, 375 and 390 px in WebKit, Chromium and Firefox: no horizontal scro
 
 ---
 
-## Prompt 13 — Email sending infrastructure (features 2 and 4) - DONE (pending: DNS for correo.nivela.snhware.lat and the real correo:prueba send)
+## Prompt 13 — Email sending infrastructure (features 2 and 4) - DONE
 
 > **⚠ Before this prompt:** you need a domain you control (with access to its DNS) to send from, e.g. `resultados.<sudominio>`. Without a verified domain, Resend only delivers to your own account's address, so codes would never reach the students. Have the domain's DNS panel open; the session will ask you to add the records Resend shows.
 
@@ -333,7 +333,7 @@ Tests: unit tests for correo.ts with the Resend client mocked (success, 429, tim
 
 ---
 
-## Prompt 14 — Evaluator accounts and email login (feature 2)
+## Prompt 14 — Evaluator accounts and email login (feature 2) - DONE
 
 > **⚠ Before this prompt:** keep at hand the two emails that aren't in the screenshots (Ramsés Salas Vargas and Sebastian Chaves); you'll paste them when the session asks. Melany Parrales (mañana) and Yuleissy Vargas Corrales (noche) have no email yet: their accounts stay "Sin correo". Neither is on an Adaptabilidad team, so this doesn't block the demo.
 
@@ -372,7 +372,7 @@ Tests: unit tests for hashing, code expiry/attempts/hourly limit, lockout, ident
 
 ---
 
-## Prompt 15 — Attendance (feature 6)
+## Prompt 15 — Attendance (feature 6) - DONE
 
 ```text
 Use plan mode first. Implement PRD §5.13 (v1.2): evaluators mark participants as absent.
@@ -390,7 +390,7 @@ Tests: unit for the attendance aggregation and the new coverage denominator; rou
 
 ---
 
-## Prompt 16 — Gap to the next level and evaluator progress (features 3 and 5)
+## Prompt 16 — Gap to the next level and evaluator progress (features 3 and 5) - DONE
 
 ```text
 Implement PRD §7 (gap rule) and the "Avance de evaluadores" section of §11.2 (v1.2). Accounts (Prompt 14) and attendance (Prompt 15) are in place.
@@ -410,7 +410,7 @@ Tests: unit for the new aggregation with a fixture that has an evaluator with no
 
 ---
 
-## Prompt 17 — Simpler charts (feature 7)
+## Prompt 17 — Simpler charts (feature 7) - DONE
 
 ```text
 Load the dataviz skill first and apply it within DESIGN.md's palette. Implement PRD §11 v1.2 "simpler charts" for both reports.
@@ -448,9 +448,9 @@ Tests: unit for agregarResumenGrupo with fixtures for each jornada and both (no 
 ```text
 Use plan mode first. Implement PRD §5.14 (v1.2): the docente sends each participant their personal results by email. The email layer (Prompt 13) and the gap rule (Prompt 16) are ready.
 
-- Drizzle: add nullable `correo` to `participantes` and the `envios_resultados` table per PRD §9.2. Migration 0005.
-- Admin editor: an optional "Correo electrónico" field per participant (zod email, lowercased; the "@ / 7+ digits" rejection keeps applying to the name only). "Pegar lista" accepts "Nombre<TAB>correo" or "Nombre;correo" per line as well as names alone. The CSV and the reports never include participant emails.
-- Template src/lib/correos/resultados.ts: subject "Sus resultados de {competencia} · Nivela". Body per PRD §5.14: greeting by name, competencia and jornada, nivel general (large) and puntaje general, evaluations received, a table per indicator (mean, level, "Le faltan … para …" or "Nivel máximo alcanzado", and the next level's description), a closing line explaining that results are the average of peer evaluations. Never evaluator names, individual ratings, AI data or other participants. Text version included. Spanish, usted.
+- Drizzle: add nullable `correo` to `participantes` and the `envios_resultados` table per PRD §9.2. Migration 0006 (0005 is `participantes.carnet`, v1.4).
+- Admin editor: an optional "Correo electrónico" field per participant, next to the name and the carnet (zod email, lowercased; the "@ / 7+ digits" rejection keeps applying to the name only). "Pegar lista" already splits carnet and name by tab or ";" (leerLineaPegada); extend it so a field with "@" is the email. The CSV and the reports never include participant emails or names (they show the carnet).
+- Template src/lib/correos/resultados.ts: subject "Sus resultados de {competencia} · Nivela". Body per PRD §5.14: greeting by name (names are stored first name first), competencia and jornada, nivel general (large) and puntaje general, evaluations received, a table per indicator (mean, level, "Le faltan … para …" or "Nivel máximo alcanzado", and the next level's description), a closing line explaining that results are the average of peer evaluations. Never evaluator names, individual ratings, AI data or other participants. Text version included. Spanish, usted.
 - /reportes/[competencia]/enviar (docente): recipient list (email set and ≥ 1 evaluation), skipped list with reasons (Sin correo / Sin evaluaciones / Ausente), a rendered preview for any selected participant, "Enviarme una prueba" to an address I type (not stored), and "Enviar a {n} participantes" (the primary button) behind a confirmation dialog. Already-sent participants show "Enviado el {fecha}" and are excluded unless I tick "Reenviar" for them.
 - POST /api/reportes/[competencia]/enviar { participantes: string[], reenviar?: boolean }: docente only, session jornada only, recomputes the report on the server (the client never sends scores), sends one email per participant with an idempotency key (jornada-competencia-participante-updated_at), records each result in envios_resultados, returns { enviados, errores: [{ participanteId, motivo }] }. Pace requests to stay under Resend's rate limit; set the route's maxDuration accordingly. Never log emails or bodies.
 - Reporte general: a secondary button "Enviar resultados por correo" and a column "Correo" in the table with Enviado / Error / Pendiente.

@@ -64,6 +64,13 @@ export function formatearFechaHora(valor: Date | string): string {
   return `${dia}/${mes}/${anio} ${hora}:${minuto}`;
 }
 
+const lista = new Intl.ListFormat(LOCALE, { style: "long", type: "conjunction" });
+
+/** ["Intermedio", "Avanzado", "Experto"] → "Intermedio, Avanzado y Experto" */
+export function formatearLista(elementos: readonly string[]): string {
+  return lista.format(elementos);
+}
+
 /** Date → "aaaa-mm-dd" in Costa Rica time, for file names (no slashes). */
 export function fechaParaArchivo(valor: Date | string): string {
   const { dia, mes, anio } = partes(valor);

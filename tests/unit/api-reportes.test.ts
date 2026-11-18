@@ -41,7 +41,7 @@ const pedirCsv = (competencia = "adaptabilidad") =>
 
 beforeEach(() => {
   sesion.getSesion.mockResolvedValue(DOCENTE);
-  dbParticipantes.obtenerTodosLosParticipantes.mockResolvedValue([crearParticipante(3, "Carla Mora")]);
+  dbParticipantes.obtenerTodosLosParticipantes.mockResolvedValue([crearParticipante(3, "Carla Mora", "100000003")]);
 });
 
 afterEach(() => {
@@ -57,20 +57,28 @@ describe.each([
     sesion.getSesion.mockResolvedValue(null);
     const respuesta = await pedir();
     expect(respuesta.status).toBe(401);
-    await expect(respuesta.json()).resolves.toEqual({ error: "Debe ingresar el código de acceso para continuar." });
+    await expect(respuesta.json()).resolves.toEqual({ error: "Debe ingresar para continuar." });
     expect(db.obtenerReporte).not.toHaveBeenCalled();
     expect(db.leerFilasReporte).not.toHaveBeenCalled();
   });
 
   it("403 para el rol evaluador", async () => {
-    sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123", jornada: "manana" });
+    sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: "0123456789abcdef0123", jornada: "manana", integranteId: "jimena-salgado" });
     const respuesta = await pedir();
     expect(respuesta.status).toBe(403);
     await expect(respuesta.json()).resolves.toEqual({ error: "Esta sección requiere el código docente." });
   });
 
-  it.each(["inexistente", "pensamiento-critico", ""])("404 para la competencia %j", async (competencia) => {
+  it.each(["inexistente", ""])("404 para la competencia %j", async (competencia) => {
     const respuesta = await pedir(competencia);
+    expect(respuesta.status).toBe(404);
+    await expect(respuesta.json()).resolves.toEqual({ error: "La competencia no existe o no está habilitada." });
+  });
+
+  it("404 para una competencia sin rúbrica en la jornada de la sesión", async () => {
+    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
+    sesion.getSesion.mockResolvedValue({ ...DOCENTE, jornada: "noche" });
+    const respuesta = await pedir("pensamiento-critico");
     expect(respuesta.status).toBe(404);
     await expect(respuesta.json()).resolves.toEqual({ error: "La competencia no existe o no está habilitada." });
   });
@@ -119,7 +127,9 @@ describe("GET /api/reportes/[competencia]/csv", () => {
     const bytes = new Uint8Array(await respuesta.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const texto = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
-    expect(texto).toContain("Mañana,Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,Carla Mora,2,2,Intermedio,manual");
+    // The participant appears by carnet, never by name (PRD §10).
+    expect(texto).toContain("Mañana,Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,100000003,2,2,Intermedio,manual");
+    expect(texto).not.toContain("Carla Mora");
     expect(texto).toContain(OBSERVACION);
   });
 });

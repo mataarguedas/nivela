@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { obtenerCompetenciaHabilitada } from "@/config/competencias";
-import { equipoDeCompetencia } from "@/config/equipos";
 import { etiquetaNumero } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { cargarParticipantes } from "@/lib/db/participantes";
-import { jornadaActual } from "@/lib/jornadaActual";
+import { contextoEvaluacion } from "@/lib/jornadaActual";
 import { ListaParticipantes } from "./ListaParticipantes";
 
 // Participant list (PRD §5.4, FR-4). Statuses come from the local draft of
-// the selected evaluator, so the list itself is a client component; without
+// the evaluator (the signed-in evaluador, or the docente's selection), so the list itself is a client component; without
 // a selected evaluator it sends the user to the evaluator step. The layout
 // already answered 404 for unknown competencias; params are read behind
 // Suspense so navigating here from a sibling page is instant. Participants
@@ -39,10 +37,11 @@ export default function PaginaParticipantes({ params }: PageProps<"/[competencia
 
 async function Lista({ params }: Pick<PageProps<"/[competencia]">, "params">) {
   const { competencia: id } = await params;
-  const jornada = await jornadaActual();
-  const competencia = obtenerCompetenciaHabilitada(id);
-  const equipo = competencia && equipoDeCompetencia(jornada, competencia.id);
-  if (!competencia || !equipo) notFound();
+  // Null too when an evaluador opens another team's competencia, or when
+  // the jornada has no rubric for it.
+  const contexto = await contextoEvaluacion(id);
+  if (!contexto) notFound();
+  const { jornada, competencia, equipo, evaluadorSesion } = contexto;
 
   const participantes = await cargarParticipantes("/[competencia]", jornada);
   if (!participantes) {
@@ -64,6 +63,7 @@ async function Lista({ params }: Pick<PageProps<"/[competencia]">, "params">) {
       }))}
       indicadorIds={competencia.indicadores.map((i) => i.id)}
       evaluadorIds={equipo.integrantes.map((i) => i.id)}
+      evaluadorSesion={evaluadorSesion}
     />
   );
 }

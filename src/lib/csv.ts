@@ -7,7 +7,8 @@
 //
 // Unlike the report, the export keeps every row in the DB: an evaluador id
 // that is no longer in config is written as the id, with an empty curso, and
-// participants the admin has hidden still appear with their name.
+// participants the admin has hidden still appear with their carnet. Like the
+// reports, the CSV identifies participants by carnet, never by name (PRD §10).
 
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
@@ -26,7 +27,7 @@ export const COLUMNAS_CSV = [
   "evaluador",
   "curso_evaluador",
   "participante",
-  "nombre_participante",
+  "carnet",
   "indicador",
   "nivel",
   "nivel_nombre",
@@ -50,19 +51,19 @@ export function celdaCsv(valor: string | number | null): string {
 
 /**
  * `participantes`: every stored participant of the jornada, hidden ones
- * included, so their rows keep the name; an unnamed or unknown participant
- * gets an empty name. `filas` are already that jornada's.
+ * included, so their rows keep the carnet; a participant without one, or an
+ * unknown one, gets an empty cell. `filas` are already that jornada's.
  */
 export function generarCsv(
   jornada: JornadaId,
   competencia: Competencia,
   equipo: Equipo,
   filas: readonly FilaReporte[],
-  participantes: readonly Pick<Participante, "id" | "nombre">[],
+  participantes: readonly Pick<Participante, "id" | "carnet">[],
 ): string {
   const integrantes = new Map(equipo.integrantes.map((i) => [i.id, i]));
   const numeros = new Map(competencia.indicadores.map((i) => [i.id, i.numero]));
-  const nombres = new Map(participantes.map((p) => [p.id, p.nombre]));
+  const carnets = new Map(participantes.map((p) => [p.id, p.carnet]));
 
   const lineas = filas.map((f) => {
     const integrante = integrantes.get(f.evaluadorId);
@@ -72,7 +73,7 @@ export function generarCsv(
       integrante?.nombre ?? f.evaluadorId,
       integrante?.curso ?? "",
       f.participanteId,
-      nombres.get(f.participanteId) ?? null,
+      carnets.get(f.participanteId) ?? null,
       numeros.get(f.indicadorId) ?? f.indicadorId,
       f.nivel,
       esNivelValor(f.nivel) ? obtenerNivel(f.nivel).etiqueta : "",

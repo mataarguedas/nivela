@@ -3,13 +3,17 @@ import { timingSafeEqual } from "node:crypto";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { NextResponse } from "next/server";
+import { buscarIntegrante } from "@/config/equipos";
 import { IDS_JORNADA, JORNADA_PREDETERMINADA, type JornadaId } from "@/config/jornadas";
 
-// Session cookie (PRD §5.1, §5.11, FR-1, CLAUDE.md → Sessions and access).
-// `nivela_sesion` holds an HS256 JWT { rol, sid, jornada } signed with
-// SESSION_SECRET. `sid` is a random id used only for the Jev usage cap; it is
-// never sent to Jev. `jornada` scopes every read and write to one cohort.
-// Used by proxy.ts (Node runtime), route handlers and Server Components.
+// Session cookie (PRD §5.1, §5.11, §5.12, FR-1, CLAUDE.md → Sessions and access).
+// `nivela_sesion` holds an HS256 JWT { rol, sid, jornada, integranteId? }
+// signed with SESSION_SECRET. `sid` is a random id used only for the Jev
+// usage cap; it is never sent to Jev. `jornada` scopes every read and write
+// to one cohort. `integranteId` is the signed-in evaluador (their account);
+// docente and admin have none. Used by proxy.ts (Node runtime), route
+// handlers and Server Components.
 
 export const COOKIE_SESION = "nivela_sesion";
 /**
@@ -28,12 +32,23 @@ const BYTES_MINIMOS_SECRETO = 32;
 export const ROLES = ["evaluador", "docente", "admin"] as const;
 export type Rol = (typeof ROLES)[number];
 
-const esquemaSesion = z.object({
-  rol: z.enum(ROLES),
-  sid: z.string().min(16).max(64),
-  // Tokens signed before jornadas existed carry none: they are morning sessions.
-  jornada: z.enum(IDS_JORNADA).default(JORNADA_PREDETERMINADA),
-});
+const esquemaSesion = z
+  .object({
+    rol: z.enum(ROLES),
+    sid: z.string().min(16).max(64),
+    // Tokens signed before jornadas existed carry none: they are morning sessions.
+    jornada: z.enum(IDS_JORNADA).default(JORNADA_PREDETERMINADA),
+    integranteId: z.string().min(1).max(100).optional(),
+  })
+  // Since v1.2 an evaluador is a person (PRD §5.1): a token without a known
+  // integrante, or whose jornada isn't that integrante's team's (class-code
+  // sessions, renamed ids), is invalid and reads as expired. Docente and
+  // admin carry no integrante.
+  .refine((s) => {
+    if (s.rol !== "evaluador") return s.integranteId === undefined;
+    const encontrado = s.integranteId ? buscarIntegrante(s.integranteId) : undefined;
+    return encontrado !== undefined && encontrado.equipo.jornada === s.jornada;
+  });
 export type Sesion = z.infer<typeof esquemaSesion>;
 
 /** SESSION_SECRET as bytes. Throws if it's missing or shorter than 32 bytes. */
@@ -50,7 +65,8 @@ export function nuevoSid(): string {
 }
 
 export async function firmarSesion(sesion: Sesion): Promise<string> {
-  return new SignJWT({ rol: sesion.rol, sid: sesion.sid, jornada: sesion.jornada })
+  const datos = { rol: sesion.rol, sid: sesion.sid, jornada: sesion.jornada };
+  return new SignJWT(sesion.integranteId ? { ...datos, integranteId: sesion.integranteId } : datos)
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuedAt()
     .setExpirationTime(`${DURACION_SESION_S}s`)
@@ -100,26 +116,22 @@ export function codigosIguales(recibido: string, esperado: string): boolean {
 export type Acceso = { rol: Rol; jornada: JornadaId };
 
 /**
- * Maps an access code to a role and a jornada: CODIGO_ADMIN first, then
- * CODIGO_DOCENTE, then CODIGO_ACCESO_NOCHE, then CODIGO_ACCESO (morning).
- * Docente and admin start in the default jornada and switch in the app. All
- * comparisons always run. An unset or empty env code never matches; if two
- * codes are equal, the earlier one in that order wins, so keep them distinct.
+ * Maps an access code to a role: CODIGO_ADMIN first, then CODIGO_DOCENTE.
+ * Both start in the default jornada and switch in the app. Evaluadores sign
+ * in with email + password instead (PRD §5.12); the class codes are gone.
+ * Both comparisons always run. An unset or empty env code never matches; if
+ * the two codes are equal, admin wins, so keep them distinct.
  */
 export function accesoParaCodigo(codigo: string): Acceso | null {
   const coincide = (valor: string | undefined) => (valor ?? "") !== "" && codigosIguales(codigo, valor ?? "");
   const esAdmin = coincide(process.env.CODIGO_ADMIN);
   const esDocente = coincide(process.env.CODIGO_DOCENTE);
-  const esNoche = coincide(process.env.CODIGO_ACCESO_NOCHE);
-  const esManana = coincide(process.env.CODIGO_ACCESO);
   if (esAdmin) return { rol: "admin", jornada: JORNADA_PREDETERMINADA };
   if (esDocente) return { rol: "docente", jornada: JORNADA_PREDETERMINADA };
-  if (esNoche) return { rol: "evaluador", jornada: "noche" };
-  if (esManana) return { rol: "evaluador", jornada: "manana" };
   return null;
 }
 
-/** Docente and admin may switch jornada (PRD §5.11); an evaluador's is fixed by their code. */
+/** Docente and admin may switch jornada (PRD §5.11); an evaluador's is fixed by their account. */
 export function puedeCambiarJornada(rol: Rol): boolean {
   return rol === "docente" || rol === "admin";
 }
@@ -144,4 +156,24 @@ export function opcionesCookieSesion(): OpcionesCookie {
 
 export function opcionesCookiePrevia(): OpcionesCookie {
   return { ...opcionesCookieSesion(), maxAge: DURACION_PREVIA_S };
+}
+
+/**
+ * A JSON response that signs the user in: the session cookie plus the
+ * "had a session" marker (see COOKIE_SESION_PREVIA). Never cached.
+ */
+export async function respuestaConSesion(sesion: Omit<Sesion, "sid">, cuerpo: unknown): Promise<NextResponse> {
+  const token = await firmarSesion({ ...sesion, sid: nuevoSid() });
+  const respuesta = NextResponse.json(cuerpo);
+  respuesta.cookies.set(COOKIE_SESION, token, opcionesCookieSesion());
+  respuesta.cookies.set(COOKIE_SESION_PREVIA, "1", opcionesCookiePrevia());
+  respuesta.headers.set("Cache-Control", "no-store");
+  return respuesta;
+}
+
+/** The evaluador session for an account's integrante: role, jornada of their team, identity. */
+export function sesionDeIntegrante(integranteId: string): Omit<Sesion, "sid"> | null {
+  const encontrado = buscarIntegrante(integranteId);
+  if (!encontrado) return null;
+  return { rol: "evaluador", jornada: encontrado.equipo.jornada, integranteId };
 }

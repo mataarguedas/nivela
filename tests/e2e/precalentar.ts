@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import type { FullConfig } from "@playwright/test";
 import { codigo } from "./sesion";
 
@@ -8,6 +9,10 @@ import { codigo } from "./sesion";
 // a cold server, on old and new routes alike; warm requests never fail).
 // Parallel browsers opening the same page at startup hit exactly that.
 // Playwright starts `webServer` before this runs.
+//
+// First it resets the fake evaluator accounts on the dev branch
+// (`npm run cuentas:prueba`, tests/e2e/cuentas.ts), so every run starts
+// with the same activated and pending accounts and no locks or codes.
 
 const RUTAS = [
   "/acceso",
@@ -19,16 +24,29 @@ const RUTAS = [
   "/reportes/adaptabilidad",
   "/reportes/adaptabilidad/P01",
   "/reportes/pensamiento-critico",
+  "/reportes/no-existe",
   "/api/reportes/adaptabilidad",
   "/api/reportes/adaptabilidad/csv",
   "/dev/ui",
   "/ruta-inexistente",
   "/pensamiento-critico",
+  "/no-existe",
+  "/orientacion-detalle/P01",
   "/adaptabilidad/P99",
   "/api/evaluaciones?competencia=adaptabilidad&evaluador=jimena-salgado",
+  // POST-only routes: a GET answers 405 but compiles them.
+  "/api/acceso/correo",
+  "/api/acceso/activar",
+  "/api/acceso/contrasena",
+  "/api/acceso/recuperar",
+  "/api/dev/correos",
+  // PUT-only (PRD §5.13).
+  "/api/asistencia",
 ];
 
 export default async function precalentar(config: FullConfig) {
+  execSync("npm run cuentas:prueba", { stdio: "inherit" });
+
   const base = config.projects[0]?.use.baseURL;
   if (!base) return;
 

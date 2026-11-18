@@ -8,8 +8,8 @@
 // Adaptabilidad) and team sizes vary, so never look a team up by number or
 // hard-code a number or size.
 
-import type { Competencia } from "./competencias";
-import type { JornadaId } from "./jornadas";
+import { obtenerCompetenciaHabilitada } from "./competencias";
+import { IDS_JORNADA, type JornadaId } from "./jornadas";
 
 export const CURSOS = ["AGRH 315 Psicología 2", "AGRH 613 Seminario Integrado de RRHH"] as const;
 
@@ -199,12 +199,32 @@ export function obtenerEvaluador(jornada: JornadaId, competenciaId: string, inte
   return equipoDeCompetencia(jornada, competenciaId)?.integrantes.find((i) => i.id === integranteId);
 }
 
-/** Selectable in this jornada: enabled, and the jornada has a team with integrantes for it. */
-export function competenciaDisponible(jornada: JornadaId, competencia: Competencia): boolean {
-  return competencia.habilitada && equipoDeCompetencia(jornada, competencia.id) !== undefined;
+/**
+ * A member and their team, by integrante id (unique across jornadas). The
+ * only way from an account (PRD §5.12) to its jornada and competencia.
+ */
+export function buscarIntegrante(integranteId: string): { integrante: Integrante; equipo: Equipo } | undefined {
+  for (const equipo of EQUIPOS) {
+    const integrante = equipo.integrantes.find((i) => i.id === integranteId);
+    if (integrante) return { integrante, equipo };
+  }
+  return undefined;
 }
 
-/** Enabled with a team in some jornada: the routes that exist at all (static params, 404 checks). */
-export function competenciaConEquipo(competencia: Competencia): boolean {
-  return competencia.habilitada && EQUIPOS.some((e) => e.competenciaId === competencia.id && e.integrantes.length > 0);
+/** A jornada's teams in their own number order (display only; never a lookup key). */
+export function equiposDeJornada(jornada: JornadaId): Equipo[] {
+  return EQUIPOS.filter((e) => e.jornada === jornada).sort((a, b) => a.numero - b.numero);
+}
+
+/** Selectable in this jornada: it has a rubric there (PRD Appendix A) and the jornada has a team with integrantes for it. */
+export function competenciaDisponible(jornada: JornadaId, competenciaId: string): boolean {
+  return (
+    obtenerCompetenciaHabilitada(jornada, competenciaId) !== undefined &&
+    equipoDeCompetencia(jornada, competenciaId) !== undefined
+  );
+}
+
+/** Available in some jornada: the routes that exist at all (static params, config-only 404s). */
+export function competenciaConEquipo(competenciaId: string): boolean {
+  return IDS_JORNADA.some((jornada) => competenciaDisponible(jornada, competenciaId));
 }

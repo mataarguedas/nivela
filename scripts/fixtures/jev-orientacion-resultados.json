@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Orientación a resultados, jornada mañana (PRD §8.5), según la rúbrica de «Plantilla Sistematizada Orientación a resultados.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "competenciaId": "orientacion-resultados",
+  "jornada": "manana",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "orientacion-resultados-1",
+      "nivelEsperado": 1,
+      "texto": "Al iniciar la tarea no logró identificar qué se necesitaba ni qué era prioritario, y empezó por detalles secundarios."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "orientacion-resultados-1",
+      "nivelEsperado": 2,
+      "texto": "Reconoció cuáles eran las prioridades de la tarea, pero tuvo que preguntar al facilitador qué acciones concretas debía realizar."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "orientacion-resultados-1",
+      "nivelEsperado": 3,
+      "texto": "Organizó los pasos del trabajo según las prioridades de la meta, lo que necesitaba el equipo y los materiales disponibles."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "orientacion-resultados-1",
+      "nivelEsperado": 4,
+      "texto": "Elaboró un plan de acciones para cumplir la meta y anticipó que podría faltar tiempo para la presentación, por lo que dejó preparado un plan alternativo."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "orientacion-resultados-2",
+      "nivelEsperado": 1,
+      "texto": "No distinguió qué tareas eran prioritarias y dedicó casi todo el tiempo a la portada; el resto quedó sin terminar."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "orientacion-resultados-2",
+      "nivelEsperado": 2,
+      "texto": "Repartió el tiempo de la actividad según la importancia de cada tarea, empezando por la más importante."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "orientacion-resultados-2",
+      "nivelEsperado": 3,
+      "texto": "Administró su tiempo sin que nadie se lo indicara y, aunque tuvo dificultades con los cálculos, siguió esforzándose hasta terminar."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "orientacion-resultados-2",
+      "nivelEsperado": 4,
+      "texto": "Cuando cambiaron las prioridades a mitad de la actividad, reorganizó el tiempo del equipo y adaptó sus acciones para superar el obstáculo."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "orientacion-resultados-3",
+      "nivelEsperado": 1,
+      "texto": "No se dio cuenta de que el resultado tenía un error y, cuando se lo señalaron, no planteó cómo corregirlo."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "orientacion-resultados-3",
+      "nivelEsperado": 2,
+      "texto": "Identificó un error en los datos y, con ayuda del facilitador, propuso una solución sencilla para corregirlo."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "orientacion-resultados-3",
+      "nivelEsperado": 3,
+      "texto": "Ante la discrepancia entre los resultados de dos compañeros, desarrolló dos alternativas de solución para el equipo."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "orientacion-resultados-3",
+      "nivelEsperado": 4,
+      "texto": "Formuló una solución fundamentada para el error del presupuesto y explicó qué consecuencias tendría aplicarla en el resto del proyecto."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "orientacion-resultados-4",
+      "nivelEsperado": 1,
+      "texto": "No reconoció el riesgo de no terminar a tiempo y esperó a que le dijeran qué decisión tomar."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "orientacion-resultados-4",
+      "nivelEsperado": 2,
+      "texto": "Identificó el riesgo de que faltara información y, con orientación del facilitador, propuso pedirla antes de seguir, como en ejercicios anteriores."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "orientacion-resultados-4",
+      "nivelEsperado": 3,
+      "texto": "Eligió entre varias alternativas tomando en cuenta los riesgos de cada una y los criterios de calidad de la entrega."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "orientacion-resultados-4",
+      "nivelEsperado": 4,
+      "texto": "Ejecutó acciones concretas para mantener la calidad del resultado final, como revisar cada sección contra los criterios antes de entregar."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "orientacion-resultados-1",
+      "texto": "Comentó que el fin de semana fue al cine y que la película le pareció muy larga."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "orientacion-resultados-2",
+      "texto": "Lleva una camiseta de su equipo de fútbol favorito."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "orientacion-resultados-3",
+      "texto": "Durante el receso habló de las vacaciones que planea en diciembre."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "orientacion-resultados-4",
+      "texto": "Dijo que le gusta cocinar y que su comida favorita es el arroz con pollo."
+    }
+  ]
+}

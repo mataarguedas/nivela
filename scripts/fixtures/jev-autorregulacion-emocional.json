@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Autorregulación emocional, jornada mañana (PRD §8.5), según la rúbrica de «Plantilla sistematizada autorregulación emocional.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "competenciaId": "autorregulacion-emocional",
+  "jornada": "manana",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "autorregulacion-emocional-1",
+      "nivelEsperado": 1,
+      "texto": "Cuando el grupo no aceptó su idea levantó la voz, golpeó la mesa con la mano y el ambiente del equipo se volvió tenso."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "autorregulacion-emocional-1",
+      "nivelEsperado": 2,
+      "texto": "Al recibir una crítica a su propuesta hizo una pausa, respiró y luego respondió con un tono más calmado, aunque todavía se notaba molesto."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "autorregulacion-emocional-1",
+      "nivelEsperado": 3,
+      "texto": "Dijo que se sentía frustrado por el poco tiempo, reconoció la emoción enseguida y siguió aportando ideas al equipo de forma constructiva."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "autorregulacion-emocional-1",
+      "nivelEsperado": 4,
+      "texto": "Cuando la discusión del equipo se puso tensa, convirtió esa tensión en una propuesta concreta para repartir el trabajo, y el grupo la adoptó y siguió avanzando."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "autorregulacion-emocional-2",
+      "nivelEsperado": 1,
+      "texto": "Ante la presión del tiempo se mostró muy alterado, dejó de participar y no logró terminar su parte de la actividad."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "autorregulacion-emocional-2",
+      "nivelEsperado": 2,
+      "texto": "Durante la dinámica de presión usó la respiración profunda para calmarse y lo logró la mayor parte del tiempo, aunque en un momento se alteró."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "autorregulacion-emocional-2",
+      "nivelEsperado": 3,
+      "texto": "Cuando el facilitador redujo el tiempo de la tarea, conservó la calma y se mostró estable durante toda la actividad."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "autorregulacion-emocional-2",
+      "nivelEsperado": 4,
+      "texto": "En la simulación de un cliente molesto, la parte más estresante de la actividad, mantuvo el equilibrio emocional de principio a fin y respondió siempre con serenidad."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "autorregulacion-emocional-3",
+      "nivelEsperado": 1,
+      "texto": "Cuando se perdió el archivo del equipo se angustió y no logró calmarse hasta que una compañera le ayudó a pensar qué hacer."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "autorregulacion-emocional-3",
+      "nivelEsperado": 2,
+      "texto": "Reconoció que la falla del proyector era una situación estresante, pero necesitó varios minutos antes de poder ocuparse de ella."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "autorregulacion-emocional-3",
+      "nivelEsperado": 3,
+      "texto": "Cuando se cayó la presentación dijo que era algo temporal que podían manejar, mantuvo la calma y propuso explicar el tema en la pizarra."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "autorregulacion-emocional-3",
+      "nivelEsperado": 4,
+      "texto": "Ante la noticia inesperada de que tenían la mitad del tiempo, convirtió la crisis en una oportunidad: reorganizó al equipo con calma y propuso una solución asertiva que todos aceptaron."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "autorregulacion-emocional-4",
+      "nivelEsperado": 1,
+      "texto": "En la parte más exigente de la actividad se bloqueó emocionalmente y su desempeño bajó; dejó varias tareas sin terminar."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "autorregulacion-emocional-4",
+      "nivelEsperado": 2,
+      "texto": "Reconoció que la dinámica era emocionalmente exigente, pero necesitó tiempo e instrucciones específicas del facilitador para adaptarse."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "autorregulacion-emocional-4",
+      "nivelEsperado": 3,
+      "texto": "Tomó el desafío de la ronda final como algo temporal y manejable, mantuvo la calma y se adelantó a organizar las tareas pendientes."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "autorregulacion-emocional-4",
+      "nivelEsperado": 4,
+      "texto": "Frente a varios imprevistos seguidos, cambió de estrategia cada vez sin perder la compostura y se aseguró de que el equipo terminara el trabajo."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "autorregulacion-emocional-1",
+      "texto": "Comentó que el sábado fue a la playa con su familia y que el clima estuvo muy bonito."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "autorregulacion-emocional-2",
+      "texto": "Trae el cabello recogido y usa lentes nuevos de marco negro."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "autorregulacion-emocional-3",
+      "texto": "Durante el receso habló de una serie que está viendo y de su personaje favorito."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "autorregulacion-emocional-4",
+      "texto": "Dijo que su materia favorita del semestre es estadística y que vive cerca de la universidad."
+    }
+  ]
+}

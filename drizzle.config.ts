@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { defineConfig } from "drizzle-kit";
+import { exigirDestino } from "./scripts/baseProduccion";
 
 // drizzle-kit (db:generate / db:migrate). Only DATABASE_URL, the same URL the
 // app uses, so a migration lands on the database the app talks to (locally:
@@ -14,7 +15,12 @@ import { defineConfig } from "drizzle-kit";
 //
 // DATABASE_URL_MIGRACION overrides both, for the one deliberate case of
 // migrating production from this machine (README → Despliegue):
-//   DATABASE_URL_MIGRACION="<production url>" npm run db:migrate
+//   DATABASE_URL_MIGRACION="<production url>" npm run db:migrate -- --produccion
+//
+// Production guard (scripts/baseProduccion.ts): any command that connects
+// refuses a production host unless scripts/migrar.ts was given --produccion
+// (it sets NIVELA_PERMITIR_PRODUCCION=1). `generate` never connects, so it
+// isn't checked.
 function desdeEnvLocal(clave: string): string | undefined {
   try {
     return parseEnv(readFileSync(".env.local", "utf8"))[clave];
@@ -26,6 +32,10 @@ function desdeEnvLocal(clave: string): string | undefined {
 const url = process.env.DATABASE_URL_MIGRACION ?? desdeEnvLocal("DATABASE_URL") ?? process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
 console.log(`drizzle-kit → ${new URL(url).host}`);
+if (!process.argv.includes("generate")) {
+  const { produccion } = exigirDestino(url, process.env.NIVELA_PERMITIR_PRODUCCION === "1");
+  if (produccion) console.log("drizzle-kit → PRODUCCIÓN (--produccion)");
+}
 
 export default defineConfig({
   dialect: "postgresql",

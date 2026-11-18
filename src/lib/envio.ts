@@ -52,12 +52,20 @@ export async function enviarEvaluacion(cuerpo: CuerpoEvaluacion): Promise<Respue
   }
 }
 
-/** GET /api/evaluaciones: server `updated_at` by participanteId. Null on any failure. */
+/** What GET /api/evaluaciones knows about one evaluator (PRD §5.4). */
+export type EstadoServidor = {
+  /** Server `updated_at` by participanteId. */
+  enviadas: Record<string, string>;
+  /** Participants this evaluator marked absent (PRD §5.13). */
+  ausentes: string[];
+};
+
+/** GET /api/evaluaciones: sent evaluations and absent marks. Null on any failure. */
 export async function consultarEnviadas(
   competenciaId: string,
   evaluadorId: string,
   senal?: AbortSignal,
-): Promise<Record<string, string> | null> {
+): Promise<EstadoServidor | null> {
   try {
     const parametros = new URLSearchParams({ competencia: competenciaId, evaluador: evaluadorId });
     const respuesta = await fetch(`/api/evaluaciones?${parametros}`, { cache: "no-store", signal: senal });
@@ -79,7 +87,11 @@ export async function consultarEnviadas(
         enviadas[fila.participanteId] = fila.actualizadoEn;
       }
     }
-    return enviadas;
+    const ausentes =
+      "ausentes" in datos && Array.isArray(datos.ausentes)
+        ? (datos.ausentes as unknown[]).filter((id): id is string => typeof id === "string")
+        : [];
+    return { enviadas, ausentes };
   } catch {
     return null;
   }

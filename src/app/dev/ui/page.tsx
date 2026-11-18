@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { COMPETENCIAS } from "@/config/competencias";
+import { competenciasDeJornada } from "@/config/competencias";
 import { equipoDeCompetencia } from "@/config/equipos";
 import { Muestrario } from "./Muestrario";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function PaginaComponentes() {
   if (process.env.NODE_ENV === "production") notFound();
 
-  const competencia = COMPETENCIAS.find((c) => c.habilitada && c.indicadores.length > 0);
+  const competencia = competenciasDeJornada("manana").find((c) => c.habilitada && c.indicadores.length > 0);
   const indicador = competencia?.indicadores[0];
   const integrante = competencia && equipoDeCompetencia("manana", competencia.id)?.integrantes[0];
   if (!indicador || !integrante) notFound();

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  index,
   integer,
   jsonb,
   numeric,
@@ -93,6 +94,8 @@ export const participantes = pgTable(
     numero: smallint("numero").notNull(),
     /** Null → "Participante NN". Max length enforced by validacion.ts. */
     nombre: text("nombre"),
+    /** University carnet (PRD §5.10): the reports' label. Null → "Participante NN". PII, never logged. */
+    carnet: text("carnet"),
     activo: boolean("activo").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -101,5 +104,67 @@ export const participantes = pgTable(
     unique().on(t.jornada, t.numero),
     check("participantes_numero_check", sql`${t.numero} between 1 and 99`),
     check("participantes_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+  ],
+);
+
+/**
+ * Evaluator accounts (PRD §5.12, v1.2): one row per config integrante that
+ * has an email. No row, or a null `correo`, reads as "Sin correo"; a null
+ * `contrasena_hash` as "Pendiente de activar". The integrante id implies the
+ * jornada and the team (config); neither is stored.
+ */
+export const cuentas = pgTable("cuentas", {
+  integranteId: text("integrante_id").primaryKey(),
+  /** Lowercased, max 254 (validated before writing). Never logged. */
+  correo: text("correo").unique(),
+  /** scrypt with a per-account salt (lib/cuentas.ts). Null → not activated. */
+  contrasenaHash: text("contrasena_hash"),
+  activadaEn: timestamp("activada_en", { withTimezone: true }),
+  ultimoAcceso: timestamp("ultimo_acceso", { withTimezone: true }),
+  intentosFallidos: smallint("intentos_fallidos").notNull().default(0),
+  bloqueadaHasta: timestamp("bloqueada_hasta", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Attendance marks (PRD §5.13, v1.2), per evaluator: "this evaluator didn't
+ * see this participant". `ausente = false` is an undone mark ("Marcar
+ * presente"); rows are updated, never deleted. Never stored offline.
+ */
+export const asistencia = pgTable(
+  "asistencia",
+  {
+    jornada: text("jornada", { enum: IDS_JORNADA }).notNull(),
+    competenciaId: text("competencia_id").notNull(),
+    evaluadorId: text("evaluador_id").notNull(),
+    participanteId: text("participante_id").notNull(),
+    ausente: boolean("ausente").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.jornada, t.competenciaId, t.evaluadorId, t.participanteId] }),
+    check("asistencia_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+  ],
+);
+
+/** 6-digit codes for activation and recovery (PRD §5.12). Only an HMAC of the code is stored. */
+export const codigosVerificacion = pgTable(
+  "codigos_verificacion",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    integranteId: text("integrante_id")
+      .notNull()
+      .references(() => cuentas.integranteId, { onDelete: "cascade" }),
+    proposito: text("proposito", { enum: ["activar", "recuperar"] }).notNull(),
+    /** HMAC-SHA256 with SESSION_SECRET; never the code itself. */
+    codigoHash: text("codigo_hash").notNull(),
+    expiraEn: timestamp("expira_en", { withTimezone: true }).notNull(),
+    intentos: smallint("intentos").notNull().default(0),
+    usadoEn: timestamp("usado_en", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("codigos_verificacion_proposito_check", sql`${t.proposito} in ('activar', 'recuperar')`),
+    index("codigos_verificacion_integrante_idx").on(t.integranteId, t.createdAt),
   ],
 );

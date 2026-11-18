@@ -3,9 +3,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AccionesReporte } from "@/components/reportes/AccionesReporte";
-import { maximoConteo, puntosDistribucionParticipante, puntosRadar } from "@/components/reportes/datosGraficos";
-import { ClaveIndicadores, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { BarrasHorizontales } from "@/components/reportes/BarrasHorizontales";
+import {
+  barrasPuntajePorIndicador,
+  lineaNivelMasElegido,
+  maximoConteo,
+  puntosDistribucionParticipante,
+  puntosRadar,
+} from "@/components/reportes/datosGraficos";
+import {
+  BloqueDetallado,
+  ClaveIndicadores,
+  FiguraGrafico,
+  Kpi,
+  SeccionReporte,
+  TablaEquivalente,
+} from "@/components/reportes/Figura";
 import { DistribucionNiveles, RadarIndicadores } from "@/components/reportes/graficos";
+import { GraficosDetallados } from "@/components/reportes/GraficosDetallados";
 import { Chip, type TonoChip } from "@/components/ui/Chip";
 import { IconoChevron } from "@/components/ui/iconos";
 import { nombreJornada } from "@/config/jornadas";
@@ -15,13 +30,17 @@ import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import type { Coincidencia } from "@/lib/puntajes";
 import type { ReporteParticipante } from "@/lib/reportes";
+import { textoBrecha } from "@/lib/textoBrecha";
 import { cargarReporte } from "../../cargarReporte";
 import { exigirDocente } from "../../exigirDocente";
 
-// Reporte individual (PRD §11.1, FR-12): nivel general, the mean per
-// indicator (radar), how many evaluators chose each level, agreement per
-// indicator, and the observations with the evaluator's name (docente only:
-// this page and its data are gated to that role).
+// Reporte individual (PRD §11.1, FR-12): nivel general, the score per
+// indicator (server-drawn bars titled by their message, §11 v1.2), the most
+// chosen level per indicator in one line, the gap to the next level,
+// agreement per indicator, and the observations with the evaluator's name
+// (docente only: this page and its data are gated to that role). The v1.1
+// radar and stacked bars wait in "Ver gráficos detallados" and load
+// Recharts only when opened.
 
 // Not validated in dev; see the note in app/[competencia]/layout.tsx.
 export const instant = false;
@@ -33,6 +52,8 @@ export const metadata: Metadata = {
 
 const ALTO_RADAR = 300;
 const ALTO_FILA_DISTRIBUCION = 44;
+// Value gutter, wide enough for "2,10 · Intermedio".
+const ANCHO_PUNTAJE = "7rem";
 
 const TONO_COINCIDENCIA: Record<Coincidencia, TonoChip> = { alta: "fuerte", media: "medio", baja: "suave" };
 
@@ -83,8 +104,10 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
           <div className="mt-6">
             <p className="text-body text-ink-3">{TEXTOS.reportes.nivelGeneral}</p>
             <p className="text-h2 font-semibold md:text-display">{obtenerNivel(datos.nivelGeneral).etiqueta}</p>
+            {datos.brecha && <p className="mt-1 text-body text-ink-3">{textoBrecha(datos.brecha)}</p>}
           </div>
         )}
+        {datos?.asistencia && <AvisoAsistencia datos={datos} />}
       </header>
       <AccionesReporte competenciaId={competencia.id} />
 
@@ -126,10 +149,27 @@ async function ReporteIndividual({ params }: Pick<Props, "params">) {
   );
 }
 
+/** "Ausente" or "Asistencia en conflicto" with the counts (PRD §11.1, §5.13). */
+function AvisoAsistencia({ datos }: { datos: ReporteParticipante }) {
+  const marcas = formatearEntero(datos.marcasAusente);
+  const ausente = datos.asistencia === "ausente";
+  return (
+    <p className="mt-4 flex flex-wrap items-center justify-center gap-2 text-caption text-ink-3">
+      <Chip tono="ausente">{ausente ? TEXTOS_REPORTES.ausente : TEXTOS_REPORTES.asistenciaConflicto}</Chip>
+      <span>
+        {ausente
+          ? TEXTOS_REPORTES.marcadoAusentePor(marcas)
+          : TEXTOS_REPORTES.conflictoDetalle(marcas, formatearEntero(datos.evaluaciones))}
+      </span>
+    </p>
+  );
+}
+
 function Contenido({ datos }: { datos: ReporteParticipante }) {
   const indicadores = datos.indicadores.map(({ numero, titulo }) => ({ numero, titulo }));
   const nombreIndicador = (i: { numero: number; titulo: string }) => `${TEXTOS.calificacion.indicador(i.numero)}. ${i.titulo}`;
   const puntosConteo = puntosDistribucionParticipante(datos.indicadores);
+  const porIndicador = barrasPuntajePorIndicador(datos.indicadores);
 
   return (
     <div className="mt-8 flex flex-col gap-4">
@@ -145,44 +185,66 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
         />
       </dl>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <SeccionReporte id="promedios" titulo={TEXTOS_REPORTES.promedioPorIndicador}>
-          <FiguraGrafico
-            etiquetadaPor="promedios-titulo"
-            alto={ALTO_RADAR}
-            grafico={<RadarIndicadores puntos={puntosRadar(datos.indicadores)} />}
-          >
-            <TablaEquivalente
-              titulo={TEXTOS_REPORTES.promedioPorIndicador}
-              encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.promedioPorIndicador]}
-              filas={datos.indicadores.map((i) => [
-                nombreIndicador(i),
-                i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
-              ])}
+      <SeccionReporte id="por-indicador" titulo={TEXTOS_REPORTES.puntajePorIndicador} mensaje={porIndicador.titulo}>
+        <FiguraGrafico
+          etiquetadaPor="por-indicador-titulo por-indicador-mensaje"
+          grafico={
+            <BarrasHorizontales
+              barras={porIndicador.barras}
+              referencias={porIndicador.referencias}
+              anchoValor={ANCHO_PUNTAJE}
+              anchoEtiqueta="16rem"
             />
-          </FiguraGrafico>
-          <ClaveIndicadores indicadores={indicadores} />
-        </SeccionReporte>
+          }
+        >
+          <TablaEquivalente
+            titulo={TEXTOS_REPORTES.puntajePorIndicador}
+            encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.puntaje, TEXTOS_REPORTES.nivel]}
+            filas={datos.indicadores.map((i) => [
+              nombreIndicador(i),
+              i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
+              i.brecha === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(i.brecha.nivelActual).etiqueta,
+            ])}
+          />
+        </FiguraGrafico>
+      </SeccionReporte>
 
-        <SeccionReporte id="calificaciones" titulo={TEXTOS_REPORTES.calificacionesPorIndicador}>
-          <FiguraGrafico
-            etiquetadaPor="calificaciones-titulo"
-            alto={datos.indicadores.length * ALTO_FILA_DISTRIBUCION + 8}
-            grafico={<DistribucionNiveles puntos={puntosConteo} maximo={maximoConteo(puntosConteo)} />}
-            leyenda
-          >
-            <TablaEquivalente
-              titulo={TEXTOS_REPORTES.calificacionesPorIndicador}
-              encabezados={[TEXTOS_REPORTES.indicador, ...NIVELES.map((n) => n.etiqueta)]}
-              filas={datos.indicadores.map((i) => [
-                nombreIndicador(i),
-                ...NIVELES.map((n) => formatearEntero(i.distribucion[n.valor])),
-              ])}
-            />
-          </FiguraGrafico>
-          <ClaveIndicadores indicadores={indicadores} />
-        </SeccionReporte>
-      </div>
+      <SeccionReporte id="calificaciones" titulo={TEXTOS_REPORTES.calificacionesPorIndicador}>
+        <ul className="flex flex-col gap-3">
+          {datos.indicadores.map((i) => (
+            <li key={i.indicadorId} className="fila-reporte">
+              <p className="text-body">{nombreIndicador(i)}</p>
+              <p className="mt-0.5 text-caption text-ink-3 tabular-nums">
+                {lineaNivelMasElegido(i.distribucion) ?? TEXTOS_REPORTES.sinDatos}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </SeccionReporte>
+
+      <SeccionReporte id="siguiente" titulo={TEXTOS_REPORTES.paraSiguienteNivel}>
+        <ul className="flex flex-col gap-4">
+          {datos.indicadores.map((i) => (
+            <li key={i.indicadorId} className="fila-reporte">
+              <p className="text-body font-semibold">{nombreIndicador(i)}</p>
+              {i.brecha && i.media !== null ? (
+                <>
+                  <p className="mt-0.5 text-caption text-ink-3 tabular-nums">
+                    {formatearDecimal(i.media)} · {obtenerNivel(i.brecha.nivelActual).etiqueta} · {textoBrecha(i.brecha)}
+                  </p>
+                  {i.brecha.siguiente !== null && i.descripcionSiguiente && (
+                    <p className="mt-1 text-body text-ink">
+                      {TEXTOS_REPORTES.paraLlegar(obtenerNivel(i.brecha.siguiente).etiqueta, i.descripcionSiguiente)}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-0.5 text-caption text-ink-2">{TEXTOS_REPORTES.sinDatos}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </SeccionReporte>
 
       <SeccionReporte id="coincidencia" titulo={TEXTOS_REPORTES.coincidenciaTitulo}>
         <ul className="flex flex-col gap-3">
@@ -231,6 +293,45 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
           ))}
         </div>
       </SeccionReporte>
+
+      <GraficosDetallados>
+        <BloqueDetallado id="promedios" titulo={TEXTOS_REPORTES.promedioPorIndicador}>
+          <FiguraGrafico
+            etiquetadaPor="promedios-titulo"
+            alto={ALTO_RADAR}
+            grafico={<RadarIndicadores puntos={puntosRadar(datos.indicadores)} />}
+          >
+            <TablaEquivalente
+              titulo={TEXTOS_REPORTES.promedioPorIndicador}
+              encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.promedioPorIndicador]}
+              filas={datos.indicadores.map((i) => [
+                nombreIndicador(i),
+                i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
+              ])}
+            />
+          </FiguraGrafico>
+          <ClaveIndicadores indicadores={indicadores} />
+        </BloqueDetallado>
+
+        <BloqueDetallado id="evaluadores-nivel" titulo={TEXTOS_REPORTES.evaluadoresPorNivel}>
+          <FiguraGrafico
+            etiquetadaPor="evaluadores-nivel-titulo"
+            alto={datos.indicadores.length * ALTO_FILA_DISTRIBUCION + 8}
+            grafico={<DistribucionNiveles puntos={puntosConteo} maximo={maximoConteo(puntosConteo)} />}
+            leyenda
+          >
+            <TablaEquivalente
+              titulo={TEXTOS_REPORTES.evaluadoresPorNivel}
+              encabezados={[TEXTOS_REPORTES.indicador, ...NIVELES.map((n) => n.etiqueta)]}
+              filas={datos.indicadores.map((i) => [
+                nombreIndicador(i),
+                ...NIVELES.map((n) => formatearEntero(i.distribucion[n.valor])),
+              ])}
+            />
+          </FiguraGrafico>
+          <ClaveIndicadores indicadores={indicadores} />
+        </BloqueDetallado>
+      </GraficosDetallados>
     </div>
   );
 }

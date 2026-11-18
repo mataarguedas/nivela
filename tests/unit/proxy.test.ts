@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { equipoDeCompetencia } from "@/config/equipos";
 import { COOKIE_SESION, COOKIE_SESION_PREVIA, firmarSesion, type Rol } from "@/lib/sesion";
 import { proxy } from "@/proxy";
 
 const ORIGEN = "http://localhost:3000";
 const SID = "0f3c2a4e-1b5d-4c6e-9f70-8a1b2c3d4e5f";
+const EVALUADOR_MANANA = equipoDeCompetencia("manana", "adaptabilidad")!.integrantes[0].id;
 
 beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", "secreto-de-prueba-con-al-menos-32-bytes!!");
@@ -16,7 +18,9 @@ afterEach(() => {
 
 async function solicitud(ruta: string, opciones: { rol?: Rol; token?: string; previa?: boolean } = {}) {
   const cookies: string[] = [];
-  const token = opciones.token ?? (opciones.rol ? await firmarSesion({ rol: opciones.rol, sid: SID, jornada: "manana" }) : undefined);
+  const integranteId = opciones.rol === "evaluador" ? EVALUADOR_MANANA : undefined;
+  const token =
+    opciones.token ?? (opciones.rol ? await firmarSesion({ rol: opciones.rol, sid: SID, jornada: "manana", integranteId }) : undefined);
   if (token) cookies.push(`${COOKIE_SESION}=${token}`);
   if (opciones.previa) cookies.push(`${COOKIE_SESION_PREVIA}=1`);
   return new NextRequest(new URL(ruta, ORIGEN), { headers: cookies.length ? { cookie: cookies.join("; ") } : {} });
@@ -54,9 +58,12 @@ describe("proxy sin sesión", () => {
     await expect(respuesta.json()).resolves.toEqual({ error: expect.any(String) });
   });
 
-  it("deja pasar /acceso, /api/acceso y /api/salir", async () => {
+  it("deja pasar /acceso, /api/acceso, /api/acceso/* y /api/salir", async () => {
     dejaPasar(await proxy(await solicitud("/acceso")));
     dejaPasar(await proxy(await solicitud("/api/acceso")));
+    for (const ruta of ["correo", "activar", "contrasena", "recuperar"]) {
+      dejaPasar(await proxy(await solicitud(`/api/acceso/${ruta}`)));
+    }
     dejaPasar(await proxy(await solicitud("/api/salir")));
   });
 

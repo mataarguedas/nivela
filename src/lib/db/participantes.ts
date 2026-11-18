@@ -24,7 +24,7 @@ import type * as schema from "./schema";
 
 type Bd = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-export type FilaParticipante = { numero: number; nombre: string | null; activo: boolean };
+export type FilaParticipante = { numero: number; nombre: string | null; carnet: string | null; activo: boolean };
 
 /** What the admin editor starts from. */
 export type EstadoParticipantes = {
@@ -32,11 +32,18 @@ export type EstadoParticipantes = {
   cantidad: number;
   /** Stored name per numero (index = numero − 1), hidden rows included, so raising the count brings them back. */
   nombres: (string | null)[];
+  /** Stored carnet per numero, aligned with `nombres`. */
+  carnets: (string | null)[];
 };
 
 export function sentenciaLeerFilas<B extends Bd>(db: B, jornada: JornadaId) {
   return db
-    .select({ numero: participantes.numero, nombre: participantes.nombre, activo: participantes.activo })
+    .select({
+      numero: participantes.numero,
+      nombre: participantes.nombre,
+      carnet: participantes.carnet,
+      activo: participantes.activo,
+    })
     .from(participantes)
     .where(eq(participantes.jornada, jornada))
     .orderBy(asc(participantes.numero));
@@ -49,15 +56,19 @@ function cantidadRespaldo(): number {
 /** Active participants in order; the unnamed fallback list while the jornada has no rows. */
 export function participantesActivos(filas: readonly FilaParticipante[], respaldo: number): Participante[] {
   if (filas.length === 0) return generarParticipantes(respaldo);
-  return filas.filter((f) => f.activo).map((f) => crearParticipante(f.numero, f.nombre));
+  return filas.filter((f) => f.activo).map((f) => crearParticipante(f.numero, f.nombre, f.carnet));
 }
 
 export function estadoDesdeFilas(filas: readonly FilaParticipante[], respaldo: number): EstadoParticipantes {
-  if (filas.length === 0) return { cantidad: respaldo, nombres: [] };
+  if (filas.length === 0) return { cantidad: respaldo, nombres: [], carnets: [] };
   const maximo = Math.max(...filas.map((f) => f.numero));
   const nombres: (string | null)[] = Array.from({ length: maximo }, () => null);
-  for (const f of filas) nombres[f.numero - 1] = f.nombre;
-  return { cantidad: filas.filter((f) => f.activo).length, nombres };
+  const carnets: (string | null)[] = Array.from({ length: maximo }, () => null);
+  for (const f of filas) {
+    nombres[f.numero - 1] = f.nombre;
+    carnets[f.numero - 1] = f.carnet;
+  }
+  return { cantidad: filas.filter((f) => f.activo).length, nombres, carnets };
 }
 
 export async function obtenerParticipantes(jornada: JornadaId): Promise<Participante[]> {
@@ -68,7 +79,7 @@ export async function obtenerParticipantes(jornada: JornadaId): Promise<Particip
 export async function obtenerTodosLosParticipantes(jornada: JornadaId): Promise<Participante[]> {
   const filas = await sentenciaLeerFilas(getDb(), jornada);
   if (filas.length === 0) return generarParticipantes(cantidadRespaldo());
-  return filas.map((f) => crearParticipante(f.numero, f.nombre));
+  return filas.map((f) => crearParticipante(f.numero, f.nombre, f.carnet));
 }
 
 /**
@@ -107,23 +118,31 @@ export function sentenciaContarEvaluaciones<B extends Bd>(db: B, jornada: Jornad
     .where(and(eq(evaluaciones.jornada, jornada), inArray(evaluaciones.participanteId, [...ids])));
 }
 
+/** The list the admin saves: names and carnets aligned by position (P01 first). */
+export type ListaParticipantes = { nombres: readonly (string | null)[]; carnets: readonly (string | null)[] };
+
 /**
  * Saving the list as two statements for one transaction (a neon-http batch):
- * upsert P01…P{n} as active with their names, then hide every row above n.
- * Rows are never deleted, so hidden participants keep their names.
+ * upsert P01…P{n} as active with their names and carnets, then hide every row
+ * above n. Rows are never deleted, so hidden participants keep their data.
  */
-export function sentenciasGuardarParticipantes<B extends Bd>(
-  db: B,
-  jornada: JornadaId,
-  nombres: readonly (string | null)[],
-) {
-  const cantidad = nombres.length;
+export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: JornadaId, lista: ListaParticipantes) {
+  const cantidad = lista.nombres.length;
   const upsert = db
     .insert(participantes)
-    .values(nombres.map((nombre, i) => ({ jornada, id: idParticipante(i + 1), numero: i + 1, nombre, activo: true })))
+    .values(
+      lista.nombres.map((nombre, i) => ({
+        jornada,
+        id: idParticipante(i + 1),
+        numero: i + 1,
+        nombre,
+        carnet: lista.carnets[i] ?? null,
+        activo: true,
+      })),
+    )
     .onConflictDoUpdate({
       target: [participantes.jornada, participantes.id],
-      set: { nombre: sql`excluded.nombre`, activo: true, updatedAt: sql`now()` },
+      set: { nombre: sql`excluded.nombre`, carnet: sql`excluded.carnet`, activo: true, updatedAt: sql`now()` },
     });
   const ocultar = db
     .update(participantes)
@@ -142,16 +161,19 @@ export type ResultadoGuardar =
  */
 export async function guardarParticipantes(
   jornada: JornadaId,
-  nombres: readonly (string | null)[],
+  lista: ListaParticipantes,
   confirmar: boolean,
 ): Promise<ResultadoGuardar> {
   const db = getDb();
   const actuales = participantesActivos(await sentenciaLeerFilas(db, jornada), cantidadRespaldo());
-  const ocultos = actuales.filter((p) => p.numero > nombres.length).map((p) => p.id);
+  const ocultos = actuales.filter((p) => p.numero > lista.nombres.length).map((p) => p.id);
   if (ocultos.length > 0 && !confirmar) {
     const [{ total }] = await sentenciaContarEvaluaciones(db, jornada, ocultos);
     if (total > 0) return { ok: false, ocultos: ocultos.length, evaluacionesAfectadas: total };
   }
-  await db.batch(sentenciasGuardarParticipantes(db, jornada, nombres));
-  return { ok: true, participantes: nombres.map((nombre, i) => crearParticipante(i + 1, nombre)) };
+  await db.batch(sentenciasGuardarParticipantes(db, jornada, lista));
+  return {
+    ok: true,
+    participantes: lista.nombres.map((nombre, i) => crearParticipante(i + 1, nombre, lista.carnets[i] ?? null)),
+  };
 }

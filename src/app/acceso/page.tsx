@@ -6,7 +6,8 @@ import { motivoAcceso } from "@/lib/destino";
 import { AvisoAcceso } from "./AvisoAcceso";
 import { FormularioAcceso } from "./FormularioAcceso";
 
-// /acceso (PRD §5.1): centered hero, then a left-aligned single-field form.
+// /acceso (PRD §5.1, §5.12): centered hero, then the left-aligned sign-in
+// steps (email + password for evaluadores; a code for docente and admin).
 // The hero and the form prerender into the static shell. Only the notice
 // depends on the URL, so only it streams in behind Suspense (Cache
 // Components). The form must not sit inside that boundary: swapping a

@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Pensamiento crítico y analítico, jornada mañana (PRD §8.5), según la rúbrica de «Herramienta 4_Plantilla sistematizada.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "competenciaId": "pensamiento-critico",
+  "jornada": "manana",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "pensamiento-critico-1",
+      "nivelEsperado": 1,
+      "texto": "Al leer el caso del ejercicio no logró señalar cuáles datos eran importantes y preguntó varias veces de qué se trataba. Necesitó que una compañera le explicara la situación para poder empezar."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "pensamiento-critico-1",
+      "nivelEsperado": 2,
+      "texto": "Señaló los datos más obvios del caso, como el plazo y el presupuesto, pero cuando se le preguntó cómo afectaban la situación no supo explicar la relación."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "pensamiento-critico-1",
+      "nivelEsperado": 3,
+      "texto": "Identificó los datos clave del caso, los relacionó entre sí y explicó al grupo cómo el recorte de personal influía directamente en el retraso del proyecto."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "pensamiento-critico-1",
+      "nivelEsperado": 4,
+      "texto": "Cuestionó lo que significaban realmente algunos datos del caso y, a partir de las relaciones entre ellos, formuló una conclusión bien fundamentada sobre la situación planteada."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "pensamiento-critico-2",
+      "nivelEsperado": 1,
+      "texto": "Describió las diferencias que veía entre los dos informes del caso, pero no mencionó por qué podían haber ocurrido."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "pensamiento-critico-2",
+      "nivelEsperado": 2,
+      "texto": "Mencionó dos posibles causas del problema planteado, la falta de comunicación y la carga de trabajo, sin relacionarlas con los datos del caso."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "pensamiento-critico-2",
+      "nivelEsperado": 3,
+      "texto": "Relacionó las diferencias entre los resultados de los dos departamentos con posibles causas, apoyándose en las cifras que traía la información del ejercicio."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "pensamiento-critico-2",
+      "nivelEsperado": 4,
+      "texto": "Dividió el problema en sus partes, explicó cómo la rotación de personal, la capacitación y los horarios se influían entre sí y presentó una explicación fundamentada del origen del problema."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "pensamiento-critico-3",
+      "nivelEsperado": 1,
+      "texto": "Notó que dos tablas del material mostraban el mismo número de empleados, pero no comparó el resto de los datos."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "pensamiento-critico-3",
+      "nivelEsperado": 2,
+      "texto": "Comparó las cifras de las dos encuestas e indicó en qué coincidían y en qué eran diferentes."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "pensamiento-critico-3",
+      "nivelEsperado": 3,
+      "texto": "Contrastó los datos de la encuesta con los del informe de asistencia y concluyó que no eran coherentes, porque las ausencias reportadas no coincidían."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "pensamiento-critico-3",
+      "nivelEsperado": 4,
+      "texto": "Evaluó si la información del caso era coherente, detectó una contradicción entre el informe y la encuesta y justificó su criterio con los datos específicos que la mostraban."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "pensamiento-critico-4",
+      "nivelEsperado": 1,
+      "texto": "Cuando el grupo debía decidir, propuso despedir al encargado sin revisar la información del caso ni explicar por qué."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "pensamiento-critico-4",
+      "nivelEsperado": 2,
+      "texto": "Antes de decidir relacionó algunos datos del caso, señaló una inconsistencia en las cifras de ventas y con eso propuso una decisión al grupo."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "pensamiento-critico-4",
+      "nivelEsperado": 3,
+      "texto": "Analizó críticamente la información, conectó los problemas de comunicación con los retrasos y fundamentó la decisión de reorganizar los turnos."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "pensamiento-critico-4",
+      "nivelEsperado": 4,
+      "texto": "Examinó a fondo la información, cuestionó el supuesto de que el problema era solo de motivación, encontró una relación poco evidente con la falta de herramientas y tomó una decisión sólida basada en esa evidencia."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "pensamiento-critico-1",
+      "texto": "Llegó temprano a la actividad y comentó que el fin de semana fue a un concierto con sus amigos."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "pensamiento-critico-2",
+      "texto": "Lleva una mochila nueva de color rojo y dijo que la compró en oferta."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "pensamiento-critico-3",
+      "texto": "Durante el receso habló de la receta de un postre que quiere preparar el domingo."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "pensamiento-critico-4",
+      "texto": "Comentó que prefiere estudiar con música y que le gusta sentarse cerca de la ventana."
+    }
+  ]
+}

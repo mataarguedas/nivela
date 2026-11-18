@@ -5,9 +5,10 @@ import { COOKIE_SESION, COOKIE_SESION_PREVIA, verificarSesion } from "@/lib/sesi
 
 beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", "secreto-de-prueba-con-al-menos-32-bytes!!");
-  vi.stubEnv("CODIGO_ACCESO", "clase-2026");
   vi.stubEnv("CODIGO_DOCENTE", "docente-2026");
-  vi.stubEnv("CODIGO_ACCESO_NOCHE", "noche-2026");
+  vi.stubEnv("CODIGO_ADMIN", "admin-2026");
+  // Retired in v1.2: set here only to prove they no longer open anything.
+  vi.stubEnv("CODIGO_ACCESO", "clase-2026");
 });
 
 afterEach(() => {
@@ -42,10 +43,10 @@ function cookieDe(respuesta: Response, nombre: string): string | undefined {
 }
 
 describe("POST /api/acceso", () => {
-  it("el código de clase da rol evaluador y una cookie httpOnly de 12 h", async () => {
-    const respuesta = await acceder(pedir({ codigo: "  clase-2026 " }));
+  it("el código docente da rol docente y una cookie httpOnly de 12 h", async () => {
+    const respuesta = await acceder(pedir({ codigo: "  docente-2026 " }));
     expect(respuesta.status).toBe(200);
-    await expect(respuesta.json()).resolves.toEqual({ rol: "evaluador" });
+    await expect(respuesta.json()).resolves.toEqual({ rol: "docente" });
 
     const cookie = cookieDe(respuesta, COOKIE_SESION)!;
     expect(cookie).toMatch(/HttpOnly/i);
@@ -55,16 +56,19 @@ describe("POST /api/acceso", () => {
     expect(cookie).not.toMatch(/Secure/i);
 
     const token = cookie.split(";")[0].slice(COOKIE_SESION.length + 1);
-    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "evaluador", jornada: "manana" });
+    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "docente", jornada: "manana" });
     expect(cookieDe(respuesta, COOKIE_SESION_PREVIA)).toBeDefined();
   });
 
-  it("el código de la noche da rol evaluador en la jornada noche", async () => {
-    const respuesta = await acceder(pedir({ codigo: "noche-2026" }));
-    expect(respuesta.status).toBe(200);
-    await expect(respuesta.json()).resolves.toEqual({ rol: "evaluador" });
-    const token = cookieDe(respuesta, COOKIE_SESION)!.split(";")[0].slice(COOKIE_SESION.length + 1);
-    await expect(verificarSesion(token)).resolves.toMatchObject({ rol: "evaluador", jornada: "noche" });
+  it("el código de administración da rol admin", async () => {
+    const respuesta = await acceder(pedir({ codigo: "admin-2026" }));
+    await expect(respuesta.json()).resolves.toEqual({ rol: "admin" });
+  });
+
+  it("el código de clase retirado ya no da acceso", async () => {
+    const respuesta = await conRetraso(pedir({ codigo: "clase-2026" }));
+    expect(respuesta.status).toBe(401);
+    expect(cookieDe(respuesta, COOKIE_SESION)).toBeUndefined();
   });
 
   it("el código docente da rol docente", async () => {
@@ -74,7 +78,7 @@ describe("POST /api/acceso", () => {
 
   it("marca la cookie como Secure en producción", async () => {
     vi.stubEnv("NODE_ENV", "production");
-    const respuesta = await acceder(pedir({ codigo: "clase-2026" }));
+    const respuesta = await acceder(pedir({ codigo: "docente-2026" }));
     expect(cookieDe(respuesta, COOKIE_SESION)).toMatch(/Secure/i);
   });
 

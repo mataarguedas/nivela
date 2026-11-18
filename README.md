@@ -6,7 +6,7 @@ Nivela es una aplicación web pensada para el teléfono (se puede instalar como 
 
 Las evaluaciones enviadas se guardan en Postgres. Con el código docente se consultan los reportes (general e individual), se descarga el CSV y se imprime o guarda en PDF.
 
-En esta primera versión solo está habilitada **Adaptabilidad**. Las otras cuatro competencias aparecen como «Próximamente».
+Cada equipo redacta la **rúbrica** (la plantilla sistematizada) de su competencia, así que la rúbrica depende de la jornada. De **mañana** están habilitadas las cinco competencias. De **noche** solo **Adaptabilidad** (con la plantilla del equipo de la mañana); las otras cuatro aparecen como «Próximamente» hasta que los equipos de la noche entreguen sus plantillas.
 
 Documentos de referencia: [`PRD.md`](PRD.md) (alcance, flujos, reglas de puntaje, contrato con Jev, base de datos y textos), [`DESIGN.md`](DESIGN.md) (diseño visual) y [`CLAUDE.md`](CLAUDE.md) (reglas técnicas).
 
@@ -47,7 +47,9 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `npm test` | Pruebas unitarias (Vitest). |
 | `npm run test:e2e` | Pruebas de extremo a extremo (Playwright: iPhone 13/WebKit, Pixel 7/Chromium, Firefox móvil y Chrome de escritorio). Requiere los datos de `db:seed` en la rama de desarrollo. |
 | `npm run db:generate` / `npm run db:migrate` | Genera y aplica migraciones de Drizzle (carpeta `drizzle/`). |
-| `npm run db:seed` | Datos ficticios: el equipo de Adaptabilidad de cada jornada (Equipo 4 de mañana, Equipo 1 de noche) × todos sus participantes. Se niega a correr con `NODE_ENV=production`. `npm run db:seed -- --limpiar` vacía las tablas. |
+| `npm run db:seed` | Datos ficticios: el equipo de cada competencia con rúbrica en cada jornada (de mañana las cinco; de noche, Adaptabilidad) × todos sus participantes, más las cuentas de prueba. Solo corre contra la base de `.env.local` (la rama de desarrollo). `npm run db:seed -- --limpiar` vacía las tablas. |
+| `npm run cuentas:prueba` | Deja cada cuenta de evaluador como `<id>@ejemplo.test` con la contraseña `E2E_CONTRASENA` (solo desarrollo; las pruebas e2e lo ejecutan solas). |
+| `npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv` | Carga los correos reales de los evaluadores desde un CSV que nunca se sube al repositorio. Muestra conteos, nunca correos. Con `--produccion` apunta a producción y pide confirmación. |
 | `npm run jev:evaluar` | Conjunto de referencia de Jev (ver abajo). |
 
 ## Variables de entorno
@@ -57,11 +59,13 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `TYPESAFE_API_KEY` | Clave de TypeSafe para Jev. Solo en el servidor; nunca llega al navegador. |
 | `JEV_MODEL` | Modelo de Jev, fijado en `jev-1.13.0` para que los resultados sean reproducibles. No lo cambie a `jev-latest` sin una decisión explícita. |
 | `DATABASE_URL` | Conexión a Neon Postgres. La define la integración de Neon en Vercel. |
-| `CODIGO_ACCESO` | Código de la clase (rol evaluador). |
 | `CODIGO_DOCENTE` | Código docente (rol docente: todo lo del evaluador más los reportes). |
-| `CODIGO_ADMIN` | Código de administración (rol admin: solo `/admin`, donde se definen la cantidad y los nombres de los participantes). |
+| `CODIGO_ADMIN` | Código de administración (rol admin: solo `/admin`, donde se definen la cantidad, los nombres y los carnés de los participantes). |
 | `SESSION_SECRET` | Secreto para firmar la cookie de sesión: al menos 32 bytes aleatorios. |
 | `CANTIDAD_PARTICIPANTES` | Participantes sin nombre que se muestran mientras la administración no guarde la lista real (predeterminado: 20). |
+| `E2E_CONTRASENA` | Solo desarrollo: contraseña de las cuentas de prueba `<id>@ejemplo.test`. Nunca en Vercel. |
+
+Los evaluadores no usan códigos: ingresan con su correo y una contraseña que crean la primera vez, después de verificar el correo con un código de 6 dígitos.
 
 Nunca suba archivos `.env*` al repositorio, salvo `.env.example`.
 
@@ -69,7 +73,7 @@ Nunca suba archivos `.env*` al repositorio, salvo `.env.example`.
 
 Los códigos viven solo en las variables de entorno, no en el código.
 
-1. En Vercel: **Project → Settings → Environment Variables**, edite `CODIGO_ACCESO`, `CODIGO_DOCENTE` o `CODIGO_ADMIN` (o use `vercel env rm CODIGO_ACCESO production` y `vercel env add CODIGO_ACCESO production`).
+1. En Vercel: **Project → Settings → Environment Variables**, edite `CODIGO_DOCENTE` o `CODIGO_ADMIN` (o use `vercel env rm CODIGO_DOCENTE production` y `vercel env add CODIGO_DOCENTE production`).
 2. Vuelva a desplegar (`vercel --prod` o **Redeploy** en el panel) para que el cambio tome efecto.
 3. Las sesiones abiertas siguen activas hasta que vencen (12 h). Para cerrar todas las sesiones de inmediato, cambie también `SESSION_SECRET` y vuelva a desplegar.
 
@@ -78,27 +82,26 @@ Localmente, edite los mismos nombres en `.env.local` y reinicie `npm run dev`.
 ## Cómo definir los participantes
 
 1. Ingrese en `/acceso` con el código de administración (`CODIGO_ADMIN`). La app lo lleva a **Participantes** (`/admin`).
-2. Escriba la cantidad de participantes y el nombre de cada uno, o use **Pegar lista** para pegar una columna de nombres (uno por línea) desde una hoja de cálculo.
+2. Escriba la cantidad de participantes y el nombre y el carné de cada uno, o use **Pegar lista** para pegar desde una hoja de cálculo dos columnas (carné y nombre, separadas por tabulación o por «;») o solo los nombres, una persona por línea.
 3. Toque **Guardar cambios**. Las personas evaluadoras y los reportes ven la lista nueva al cargar la siguiente página; no hace falta volver a desplegar.
 
-Solo nombres: la app rechaza correos y números de teléfono. Un nombre vacío se muestra como «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones.
+Escriba primero el nombre de pila y después los apellidos («Ana Lucía Mora Solís»): así lo ven las personas evaluadoras y así saluda el correo de resultados. El campo de nombre rechaza correos y números de teléfono; un nombre vacío se muestra como «Participante 07». **Los reportes y el CSV muestran solo el carné, nunca el nombre**; sin carné, el reporte muestra «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones.
 
-## Cómo habilitar otra competencia
+## Cómo habilitar una competencia en una jornada
 
-Todo se hace en `src/config/`; no hay que tocar componentes.
+Todo se hace en `src/config/` y en el PRD; no hay que tocar componentes. Una competencia queda habilitada en una jornada cuando tiene una **rúbrica** para esa jornada. Por ejemplo, cuando el equipo de la noche de Pensamiento crítico entregue su plantilla:
 
 1. Abra el archivo de la competencia, por ejemplo `src/config/competencias/pensamiento-critico.ts`.
-2. Complete `definicion`, `fuente` e `indicadores`. Cada indicador lleva `id` único (por ejemplo `pensamiento-critico-1`), `numero`, `titulo` y `niveles` con exactamente 4 descripciones (`1` Básico a `4` Experto). Use `adaptabilidad.ts` como modelo.
-3. Cambie `habilitada: false` a `habilitada: true`.
-4. Revise que el equipo correspondiente en `src/config/equipos.ts` tenga a sus integrantes (solo nombres; nunca correos ni teléfonos). **No cambie los `id` existentes**: están guardados en la base de datos y en los borradores.
-5. Ejecute `npm test`. La prueba de configuración falla si hay `id` repetidos, si un indicador no tiene 4 niveles o si una competencia habilitada no tiene equipo o indicadores.
-6. Despliegue. La competencia aparecerá disponible en Inicio y en Reportes.
-
-Para usar Jev en la nueva competencia conviene preparar antes su conjunto de referencia (siguiente sección).
+2. Agregue en `rubricas` la entrada de la jornada (`noche: { definicion, fuente, indicadores }`). Cada indicador lleva `numero`, `titulo`, `niveles` con exactamente 4 descripciones (`1` Básico a `4` Experto) y un `id` **nuevo** (por ejemplo `pensamiento-critico-noche-1`): los `id` se guardan en la base de datos y nunca deben cambiar de texto. Si la jornada usa la misma plantilla que la otra, asigne la misma rúbrica, como hace `adaptabilidad.ts`.
+3. Copie el texto en el PRD, Apéndice A, como una sección nueva («A.n Pensamiento crítico y analítico · Noche»), con la lista de correcciones aplicadas (solo errores evidentes de ortografía o puntuación).
+4. Cambie a «Sí» la columna «Habilitada» de esa fila en el Apéndice B.
+5. Revise que el equipo correspondiente en `src/config/equipos.ts` tenga a sus integrantes (solo nombres; nunca correos ni teléfonos). **No cambie los `id` existentes**: están guardados en la base de datos y en los borradores.
+6. Ejecute `npm test`. La prueba de configuración falla si hay `id` repetidos, si un indicador no tiene 4 niveles, si una rúbrica no tiene equipo en su jornada o si el texto no coincide palabra por palabra con el Apéndice A.
+7. Escriba su conjunto de referencia de Jev (siguiente sección) y despliegue. La competencia aparecerá disponible en Inicio y en Reportes de esa jornada.
 
 ## Conjunto de referencia de Jev
 
-`npm run jev:evaluar` envía a Jev las observaciones escritas a mano en `scripts/fixtures/jev-adaptabilidad.json` (16 textos, uno por indicador y nivel, más 4 fuera de tema) usando la misma lógica que la app, y muestra:
+`npm run jev:evaluar` envía a Jev las observaciones escritas a mano en `scripts/fixtures/jev-{competencia}.json`, un archivo por rúbrica con la `jornada` para la que se escribió (16 textos, uno por indicador y nivel, más 4 fuera de tema), usando la misma lógica que la app. `npm run jev:evaluar -- --competencia orientacion-detalle` evalúa solo una. Para cada rúbrica muestra:
 
 - el porcentaje de aciertos exactos (meta: ≥ 75 %);
 - el porcentaje dentro de ±1 nivel (meta: ≥ 95 %);
@@ -108,9 +111,9 @@ Termina con error si no alcanza las metas. Usa `TYPESAFE_API_KEY` y `JEV_MODEL` 
 
 ## Cómo exportar los resultados
 
-Ingrese con el **código docente** y abra **Reportes → Adaptabilidad**.
+Ingrese con el **código docente**, elija la jornada y abra **Reportes →** la competencia (por ejemplo, **Adaptabilidad**).
 
-- **Descargar CSV**: un archivo `nivela-adaptabilidad-aaaa-mm-dd.csv` con una fila por calificación (columnas: `competencia, evaluador, curso_evaluador, participante, nombre_participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
+- **Descargar CSV**: un archivo `nivela-adaptabilidad-aaaa-mm-dd.csv` con una fila por calificación (columnas: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`). Está en UTF-8 con BOM, así que Excel muestra bien las tildes al abrirlo con doble clic.
 - **Imprimir o guardar PDF**: abre el diálogo de impresión con un formato limpio (sin menú ni botones, gráficos en blanco). Elija «Guardar como PDF» para obtener el archivo.
 - Ambas opciones están en el Reporte general y en cada Reporte individual.
 
@@ -124,10 +127,10 @@ vercel --prod                                     # despliega a producción
 Si cambió el esquema de la base de datos, aplique la migración a producción de forma deliberada, indicando la URL de producción explícitamente:
 
 ```bash
-DATABASE_URL_MIGRACION="<DATABASE_URL de producción>" npm run db:migrate
+DATABASE_URL_MIGRACION="<DATABASE_URL de producción>" npm run db:migrate -- --produccion
 ```
 
-`drizzle.config.ts` muestra el host de destino antes de migrar; verifíquelo. **Nunca** ejecute `npm run db:seed` contra producción.
+`drizzle.config.ts` muestra el host de destino antes de migrar; verifíquelo. Los scripts que escriben en la base (`db:migrate`, `db:seed`, `cuentas:prueba`, `cuentas:importar`) comparan el host con el de producción (el `DATABASE_URL` de `.env`) y se niegan a continuar si coincide, salvo que se pase `--produccion`. `db:seed` y `cuentas:prueba` nunca aceptan producción. **Nunca** ejecute `npm run db:seed` contra producción.
 
 ## Privacidad y seguridad
 

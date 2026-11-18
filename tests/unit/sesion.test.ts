@@ -1,5 +1,6 @@
 import { SignJWT } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { equipoDeCompetencia } from "@/config/equipos";
 import {
   accesoParaCodigo,
   codigosIguales,
@@ -13,16 +14,27 @@ import {
 
 const SECRETO = "secreto-de-prueba-con-al-menos-32-bytes!!";
 const SID = "0f3c2a4e-1b5d-4c6e-9f70-8a1b2c3d4e5f";
+// Real members, looked up by jornada + competencia (never by team number).
+const DE_MANANA = equipoDeCompetencia("manana", "adaptabilidad")!.integrantes[0].id;
+const DE_NOCHE = equipoDeCompetencia("noche", "adaptabilidad")!.integrantes[0].id;
+const EVALUADOR = { rol: "evaluador", sid: SID, jornada: "manana", integranteId: DE_MANANA } as const;
 
 function base64url(objeto: object): string {
   return Buffer.from(JSON.stringify(objeto)).toString("base64url");
 }
 
+/** Signs any payload with the test secret, bypassing firmarSesion's types. */
+function firmar(datos: Record<string, unknown>): Promise<string> {
+  return new SignJWT(datos)
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("1h")
+    .sign(new TextEncoder().encode(SECRETO));
+}
+
 beforeEach(() => {
   vi.stubEnv("SESSION_SECRET", SECRETO);
-  vi.stubEnv("CODIGO_ACCESO", "clase-2026");
   vi.stubEnv("CODIGO_DOCENTE", "docente-2026");
-  vi.stubEnv("CODIGO_ACCESO_NOCHE", "noche-2026");
+  vi.stubEnv("CODIGO_ADMIN", "admin-2026");
 });
 
 afterEach(() => {
@@ -31,27 +43,39 @@ afterEach(() => {
 });
 
 describe("firmarSesion / verificarSesion", () => {
-  it("firma y verifica { rol, sid, jornada }", async () => {
-    const token = await firmarSesion({ rol: "evaluador", sid: SID, jornada: "noche" });
-    await expect(verificarSesion(token)).resolves.toEqual({ rol: "evaluador", sid: SID, jornada: "noche" });
+  it("firma y verifica { rol, sid, jornada, integranteId } de un evaluador", async () => {
+    const sesion = { rol: "evaluador", sid: SID, jornada: "noche", integranteId: DE_NOCHE } as const;
+    await expect(verificarSesion(await firmarSesion(sesion))).resolves.toEqual(sesion);
   });
 
-  it("un token sin jornada (anterior a v1.1) es de la mañana", async () => {
-    const token = await new SignJWT({ rol: "evaluador", sid: SID })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("1h")
-      .sign(new TextEncoder().encode(SECRETO));
-    await expect(verificarSesion(token)).resolves.toEqual({ rol: "evaluador", sid: SID, jornada: "manana" });
+  it("docente y admin no llevan integranteId", async () => {
+    const token = await firmarSesion({ rol: "docente", sid: SID, jornada: "noche" });
+    await expect(verificarSesion(token)).resolves.toEqual({ rol: "docente", sid: SID, jornada: "noche" });
+    const [, cuerpo] = token.split(".");
+    expect(JSON.parse(Buffer.from(cuerpo, "base64url").toString())).not.toHaveProperty("integranteId");
+  });
+
+  it("un token de docente sin jornada (anterior a v1.1) es de la mañana", async () => {
+    const token = await firmar({ rol: "docente", sid: SID });
+    await expect(verificarSesion(token)).resolves.toEqual({ rol: "docente", sid: SID, jornada: "manana" });
+  });
+
+  it("un token de evaluador sin integranteId (código de clase, antes de v1.2) cuenta como vencido", async () => {
+    await expect(verificarSesion(await firmar({ rol: "evaluador", sid: SID, jornada: "manana" }))).resolves.toBeNull();
+    await expect(verificarSesion(await firmar({ rol: "evaluador", sid: SID }))).resolves.toBeNull();
+  });
+
+  it("rechaza un integrante desconocido o de otra jornada, y un docente con integranteId", async () => {
+    await expect(verificarSesion(await firmar({ ...EVALUADOR, integranteId: "nadie" }))).resolves.toBeNull();
+    await expect(verificarSesion(await firmar({ ...EVALUADOR, integranteId: DE_NOCHE }))).resolves.toBeNull();
+    await expect(verificarSesion(await firmar({ rol: "docente", sid: SID, jornada: "manana", integranteId: DE_MANANA }))).resolves.toBeNull();
   });
 
   it("rechaza una jornada desconocida y un cambio de jornada alterado", async () => {
-    const token = await new SignJWT({ rol: "evaluador", sid: SID, jornada: "tarde" })
-      .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime("1h")
-      .sign(new TextEncoder().encode(SECRETO));
+    const token = await firmar({ ...EVALUADOR, jornada: "tarde" });
     await expect(verificarSesion(token)).resolves.toBeNull();
 
-    const [cabecera, cuerpo, firma] = (await firmarSesion({ rol: "evaluador", sid: SID, jornada: "manana" })).split(".");
+    const [cabecera, cuerpo, firma] = (await firmarSesion(EVALUADOR)).split(".");
     const alterado = base64url({ ...JSON.parse(Buffer.from(cuerpo, "base64url").toString()), jornada: "noche" });
     await expect(verificarSesion(`${cabecera}.${alterado}.${firma}`)).resolves.toBeNull();
   });
@@ -71,7 +95,7 @@ describe("firmarSesion / verificarSesion", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const inicio = new Date("2026-10-25T08:00:00Z").getTime();
     vi.setSystemTime(inicio);
-    const token = await firmarSesion({ rol: "evaluador", sid: SID, jornada: "manana" });
+    const token = await firmarSesion(EVALUADOR);
 
     vi.setSystemTime(inicio + (DURACION_SESION_S - 1) * 1000);
     await expect(verificarSesion(token)).resolves.not.toBeNull();
@@ -80,16 +104,19 @@ describe("firmarSesion / verificarSesion", () => {
     await expect(verificarSesion(token)).resolves.toBeNull();
   });
 
-  it("rechaza un payload alterado (evaluador → docente)", async () => {
-    const token = await firmarSesion({ rol: "evaluador", sid: SID, jornada: "manana" });
+  it("rechaza un payload alterado (evaluador → docente, u otro integrante)", async () => {
+    const token = await firmarSesion(EVALUADOR);
     const [cabecera, cuerpo, firma] = token.split(".");
     const original = JSON.parse(Buffer.from(cuerpo, "base64url").toString());
     const alterado = base64url({ ...original, rol: "docente" });
     await expect(verificarSesion(`${cabecera}.${alterado}.${firma}`)).resolves.toBeNull();
+    const otro = equipoDeCompetencia("manana", "adaptabilidad")!.integrantes[1].id;
+    const suplantado = base64url({ ...original, integranteId: otro });
+    await expect(verificarSesion(`${cabecera}.${suplantado}.${firma}`)).resolves.toBeNull();
   });
 
   it("rechaza una firma alterada", async () => {
-    const token = await firmarSesion({ rol: "evaluador", sid: SID, jornada: "manana" });
+    const token = await firmarSesion(EVALUADOR);
     // Alter the signature's FIRST character: the last one of a 32-byte
     // signature holds 2 padding bits, so swapping it (e.g. "B" → "A") can
     // decode to the same bytes and leave the token valid.
@@ -128,7 +155,7 @@ describe("firmarSesion / verificarSesion", () => {
 
   it("exige un SESSION_SECRET de al menos 32 bytes", async () => {
     vi.stubEnv("SESSION_SECRET", "corto");
-    await expect(firmarSesion({ rol: "evaluador", sid: SID, jornada: "manana" })).rejects.toThrow(/32 bytes/);
+    await expect(firmarSesion(EVALUADOR)).rejects.toThrow(/32 bytes/);
   });
 
   it("genera sid aleatorios", () => {
@@ -159,37 +186,26 @@ describe("codigosIguales", () => {
 });
 
 describe("accesoParaCodigo", () => {
-  it("asigna rol y jornada según el código", () => {
-    expect(accesoParaCodigo("clase-2026")).toEqual({ rol: "evaluador", jornada: "manana" });
-    expect(accesoParaCodigo("noche-2026")).toEqual({ rol: "evaluador", jornada: "noche" });
+  it("solo hay códigos de docente y de administración (los de clase se retiraron en v1.2)", () => {
     expect(accesoParaCodigo("docente-2026")).toEqual({ rol: "docente", jornada: "manana" });
+    expect(accesoParaCodigo("admin-2026")).toEqual({ rol: "admin", jornada: "manana" });
+    vi.stubEnv("CODIGO_ACCESO", "clase-2026");
+    vi.stubEnv("CODIGO_ACCESO_NOCHE", "noche-2026");
+    expect(accesoParaCodigo("clase-2026")).toBeNull();
+    expect(accesoParaCodigo("noche-2026")).toBeNull();
     expect(accesoParaCodigo("otro")).toBeNull();
   });
 
-  it("revisa primero el código docente, luego el de noche y al final el de mañana", () => {
-    vi.stubEnv("CODIGO_ACCESO", "mismo");
-    vi.stubEnv("CODIGO_ACCESO_NOCHE", "mismo");
-    expect(accesoParaCodigo("mismo")).toEqual({ rol: "evaluador", jornada: "noche" });
-    vi.stubEnv("CODIGO_DOCENTE", "mismo");
-    expect(accesoParaCodigo("mismo")?.rol).toBe("docente");
-  });
-
-  it("asigna admin con CODIGO_ADMIN, antes que los otros códigos", () => {
-    vi.stubEnv("CODIGO_ADMIN", "admin2026");
-    expect(accesoParaCodigo("admin2026")).toEqual({ rol: "admin", jornada: "manana" });
-    expect(accesoParaCodigo("admin2027")).toBeNull();
-    vi.stubEnv("CODIGO_DOCENTE", "admin2026");
-    expect(accesoParaCodigo("admin2026")?.rol).toBe("admin");
+  it("si ambos códigos coinciden, gana administración", () => {
+    vi.stubEnv("CODIGO_DOCENTE", "admin-2026");
+    expect(accesoParaCodigo("admin-2026")?.rol).toBe("admin");
   });
 
   it("un código sin configurar nunca coincide", () => {
-    vi.stubEnv("CODIGO_ACCESO", "");
-    vi.stubEnv("CODIGO_ACCESO_NOCHE", "");
     vi.stubEnv("CODIGO_DOCENTE", "");
     vi.stubEnv("CODIGO_ADMIN", "");
     expect(accesoParaCodigo("")).toBeNull();
-    expect(accesoParaCodigo("clase-2026")).toBeNull();
-    expect(accesoParaCodigo("noche-2026")).toBeNull();
+    expect(accesoParaCodigo("docente-2026")).toBeNull();
   });
 
   it("solo docente y admin pueden cambiar de jornada", () => {

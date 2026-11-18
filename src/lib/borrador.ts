@@ -490,6 +490,23 @@ export function useEvaluadorSeleccionado(competenciaId: string): string | null |
   return useSyncExternalStore(suscribir, () => leerEvaluador(competenciaId), sinValor);
 }
 
+/**
+ * Who is rating (PRD §5.3, §5.12). An evaluador's identity comes from the
+ * session (`evaluadorSesion`, set by the server): never from storage, and
+ * known on the first render. The docente has none and uses the picker's
+ * stored selection, accepted only if it is in this team (`evaluadorIds`).
+ * `leido` is false until storage has been read.
+ */
+export function useEvaluadorActivo(
+  competenciaId: string,
+  evaluadorIds: readonly string[],
+  evaluadorSesion: string | null,
+): { evaluadorId: string | null; leido: boolean } {
+  const guardado = useEvaluadorSeleccionado(competenciaId);
+  if (evaluadorSesion) return { evaluadorId: evaluadorSesion, leido: true };
+  return { evaluadorId: guardado && evaluadorIds.includes(guardado) ? guardado : null, leido: guardado !== undefined };
+}
+
 type ActualizarBorrador = (cambio: (actual: Borrador) => Borrador) => void;
 
 /**

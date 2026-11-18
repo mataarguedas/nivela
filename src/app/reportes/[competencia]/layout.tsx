@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { COMPETENCIAS, obtenerCompetenciaHabilitada } from "@/config/competencias";
+import { DEFINICIONES_COMPETENCIA } from "@/config/competencias";
 import { competenciaConEquipo } from "@/config/equipos";
 
 // Unknown or disabled competencias get a real 404 before anything streams,
@@ -10,11 +10,10 @@ import { competenciaConEquipo } from "@/config/equipos";
 export const instant = false;
 
 export function generateStaticParams() {
-  return COMPETENCIAS.filter(competenciaConEquipo).map((c) => ({ competencia: c.id }));
+  return DEFINICIONES_COMPETENCIA.filter((d) => competenciaConEquipo(d.id)).map((d) => ({ competencia: d.id }));
 }
 
 export default async function LayoutReporte({ children, params }: LayoutProps<"/reportes/[competencia]">) {
-  const competencia = obtenerCompetenciaHabilitada((await params).competencia);
-  if (!competencia || !competenciaConEquipo(competencia)) notFound();
+  if (!competenciaConEquipo((await params).competencia)) notFound();
   return children;
 }

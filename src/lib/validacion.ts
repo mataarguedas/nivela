@@ -8,7 +8,7 @@ import {
   LARGO_MINIMO_DESCRIPCION_IA,
 } from "@/config/limites";
 import { VALORES_NIVEL } from "@/config/niveles";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esNombreValido } from "@/config/participantes";
+import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esNombreValido } from "@/config/participantes";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { formatearEntero } from "@/lib/formato";
 
@@ -28,6 +28,12 @@ export const TOLERANCIA_SUMA_PROBABILIDADES = 0.02;
 const RUIDO_FLOTANTE = 1e-9;
 const CLAVES_PROBABILIDAD = VALORES_NIVEL.map(String);
 
+/** Longest email address (RFC 5321 path limit), PRD §5.10 and §9.2. */
+export const LARGO_MAXIMO_CORREO = 254;
+
+/** An email as stored (PRD §5.12, §9.2): trimmed, lowercased, valid, ≤ 254. */
+export const esquemaCorreo = z.string().trim().toLowerCase().max(LARGO_MAXIMO_CORREO).pipe(z.email());
+
 export const MENSAJES_VALIDACION = {
   cuerpo: "Los datos de la evaluación no son válidos.",
   competencia: "La competencia no existe o no está habilitada.",
@@ -38,11 +44,14 @@ export const MENSAJES_VALIDACION = {
   observacion: `Cada observación puede tener como máximo ${formatearEntero(LARGO_MAXIMO_OBSERVACION)} caracteres.`,
   ia: "Los datos de la sugerencia de IA no son válidos.",
   consulta: "Indique la competencia y la persona evaluadora.",
+  asistencia: "Los datos de asistencia no son válidos.",
   indicador: "El indicador no existe en esta competencia.",
   descripcion: `La descripción debe tener entre ${formatearEntero(LARGO_MINIMO_DESCRIPCION_IA)} y ${formatearEntero(LARGO_MAXIMO_DESCRIPCION_IA)} caracteres.`,
   solicitudIa: "Los datos de la solicitud de análisis no son válidos.",
   cantidadParticipantes: TEXTOS_ADMIN.cantidadInvalida,
   nombreParticipante: TEXTOS_ADMIN.nombreInvalido,
+  carnetParticipante: TEXTOS_ADMIN.carneInvalido,
+  carnetRepetido: TEXTOS_ADMIN.carneRepetido,
   listaParticipantes: TEXTOS_ADMIN.listaInvalida,
 } as const;
 
@@ -115,7 +124,7 @@ export function validarEvaluacion(
   if (!forma.success) return { ok: false, error: mensajeDe(forma.error) };
   const evaluacion = forma.data;
 
-  const competencia = obtenerCompetenciaHabilitada(evaluacion.competenciaId);
+  const competencia = obtenerCompetenciaHabilitada(jornada, evaluacion.competenciaId);
   if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   if (!obtenerEvaluador(jornada, competencia.id, evaluacion.evaluadorId)) {
     return { ok: false, error: MENSAJES_VALIDACION.evaluador };
@@ -141,12 +150,53 @@ export type ConsultaEnviadas = { competenciaId: string; evaluadorId: string };
 export function validarConsultaEnviadas(parametros: URLSearchParams, jornada: JornadaId): Resultado<ConsultaEnviadas> {
   const consulta = esquemaConsulta.safeParse(Object.fromEntries(parametros));
   if (!consulta.success) return { ok: false, error: MENSAJES_VALIDACION.consulta };
-  const competencia = obtenerCompetenciaHabilitada(consulta.data.competencia);
+  const competencia = obtenerCompetenciaHabilitada(jornada, consulta.data.competencia);
   if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   if (!obtenerEvaluador(jornada, competencia.id, consulta.data.evaluador)) {
     return { ok: false, error: MENSAJES_VALIDACION.evaluador };
   }
   return { ok: true, datos: { competenciaId: competencia.id, evaluadorId: consulta.data.evaluador } };
+}
+
+const esquemaAsistencia = z.object({
+  competenciaId: id,
+  // Optional for an evaluador (the route fills in the session's integranteId);
+  // the docente names the team member it rates as, like in /api/evaluaciones.
+  evaluadorId: id.optional(),
+  participanteId: id,
+  ausente: z.boolean(),
+});
+
+export type CuerpoAsistencia = z.input<typeof esquemaAsistencia>;
+export type AsistenciaValida = { competenciaId: string; evaluadorId: string; participanteId: string; ausente: boolean };
+
+/**
+ * PUT /api/asistencia body (PRD §5.13, §10). `evaluadorSesion` is the
+ * evaluador's integranteId (null for the docente); the caller has already
+ * answered 403 for another evaluator's id. Same cross-checks as an
+ * evaluation: enabled competencia, a member of the jornada's team, and a
+ * participant active in the jornada.
+ */
+export function validarAsistencia(
+  datos: unknown,
+  participantes: readonly { id: string }[],
+  jornada: JornadaId,
+  evaluadorSesion: string | null,
+): Resultado<AsistenciaValida> {
+  const forma = esquemaAsistencia.safeParse(datos);
+  if (!forma.success) return { ok: false, error: MENSAJES_VALIDACION.asistencia };
+  const evaluadorId = forma.data.evaluadorId ?? evaluadorSesion;
+  if (!evaluadorId) return { ok: false, error: MENSAJES_VALIDACION.asistencia };
+
+  const competencia = obtenerCompetenciaHabilitada(jornada, forma.data.competenciaId);
+  if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
+  if (!obtenerEvaluador(jornada, competencia.id, evaluadorId)) return { ok: false, error: MENSAJES_VALIDACION.evaluador };
+  if (!participantes.some((p) => p.id === forma.data.participanteId)) return { ok: false, error: MENSAJES_VALIDACION.participante };
+
+  return {
+    ok: true,
+    datos: { competenciaId: competencia.id, evaluadorId, participanteId: forma.data.participanteId, ausente: forma.data.ausente },
+  };
 }
 
 // Unknown keys are stripped: nothing but these three fields can reach Jev,
@@ -159,14 +209,17 @@ const esquemaSolicitudJev = z.object({
 
 export type SolicitudJevValida = { competencia: Competencia; indicador: Indicador; texto: string };
 
-/** POST /api/jev body: shape, then the competencia (habilitada) and its indicator from config. */
-export function validarSolicitudJev(datos: unknown): Resultado<SolicitudJevValida> {
+/**
+ * POST /api/jev body: shape, then the competencia and its indicator from the
+ * session jornada's rubric in config (each jornada's team has its own).
+ */
+export function validarSolicitudJev(datos: unknown, jornada: JornadaId): Resultado<SolicitudJevValida> {
   const forma = esquemaSolicitudJev.safeParse(datos);
   if (!forma.success) {
     const enTexto = forma.error.issues[0]?.path.includes("texto");
     return { ok: false, error: enTexto ? MENSAJES_VALIDACION.descripcion : MENSAJES_VALIDACION.solicitudIa };
   }
-  const competencia = obtenerCompetenciaHabilitada(forma.data.competenciaId);
+  const competencia = obtenerCompetenciaHabilitada(jornada, forma.data.competenciaId);
   if (!competencia) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   const indicador = obtenerIndicador(competencia, forma.data.indicadorId);
   if (!indicador) return { ok: false, error: MENSAJES_VALIDACION.indicador };
@@ -175,10 +228,10 @@ export function validarSolicitudJev(datos: unknown): Resultado<SolicitudJevValid
 
 export type CompetenciaReporte = { competencia: Competencia; equipo: Equipo };
 
-/** /api/reportes/[competencia] param: an enabled competencia that has a team in the jornada. */
+/** /api/reportes/[competencia] param: a competencia with a rubric and a team in the jornada. */
 export function validarCompetenciaReporte(valor: unknown, jornada: JornadaId): Resultado<CompetenciaReporte> {
   const forma = id.safeParse(valor);
-  const competencia = forma.success ? obtenerCompetenciaHabilitada(forma.data) : undefined;
+  const competencia = forma.success ? obtenerCompetenciaHabilitada(jornada, forma.data) : undefined;
   const equipo = competencia && equipoDeCompetencia(jornada, competencia.id);
   if (!competencia || !equipo) return { ok: false, error: MENSAJES_VALIDACION.competencia };
   return { ok: true, datos: { competencia, equipo } };
@@ -198,13 +251,40 @@ const esquemaParticipantes = z.object({
         .transform((t) => (t ? t : null)),
     )
     .max(CANTIDAD_MAXIMA_PARTICIPANTES),
+  // One carnet (or blank) per name, same order (PRD §5.10).
+  carnets: z
+    .array(
+      z
+        .string()
+        .trim()
+        .refine(esCarnetValido)
+        .transform((t) => (t ? t : null)),
+    )
+    .max(CANTIDAD_MAXIMA_PARTICIPANTES),
   confirmar: z.boolean().optional().default(false),
 });
 
 export type CuerpoParticipantes = z.input<typeof esquemaParticipantes>;
-export type ParticipantesValidos = { jornada: JornadaId; nombres: (string | null)[]; confirmar: boolean };
+export type ParticipantesValidos = {
+  jornada: JornadaId;
+  nombres: (string | null)[];
+  carnets: (string | null)[];
+  confirmar: boolean;
+};
 
-/** PUT /api/admin/participantes body: one name (or blank) per participant, in order. */
+/** The position (0-based) of the first carnet already used earlier in the list, or -1. */
+export function indiceCarnetRepetido(carnets: readonly (string | null)[]): number {
+  const vistos = new Set<string>();
+  for (const [i, carnet] of carnets.entries()) {
+    if (carnet === null) continue;
+    const clave = carnet.toUpperCase();
+    if (vistos.has(clave)) return i;
+    vistos.add(clave);
+  }
+  return -1;
+}
+
+/** PUT /api/admin/participantes body: one name and one carnet (each may be blank) per participant, in order. */
 export function validarParticipantes(datos: unknown): Resultado<ParticipantesValidos> {
   const forma = esquemaParticipantes.safeParse(datos);
   if (!forma.success) {
@@ -213,9 +293,16 @@ export function validarParticipantes(datos: unknown): Resultado<ParticipantesVal
     if (ruta[0] === "nombres" && typeof ruta[1] === "number") {
       return { ok: false, error: MENSAJES_VALIDACION.nombreParticipante(ruta[1] + 1) };
     }
+    if (ruta[0] === "carnets" && typeof ruta[1] === "number") {
+      return { ok: false, error: MENSAJES_VALIDACION.carnetParticipante(ruta[1] + 1) };
+    }
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
-  const { jornada, cantidad, nombres, confirmar } = forma.data;
-  if (nombres.length !== cantidad) return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
-  return { ok: true, datos: { jornada, nombres, confirmar } };
+  const { jornada, cantidad, nombres, carnets, confirmar } = forma.data;
+  if (nombres.length !== cantidad || carnets.length !== cantidad) {
+    return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
+  }
+  const repetido = indiceCarnetRepetido(carnets);
+  if (repetido >= 0) return { ok: false, error: MENSAJES_VALIDACION.carnetRepetido(repetido + 1) };
+  return { ok: true, datos: { jornada, nombres, carnets, confirmar } };
 }

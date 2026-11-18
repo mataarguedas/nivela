@@ -1,11 +1,11 @@
 # PRD — Nivela
 
-**Evaluación de competencias entre pares** · Demo: competencia *Adaptabilidad*
+**Evaluación de competencias entre pares** · Five competencias, one rubric per jornada's team
 
 | | |
 |---|---|
-| Version | 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
-| Date | 2026-11-16 |
+| Version | 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
+| Date | 2026-11-17 |
 | Owner | Emmanuel (engineering) |
 | Status | Approved for build (see §16 for open items) |
 | UI language | Spanish (Costa Rica), "usted" form, light mode only |
@@ -16,7 +16,7 @@
 
 Nivela is a mobile-first web app (installable as a PWA) used during a peer-assessment activity in the courses **AGRH 315 Psicología 2** and **AGRH 613 Seminario Integrado de Recursos Humanos**.
 
-Students are grouped into five teams, one per *competencia*. Each team member rates participants from a **separate course** on that team's competencia. An admin sets how many participants there are and their names (§5.10). Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4).
+Students are grouped into five teams, one per *competencia*. Each team member rates participants from a **separate course** on that team's competencia. An admin sets how many participants there are, their names and their carnets (§5.10); the reports identify participants by carnet only. Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4).
 
 When an evaluator is unsure which level applies, they can describe what they observed in Spanish. **Jev** (TypeSafe AI's System One decision model) then suggests the most likely level with a calibrated probability. The evaluator always confirms the level.
 
@@ -28,7 +28,7 @@ The activity runs in two **jornadas** (cohorts): the morning students (*Mañana*
 
 Team numbers are per jornada: the morning Adaptabilidad team is Equipo 4 and the night one is Equipo 1 (Appendix B). A team is always identified by jornada + competencia.
 
-The first demo enables only **Adaptabilidad**. The other four competencias appear in the UI as disabled ("Próximamente") and are defined as data, so enabling one later needs no code changes.
+Each jornada's team writes the **rubric** (the template with the definition, indicators and levels) for its competencia, so a rubric belongs to jornada + competencia (§9.1, Appendix A). A competencia opens in a jornada only when that jornada has a rubric for it. In the **morning** all five competencias have one. At **night** only *Adaptabilidad* does (it uses the morning template); the other four appear as disabled ("Próximamente") until the night teams send their templates. Rubrics are data, so adding one needs no code changes.
 
 ## 2. Context and users
 
@@ -37,7 +37,7 @@ The first demo enables only **Adaptabilidad**. The other four competencias appea
 | **Evaluador** | The members of their jornada's team for the competencia, from both courses (Appendix B). For Adaptabilidad: Equipo 4 in the morning, Equipo 1 at night. | Sign in with their email and password (§5.12), mark each participant present or absent (§5.13), rate every present participant of that jornada on the 4 indicators, submit. |
 | **Evaluado / Participante** | Students from a separate course | They do not use the app. Shown by the name the admin entered, with their number ("Participante 07") as a secondary label; without a name, by number only. They receive their personal results by email if the admin entered their email (§5.14). |
 | **Docente** (or course coordinator) | Professor, or a designated student | Enter the docente code, pick the jornada, view reports (including evaluator progress and the group summary), export CSV, print, and send results by email (§5.14). |
-| **Admin** | Whoever prepares the activity | Enter the admin code (`CODIGO_ADMIN`), pick the jornada, set the participants (count, names and optional emails, §5.10) and manage evaluator accounts (§5.12). Nothing else: no rating, no reports. |
+| **Admin** | Whoever prepares the activity | Enter the admin code (`CODIGO_ADMIN`), pick the jornada, set the participants (count, names, carnets and optional emails, §5.10) and manage evaluator accounts (§5.12). Nothing else: no rating, no reports. |
 
 Rules:
 - Evaluators never rate each other or themselves. This is structural: evaluados come from a different course and a different list.
@@ -60,14 +60,14 @@ Rules:
 ### Non-goals
 - Accounts for anyone other than evaluators, self-registration, or SSO. Evaluator accounts exist only for the roster in config; the docente and the admin keep shared codes.
 - Storing phone numbers. Emails (evaluators' and participants') are stored **only in the DB**: never in config, git, logs or Jev requests (§13 Privacy).
-- Activating competencias other than Adaptabilidad.
+- Writing or editing rubrics in the app. Each team's template is copied into config (Appendix A).
 - Offline rating. Jev and submission both need network.
 - Dark mode, native apps, multi-language UI.
 - An admin UI for editing indicators. Indicators are edited in config files.
 
 ## 4. MVP scope
 
-**In:** access gate (§5.1) · competencia picker (Adaptabilidad enabled, 4 disabled) · evaluator selection · participant list with status · rating screen with 4 indicators × 4 levels plus observations · Jev suggestion per indicator · local drafts with "Borrar todo" · submission to Postgres (upsert) · docente report area (general + per participant) · CSV export · print view · PWA install.
+**In:** access gate (§5.1) · competencia picker (enabled per jornada by its rubrics, §5.2) · evaluator selection · participant list with status · rating screen with 4 indicators × 4 levels plus observations · Jev suggestion per indicator · local drafts with "Borrar todo" · submission to Postgres (upsert) · docente report area (general + per participant) · CSV export · print view · PWA install.
 
 **Added in v1.2:** "Volver" button · evaluator accounts with email verification and passwords · attendance · gap to the next level · evaluator progress · simpler charts · group summary (one jornada or both) · personal results by email.
 
@@ -82,11 +82,11 @@ Rules:
    - The **docente code** (`CODIGO_DOCENTE`) gives role `docente`, starting in the morning jornada. That role can do everything an evaluator can (choosing which team member it rates as, §5.3), plus view reports and send results, and can switch jornada (§5.11).
    - The **admin code** (`CODIGO_ADMIN`) gives role `admin`, which lands on `/admin` and can open nothing else (other pages redirect there; other APIs answer 403).
 4. Code form: after 5 failed attempts in a row, the client adds a 30 s delay. The server also enforces a small artificial delay on every failure. The email login has its own limits (§5.12).
-5. The class codes of v1.1 (`CODIGO_ACCESO`, `CODIGO_ACCESO_NOCHE`) are **retired**. They keep working only until the email login ships (PROMPTS.md Prompt 14), which removes them. A session signed for an evaluador without `integranteId` then counts as expired.
+5. The class codes of v1.1 (`CODIGO_ACCESO`, `CODIGO_ACCESO_NOCHE`) are **removed**. A session signed for an evaluador without `integranteId` (one of those codes) counts as expired.
 
 ### 5.2 Choose competencia (Inicio)
 - Hero: app name, tagline, "Comenzar".
-- A list of the 5 competencias. Only *Adaptabilidad* is selectable. The others show the badge "Próximamente", are not focusable as links, and have `aria-disabled="true"`.
+- A list of the 5 competencias. A competencia is selectable when the session's jornada has a rubric for it (Appendix A) and a team with members: all 5 in the morning, only *Adaptabilidad* at night for now. The others show the badge "Próximamente", are not focusable as links, and have `aria-disabled="true"`.
 - For an evaluador, only **their own team's** competencia is selectable, if it is enabled. Another enabled competencia renders disabled the same way, with the badge "No asignada". If their own competencia isn't enabled yet, a notice under the list reads *"La competencia de su equipo aún no está disponible."*
 
 ### 5.3 Identify evaluator
@@ -139,26 +139,27 @@ Rules:
 - It clears every local draft and the selected evaluator, then returns to Inicio.
 
 ### 5.9 Reports (docente only)
-- `/reportes`: competencia picker (only Adaptabilidad has data) → **Reporte general**.
+- `/reportes`: competencia picker (the competencias with a rubric in the session's jornada) → **Reporte general**.
 - From the ranking table, tap a participant → **Reporte individual**.
 - From the Reporte general: **Resumen del grupo** (§11.3) and **"Enviar resultados por correo"** (§5.14).
 - "Descargar CSV" and "Imprimir o guardar PDF" are available in both views. Printing is also available in the group summary.
 
 ### 5.10 Participants (admin only)
 - Each jornada has its own list. `/admin` shows the jornada switch (§5.11) and edits the selected jornada's list. Both jornadas number their participants from P01, and the two lists are independent.
-- `/admin`: "Cantidad de participantes" (1–99), then one row per participant ("Participante 01", "Participante 02"…) with a name field and an optional "Correo electrónico" field (§5.14). "Pegar lista" fills the rows from one-per-line text and sets the count to the number of lines; each line is a name alone, or `Nombre<TAB>correo`, or `Nombre;correo`.
-- Name field: no emails or phone numbers (anything with "@" or 7+ digits is rejected), at most 80 characters. A blank name shows as "Participante NN".
+- `/admin`: "Cantidad de participantes" (1–99), then one row per participant ("Participante 01", "Participante 02"…) with a name field, a carnet field ("Carné · Participante 01") and an optional "Correo electrónico" field (§5.14). "Pegar lista" fills the rows from one-per-line text and sets the count to the number of lines; each line is a name alone, or the carnet and the name separated by a tab or ";" (`100000001<TAB>Nombre Apellidos`, in either order), with the email as one more field once §5.14 is built. A pasted line replaces its row's name and carnet, so an old carnet never stays on a new name.
+- Name field: no emails or phone numbers (anything with "@" or 7+ digits is rejected), at most 80 characters. A blank name shows as "Participante NN". Names are written first name first ("Ana Lucía Mora Solís"): evaluators read them and the results email (§5.14) greets the participant by name.
+- Carnet field (v1.4): the university carnet, optional; digits, letters or hyphens, at most 20 characters, unique within the jornada's list. **The reports and the CSV identify participants only by carnet** (§10, §11); evaluators never see it. A blank carnet shows as "Participante NN" in the reports.
 - Email field: optional; a valid address, trimmed and lowercased, at most 254 characters. Used only to send results (§5.14); never shown in the reports or the CSV.
 - `/admin` also has the **"Cuentas de evaluadores"** section (§5.12), for the selected jornada.
 - **"Guardar cambios"** saves; success shows the toast *"Cambios guardados"*. Evaluators and reports see the new list on their next page load.
-- Lowering the count **hides** the participants above it; nothing is deleted. If any of them already have evaluations, a confirmation says how many: *"Se ocultarán N participantes con M evaluaciones enviadas. Las evaluaciones no se eliminan y vuelven a aparecer si aumenta la cantidad de nuevo."* Hidden participants leave the lists, the rating routes (404) and the reports, and can't receive new evaluations; their stored evaluations and names come back if the count is raised again. The CSV keeps all rows.
+- Lowering the count **hides** the participants above it; nothing is deleted. If any of them already have evaluations, a confirmation says how many: *"Se ocultarán N participantes con M evaluaciones enviadas. Las evaluaciones no se eliminan y vuelven a aparecer si aumenta la cantidad de nuevo."* Hidden participants leave the lists, the rating routes (404) and the reports, and can't receive new evaluations; their stored evaluations, names and carnets come back if the count is raised again. The CSV keeps all rows.
 - Until the admin saves a jornada's list for the first time, that jornada shows `CANTIDAD_PARTICIPANTES` (default 20) unnamed participants.
 - If the jornada was switched in another tab after the editor loaded, saving is refused with *"La jornada cambió en otra pestaña. Recargue la página."*, so one cohort's list never overwrites the other's.
 
 ### 5.11 Jornadas (mañana / noche)
 - The session carries a `jornada`. Every list, rating, submission and report is scoped to it, and the server always takes it from the session, never from the request.
   - **The one exception** is the docente-only group summary (§11.3): it reads a validated `?jornada=manana|noche|ambas` parameter. It is read-only, never writes, and never changes the session.
-- **Evaluador**: the jornada is fixed by the account (the jornada of their team). Inicio shows *"Jornada: Noche"* (or *Mañana*) under the tagline, so students can confirm they're in the right group. A competencia is selectable in a jornada only if it is enabled and that jornada's team for it has members. Otherwise it shows "Próximamente".
+- **Evaluador**: the jornada is fixed by the account (the jornada of their team). Inicio shows *"Jornada: Noche"* (or *Mañana*) under the tagline, so students can confirm they're in the right group. A competencia is selectable in a jornada only if that jornada has a rubric for it (Appendix A) and that jornada's team for it has members. Otherwise it shows "Próximamente".
 - **Team numbers differ per jornada** (Appendix B): the Adaptabilidad team is Equipo 4 in the morning and Equipo 1 at night. Anything that shows a team number reads it from that jornada's team; nothing looks a team up by number.
 - **Docente** and **admin**: `/reportes` and `/admin` show a "Jornada" switch with *Mañana* and *Noche* (a radio group; the selected option is outlined, not filled). Switching re-signs the session cookie through `POST /api/jornada` and reloads the view. Report headers name the jornada ("Adaptabilidad · Jornada: Noche").
 - Local drafts keep their keys (§9.3): evaluator ids are unique across jornadas. A stored evaluator who isn't in the current jornada's team counts as no selection.
@@ -219,7 +220,7 @@ The code is what stops someone who knows a classmate's email from claiming that 
 | ID | Requirement | Priority |
 |---|---|---|
 | FR-1 | Access gate: email + password for evaluadores (§5.12); codes for docente and admin. Signed httpOnly session cookie, 12 h expiry. | P0 |
-| FR-2 | Competencia picker driven by config. `habilitada: false` renders disabled; an evaluador can open only their own team's competencia. | P0 |
+| FR-2 | Competencia picker driven by config. A competencia without a rubric in the session's jornada renders disabled; an evaluador can open only their own team's competencia. | P0 |
 | FR-3 | Evaluator identity from the account for evaluadores; the docente picks among the members of the jornada's team for the competencia. | P0 |
 | FR-4 | Participant list from config, with the four statuses from §5.4. | P0 |
 | FR-5 | Rating UI: 4 indicators × 4 levels, one level per indicator, optional observation (max 1,000 chars). | P0 |
@@ -304,7 +305,7 @@ Fallback: if the golden set (§8.5) shows Score underperforming, switch to the *
 ```
 
 - The model is **pinned** through `JEV_MODEL` (default `jev-1.13.0`) so results are reproducible during the activity. Using `jev-latest` is a deliberate config change.
-- The indicator text and criteria come from server-side config, looked up by `competenciaId` + `indicadorId`. The client never sends rubric text.
+- The indicator text and criteria come from server-side config, looked up by `competenciaId` + `indicadorId` in the rubric of the session's jornada. The client never sends rubric text.
 
 ### 8.3 Proxy contract (`POST /api/jev`)
 Request: `{ competenciaId: string, indicadorId: string, texto: string }`, validated with zod (texto 20–1,500 chars, trimmed).
@@ -331,17 +332,19 @@ Response 200:
 - The UI hint under the textarea reads *"No incluya nombres en la descripción."*
 
 ### 8.5 Golden set
-`scripts/evaluar-jev.ts` runs fixture texts through the proxy logic: 16 Spanish observations, one per indicator × level, plus 4 off-topic texts. It prints accuracy, exact-match counts and adjacent-level counts. Target before the activity: ≥ 75 % exact, ≥ 95 % within ±1 level. Fixtures live in `scripts/fixtures/jev-adaptabilidad.json` and are written by hand. They are reviewed by the docente if possible.
+`scripts/evaluar-jev.ts` runs fixture texts through the proxy logic, one fixture file per rubric (`scripts/fixtures/jev-{competencia}.json`, with the `jornada` it was written for; `--competencia <id>` runs one). Each has 16 Spanish observations, one per indicator × level, plus 4 off-topic texts. It prints accuracy, exact-match counts and adjacent-level counts per rubric. Target before the activity, for every rubric: ≥ 75 % exact, ≥ 95 % within ±1 level. Fixtures are written by hand, without names, and are reviewed by the docente if possible.
 
 ## 9. Data
 
 ### 9.1 Static config (`src/config/`)
 - `niveles.ts`: the 4 levels (value, key, label).
-- `competencias/*.ts`: one file per competencia: `id`, `nombre`, `habilitada`, `definicion`, `fuente`, `indicadores[]`. Each indicator has `id`, `numero`, `titulo`, and `niveles` (1–4 → description). Adaptabilidad is fully filled in (Appendix A). The other 4 have `habilitada: false` and `indicadores: []` until their templates arrive.
+- `competencias/*.ts`: one file per competencia: `id`, `nombre` and `rubricas`, one **rubric** per jornada whose team sent its template: `definicion` (paragraphs separated by `\n`), `fuente`, `indicadores[]`. Each indicator has `id`, `numero`, `titulo`, and `niveles` (1–4 → description). Appendix A lists every rubric.
+  - **A rubric belongs to jornada + competencia.** A competencia is enabled in a jornada exactly when it has a rubric there; every lookup takes the session's jornada (`obtenerCompetenciaHabilitada(jornada, id)`). Two jornadas may share one rubric (night Adaptabilidad uses the morning template).
+  - Indicator ids are stored in the DB, so an id never changes its text: a new rubric for a jornada gets new ids (e.g. `pensamiento-critico-noche-1`), and rows already stored are never relabelled.
 - `jornadas.ts`: the 2 jornadas (`manana` "Mañana", `noche` "Noche"). Ids are stored in the DB.
 - `equipos.ts`: 5 teams per jornada: `id`, `numero`, `jornada`, `competenciaId`, `integrantes[]` with `{ id, nombre, curso }`. Names only (Appendix B): emails live in the DB (`cuentas`), never here. Integrante ids are unique across jornadas.
   - **A team is identified by jornada + competencia.** Its `numero` is a per-jornada display label (Adaptabilidad is Equipo 4 in the morning and Equipo 1 at night) and its size varies (8 and 7). Code looks teams up with `equipoDeCompetencia(jornada, competenciaId)`; never look a team up by number or hard-code a number or size.
-- `participantes.ts`: the id and label scheme for evaluados (`{ id: "P01", numero: 1, nombre, etiqueta }`, where `etiqueta` is the name or "Participante 01") and the fallback list of `CANTIDAD_PARTICIPANTES` (default 20) unnamed participants. The real list lives in the `participantes` table (§9.2), set by the admin (§5.10). Ids `P01…P99` are stable: drafts, URLs and evaluations refer to them.
+- `participantes.ts`: the id and label scheme for evaluados (`{ id: "P01", numero: 1, nombre, carnet, etiqueta, etiquetaReporte }`, where `etiqueta`, shown to evaluators and the admin, is the name or "Participante 01", and `etiquetaReporte`, shown in the reports and the CSV, is the carnet or "Participante 01") and the fallback list of `CANTIDAD_PARTICIPANTES` (default 20) unnamed participants. The real list lives in the `participantes` table (§9.2), set by the admin (§5.10). Ids `P01…P99` are stable: drafts, URLs and evaluations refer to them.
 - A config validation test fails the build if ids are duplicated (integrantes across all jornadas), an indicator doesn't have exactly 4 levels, an enabled competencia has no team in any jornada, a competencia or a team number repeats within a jornada, or the teams don't match Appendix B.
 
 ### 9.2 Database (Neon Postgres via the Vercel Marketplace, Drizzle ORM)
@@ -382,6 +385,7 @@ participantes
   id          text not null                       -- "P01".."P99" within the jornada
   numero      smallint not null check (numero between 1 and 99)
   nombre      text null                           -- max 80; null → "Participante NN"
+  carnet      text null                           -- v1.4; max 20, [0-9A-Za-z-]; the reports' label; null → "Participante NN"
   correo      text null                           -- v1.2; max 254, lowercased; only for §5.14
   activo      boolean not null default true       -- false = hidden (§5.10); rows are never deleted
   updated_at  timestamptz not null default now()
@@ -428,7 +432,7 @@ envios_resultados                                 -- v1.2, §5.14
   index (jornada, competencia_id, participante_id)
 ```
 
-IDs reference the static config, or the `participantes` table for evaluados (matched by jornada and id). Migration `0002_jornadas` backfilled every row that existed before v1.1 as `manana`. v1.2 adds `0003_cuentas` (cuentas, codigos_verificacion), `0004_asistencia` and `0005_resultados_correo` (participantes.correo, envios_resultados). The only names in the DB are the participants' (set by the admin); evaluator names stay in config. The only emails are in `cuentas.correo` and `participantes.correo`. Team ids and team numbers are never stored: rows refer to the competencia and the integrante. The upsert runs in a single transaction: it upserts `evaluaciones`, deletes and reinserts that evaluation's `calificaciones`, and recomputes `puntaje`.
+IDs reference the static config, or the `participantes` table for evaluados (matched by jornada and id). Migration `0002_jornadas` backfilled every row that existed before v1.1 as `manana`. v1.2 adds `0003_cuentas` (cuentas, codigos_verificacion), `0004_asistencia` and `0006_resultados_correo` (participantes.correo, envios_resultados); v1.4 adds `0005_carnet` (participantes.carnet). The only names in the DB are the participants' (set by the admin); evaluator names stay in config. The only emails are in `cuentas.correo` and `participantes.correo`; the only carnets in `participantes.carnet`. Team ids and team numbers are never stored: rows refer to the competencia and the integrante. The upsert runs in a single transaction: it upserts `evaluaciones`, deletes and reinserts that evaluation's `calificaciones`, and recomputes `puntaje`.
 
 ### 9.3 Local draft (`localStorage`)
 Key: `nivela:v1:<competenciaId>:<evaluadorId>`, plus `nivela:v1:evaluador:<competenciaId>`. For an evaluador, `<evaluadorId>` is the session's `integranteId`; the `evaluador:<competenciaId>` key is only used by the docente's picker (§5.3). Attendance is not stored in the draft (§5.13).
@@ -465,33 +469,35 @@ Every read and write is wrapped in try/catch. If storage is unavailable (Safari 
 | POST | `/api/jev` | evaluador, docente | Jev proxy (§8.3). |
 | GET | `/api/evaluaciones?competencia=&evaluador=` | evaluador, docente | Participant ids already sent by this evaluator in the session's jornada, with `updated_at`, plus the ids this evaluator marked absent. For an evaluador, `evaluador` must be the session's `integranteId` (`403`). |
 | POST | `/api/evaluaciones` | evaluador, docente | Upsert one evaluation. |
-| PUT | `/api/asistencia` | evaluador, docente | `{ competenciaId, evaluadorId, participanteId, ausente }` (§5.13). For an evaluador, `evaluadorId` must be the session's `integranteId` (`403`). `409` if marking absent after sending. |
+| PUT | `/api/asistencia` | evaluador, docente | `{ competenciaId, evaluadorId, participanteId, ausente }` (§5.13). For an evaluador, `evaluadorId` is optional (it defaults to the session's `integranteId`) and any other id is `403`; the docente must name a member of the jornada's team. `409` if marking absent after sending, checked in the same statement that writes the mark. `POST /api/evaluaciones` answers `409` for a participant that evaluator marked absent. |
 | GET | `/api/reportes/[competencia]` | docente | Aggregated report JSON (general + per participant, gaps, evaluator progress, attendance). |
 | GET | `/api/reportes/[competencia]/csv` | docente | CSV download (UTF-8 with BOM so Excel opens accents correctly). |
 | GET | `/api/reportes/[competencia]/grupo?jornada=` | docente | Group summary (§11.3). `jornada` is `manana`, `noche` or `ambas`; invalid or missing → the session's. Read-only. |
 | POST | `/api/reportes/[competencia]/enviar` | docente | `{ participantes: string[], reenviar?: boolean }` (§5.14): recomputes results on the server, sends one email per participant, records each in `envios_resultados`, returns `{ enviados, errores: [{ participanteId, motivo }] }`. |
-| PUT | `/api/admin/participantes` | admin | Save `{ jornada, cantidad, nombres[], correos[], confirmar? }` for the session's jornada (§5.10). `409 { error, ocultos, evaluacionesAfectadas }` when hiding participants with evaluations without `confirmar`. `409 { error, jornadaDistinta: true }` when `jornada` isn't the session's. |
+| PUT | `/api/admin/participantes` | admin | Save `{ jornada, cantidad, nombres[], carnets[], correos[], confirmar? }` for the session's jornada (§5.10); the three arrays are aligned by position. A repeated carnet is a `400`. `409 { error, ocultos, evaluacionesAfectadas }` when hiding participants with evaluations without `confirmar`. `409 { error, jornadaDistinta: true }` when `jornada` isn't the session's. |
 | GET, PUT | `/api/admin/cuentas` | admin | List the session jornada's accounts; `PUT { integranteId, correo }` edits an email, `PUT { integranteId, restablecer: true }` resets access (§5.12). |
 | GET | `/api/dev/correos?para=` | — (dev only) | The latest message of the "consola" email transport, for e2e tests. `404` in production. |
 
 Every route except `/api/acceso*` and `/api/jev` is scoped to the session's jornada. Reports and the CSV cover only that jornada; the group summary is the single read-only exception (§5.11).
 
 `POST /api/evaluaciones` validation (zod plus config checks):
-- The competencia exists and is `habilitada`.
+- The competencia exists and has a rubric in the session's jornada (Appendix A).
 - The evaluador belongs to the session jornada's team for that competencia, and for an evaluador it is the session's `integranteId` (`403` otherwise).
 - The participante exists and is active in that jornada (§5.10), and this evaluator hasn't marked them absent (§5.13).
-- It has exactly that competencia's indicator ids, each with a level from 1 to 4.
+- It has exactly the indicator ids of that jornada's rubric for the competencia, each with a level from 1 to 4.
 - Each observation is ≤ 1,000 chars, and `ia_*` fields are well-formed if present.
 
 Errors use the same shape as §8.3, in Spanish.
 
-CSV columns: `jornada, competencia, evaluador, curso_evaluador, participante, nombre_participante, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`. `nombre_participante` is empty for a participant without a name. The CSV never includes emails or attendance. The file is named `nivela-{competencia}-{jornada}-{aaaa-mm-dd}.csv`.
+CSV columns: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`. `carnet` is empty for a participant without one. The CSV never includes participant names (v1.4), emails or attendance. The file is named `nivela-{competencia}-{jornada}-{aaaa-mm-dd}.csv`.
 
 ## 11. Reports and charts (Recharts)
 
 Chart palette: a monochrome blue ramp consistent with DESIGN.md. Básico `#d6d6d6`, Intermedio `#aad0f6`, Avanzado `#509be7`, Experto `#0066cc`. Grid lines `#d6d6d6`, labels `#707070`. Colors are never the only carrier of meaning; labels and values are always shown.
 
 Both reports cover the session's jornada (§5.11) and name it in their header.
+
+**Participants are identified by carnet (v1.4).** Every report (general, individual, group summary) labels each participant with their carnet, or "Participante NN" when it is blank, and never shows their name. Names stay for the evaluators, the admin and the results email (§5.14).
 
 **Simpler charts (v1.2).** The default view of every report follows these rules:
 - One message per chart. Its title is a plain sentence computed from the data, e.g. *"La mayoría de los participantes está en nivel Avanzado (12 de 20)"* or *"El indicador más alto es «Actúa de manera rápida» (3,25)"*. Ties and empty data get neutral sentences.
@@ -500,7 +506,7 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - The v1.1 charts (radar, stacked distributions, 100 % bars) move into a collapsed **"Ver gráficos detallados"** section at the end of each report, loaded only when opened. Nothing is removed.
 
 ### 11.1 Reporte individual (per participant)
-- Header: participant code, **Nivel general** (large), puntaje general, number of evaluations received, and under the level the gap (§7): *"Le faltan {x} puntos para {nivel}"* or *"Nivel máximo alcanzado"*.
+- Header: the participant's carnet, **Nivel general** (large), puntaje general, number of evaluations received, and under the level the gap (§7): *"Le faltan {x} puntos para {nivel}"* or *"Nivel máximo alcanzado"*.
 - **Puntaje por indicador**: horizontal bars on a fixed 1–4 axis, labelled "3,25 · Avanzado", with the threshold reference lines.
 - Per indicator, one plain line instead of a stacked bar: *"{n} de {total} evaluadores eligieron {nivel}"* (the most chosen level; ties listed).
 - Per indicator, the gap and the next level's description from config: *"Para llegar a {nivel}: {descripción}"*.
@@ -521,7 +527,7 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - **Los 5 puntajes más altos**: the top 5 places by puntaje general, each showing its puntaje, nivel general, evaluations received and the 4 indicator means, and linking to the individual report. Scores that are equal at 2 decimals share a position (1, 2, 2, 4…), and everyone tied at 5th place is shown.
 - **Participantes por nivel**: 4 horizontal bars (Básico → Experto) counting participants by nivel general, labelled with count and percent.
 - **Puntaje por participante**: horizontal bars sorted descending, colored by nivel general, with the threshold reference lines.
-- **Tabla de participantes**: code, the 4 indicator means, puntaje general, nivel general, **"Para el siguiente nivel"** (the gap), number of evaluations, **Asistencia**, and **Correo** (Enviado / Error / Pendiente, §5.14). Sortable, and each row links to the individual report.
+- **Tabla de participantes**: carnet, the 4 indicator means, puntaje general, nivel general, **"Para el siguiente nivel"** (the gap), number of evaluations, **Asistencia**, and **Correo** (Enviado / Error / Pendiente, §5.14). Sortable, and each row links to the individual report.
 - **Cobertura**: an evaluador × participante grid (sent / not sent / **Ausente**) so the docente sees who is missing.
 - **Ver gráficos detallados**: "Distribución de niveles por indicador" (100 % stacked bars, one per indicator, across all ratings).
 - Empty state: *"Aún no hay evaluaciones enviadas para esta competencia."*
@@ -533,7 +539,7 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - KPI tiles: puntaje del grupo and its nivel, the group's gap to the next level (§7), participantes evaluados, ausentes, cobertura, evaluadores completos.
 - A one-paragraph summary generated from the data, e.g. *"El grupo alcanzó un nivel Avanzado (2,84). Le faltan 0,66 puntos para Experto. El indicador más fuerte es … y el que más necesita refuerzo es …"*.
 - **Participantes por nivel** and **Puntaje promedio por indicador**, using the simple charts above.
-- With **Ambas jornadas**, a Mañana vs Noche comparison table (each KPI and indicator mean in two columns). Jornadas are compared **by competencia, never by team number**: for Adaptabilidad it compares morning Equipo 4 with night Equipo 1, and each column header names its own team from config ("Mañana · Equipo 4", "Noche · Equipo 1"). Evaluator counts come from each jornada's own team size. Participants are keyed by jornada + id (P01 exists in both).
+- With **Ambas jornadas**, a Mañana vs Noche comparison table (each KPI and indicator mean in two columns). Jornadas are compared **by competencia, never by team number**: for Adaptabilidad it compares morning Equipo 4 with night Equipo 1, and each column header names its own team from config ("Mañana · Equipo 4", "Noche · Equipo 1"). Evaluator counts come from each jornada's own team size. Participants are keyed by jornada + id (P01 exists in both). Indicator means are compared side by side only when both jornadas rate with the same rubric (same indicator ids); otherwise each jornada's indicators are listed under its own column, and only the KPIs share rows. "Ambas jornadas" is offered only for competencias with a rubric in both jornadas.
 - Same empty state as §11.2; "Volver" goes to the Reporte general; printable.
 
 Reports are rendered from one server aggregation (`src/lib/reportes.ts`) that is unit-tested against fixtures.
@@ -605,7 +611,8 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 
 **Privacy**:
 - Evaluator names live only in config.
-- Participant names are entered by the admin and stored in the `participantes` table.
+- Participant names are entered by the admin and stored in the `participantes` table. Reports and the CSV never show them (v1.4).
+- **Carnets** (v1.4): stored only in `participantes.carnet`, entered by the admin. They are the reports' and the CSV's participant label, and are never in config, never committed to git (roster files stay in `privado/`), never sent to Jev and never logged.
 - **Emails** (v1.2): evaluators' emails live only in `cuentas`, participants' only in `participantes.correo`. They are never in config, never committed to git, never sent to Jev, never logged, and never shown in reports or the CSV. The file used to import evaluator emails stays in a gitignored folder (`privado/`), with the roster screenshots.
 - **Phone numbers are never stored.**
 - Results emails contain only that participant's own results, never evaluator names or individual ratings (§5.14).
@@ -613,7 +620,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 
 **Email** (v1.2):
 - Provider: **Resend**, on the owner's existing Resend team (free plan: about 100 emails a day, 3,000 a month). The Vercel Marketplace install was not used because a second Resend team there requires a paid plan. `RESEND_API_KEY` is a "Sending access" key (it can only send), set by hand in the Vercel project for Production, Preview and Development.
-- Sending domain: **`correo.nivela.snhware.lat`** (region `us-east-1`), a subdomain of the site, so its reputation and DNS records stay apart from the website. Sender `CORREO_REMITENTE` = `Nivela <no-responder@correo.nivela.snhware.lat>`. The domain needs verified SPF and DKIM (plus the bounce MX) and a DMARC record; until it shows "Verified" in Resend, Resend only delivers to the account owner, so codes would never reach students.
+- Sending domain: **`correo.nivela.snhware.lat`** (region `us-east-1`), a subdomain of the site, so its reputation and DNS records stay apart from the website. Sender `CORREO_REMITENTE` = `Nivela <no-responder@correo.nivela.snhware.lat>`. Its DNS lives at Namecheap (the `snhware.lat` zone): a DKIM TXT (`resend._domainkey.correo.nivela`), the two sending CNAMEs Resend asks for (`send.correo.nivela` and `rsend.correo.nivela`) and a DMARC TXT (`_dmarc.correo.nivela`, `v=DMARC1; p=none;`). All of them show "Verified" in Resend (2026-11-17). If the domain ever loses verification, Resend only delivers to the account owner, so codes would never reach students.
 - Sent only server-side from a `server-only` module (`src/lib/correo.ts`) with `fetch` to `POST https://api.resend.com/emails`, a 10 s timeout and an optional `Idempotency-Key`; Resend never needs a CSP entry.
 - Errors are typed: **rechazado** (4xx: bad key, unverified domain, invalid address) · **limite** (429, with `Retry-After`) · **red** (timeout or no connection) · **desconocido** (5xx, missing configuration, unexpected response).
 - `CORREO_MODO`: `resend` or `consola`. Production always uses `resend` (a `consola` there would swallow every code). Elsewhere the default is `consola`, which keeps the last 20 messages in memory and shows them at the dev-only `/dev/correos`; e2e tests read them from `GET /api/dev/correos?para=`.
@@ -641,11 +648,12 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 | M9 | Email infrastructure; evaluator accounts and email login; admin account list. (PROMPTS.md 13–14) |
 | M10 | Attendance; gap to the next level and evaluator progress; simpler charts; group summary. (PROMPTS.md 15–18) |
 | M11 | Personal results by email; v1.2 QA, privacy audit and deploy. (PROMPTS.md 19–20) |
+| M12 | v1.3: rubrics per jornada + competencia; the four morning templates (Appendix A.2–A.5) and their Jev golden sets. |
 
 ## 15. Acceptance criteria (demo)
 
 1. On an iPhone (Safari) and an Android phone (Chrome and Firefox), an evaluator can do the whole flow without zooming or horizontal scrolling: sign in with their email and password → pick Adaptabilidad → rate a participant on 4 indicators → send. This works for a morning Equipo 4 member and a night Equipo 1 member alike, each seeing only their jornada's participants.
-2. The other 4 competencias are visible but cannot be opened.
+2. In the morning all 5 competencias open for the docente (and each evaluador opens their own team's). At night only Adaptabilidad opens; the other 4 are visible but cannot be opened until their night rubrics exist.
 3. Refreshing mid-rating loses nothing. "Borrar todo" clears local drafts and does not delete sent evaluations.
 4. "Enviar evaluación" is disabled until all 4 indicators have a level.
 5. Analyzing a Spanish description returns a suggested level with a percentage. Nothing is applied until the evaluator taps "Aplicar sugerencia". Low-confidence and off-topic states render as specified. A Jev outage never blocks manual rating.
@@ -662,6 +670,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 16. The group summary works for Mañana, Noche and Ambas jornadas, comparing teams by competencia.
 17. The docente previews and sends results by email; each participant receives only their own results, with no evaluator names; statuses show in the table.
 18. No email address appears in git, logs, the CSV, reports or `/api/jev` payloads.
+19. The reports and the CSV identify each participant by carnet ("Participante NN" without one) and never show a participant's name; evaluators still see names.
 
 ## 16. Open questions
 
@@ -671,22 +680,48 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 4. **Who is the docente user**: the professor, the student coordinator, or both? This affects who gets `CODIGO_DOCENTE`.
 5. **Activity date**: needed so the golden-set validation and device QA are scheduled before it.
 6. ~~**Night roster**: the names and courses of the 5 night teams.~~ Resolved in v1.2 (Appendix B). The night numbering differs from the morning one: Adaptabilidad is Equipo 1 at night.
-7. **Email sending domain**: chosen, `correo.nivela.snhware.lat` (§13 Email). Pending: its DNS records must be added where `snhware.lat` is managed and show "Verified" in Resend before codes and results can reach students.
+7. ~~**Email sending domain**~~ Resolved: `correo.nivela.snhware.lat` is verified in Resend (DKIM, sending and DMARC records live at Namecheap, 2026-11-17), and `npm run correo:prueba` reached both a Gmail and an `@est.utn.ac.cr` inbox (§13 Email).
 8. **Observations in results emails**: excluded by default because they were written for the docente. Confirm before enabling.
-9. **Missing evaluator emails**: Melany Parrales (mañana, Orientación al detalle) and Yuleissy Vargas Corrales (noche, Orientación a resultados). Neither team's competencia is enabled yet, so this doesn't block the Adaptabilidad demo.
+9. **Missing evaluator emails**: Melany Parrales (mañana, Orientación al detalle). Since v1.3 Orientación al detalle is enabled in the morning, so **Melany Parrales can't sign in until the admin adds her email** (the docente can still rate as her). Yuleissy Vargas Corrales's (noche) email arrived on 2026-11-17 and is in the gitignored import CSV; production gets it with the next `cuentas:importar --produccion` (or the admin enters it at `/admin`).
 10. **Addresses that look mistyped** in the roster sheets, to confirm with the students: Wesnlyn García Pérez (domain "gmal.com"), Andy Molina Castro and Karyme Varela Cantillano (domain "est.ac.cr" without "utn.").
 11. **Participants' emails** for §5.14: to be collected and entered by the admin.
 12. **Notice to students**: tell evaluators that their email is used to sign in, and participants that their results will arrive by email.
 13. **Template reviewer comment**: `plantilla.xlsx` has an open comment on Indicador 1 · Intermedio, *"Se repite el mismo verbo en el nivel 2 y 3. Debe ajustar."* The current levels 2 and 3 use different verbs ("Responde", "Afronta"), so it may be stale. Confirm with the team; if they change the wording, update Appendix A and `adaptabilidad.ts` together.
 14. **Evaluator name spellings**: the template lists "Jimena Salgado Campos", "Wenslyn Gracía Pérez" and "Sebastian Chaves Cespedes"; the roster (Appendix B) has "Jimena Salgado", "Wesnlyn García Pérez" and "Sebastian Chaves". Confirm the correct spellings; display names can change in `equipos.ts` without changing the integrante ids.
+15. **Night rubrics**: the night teams of Pensamiento crítico (Equipo 3), Autorregulación emocional (Equipo 2), Orientación al detalle (Equipo 4) and Orientación a resultados (Equipo 5) haven't sent their templates; until they do, those competencias show "Próximamente" at night. Confirm whether the night Adaptabilidad team (Equipo 1) keeps the morning template or sends its own. Each new rubric goes into Appendix A and its config file with new indicator ids, plus a golden-set fixture.
+16. **Wording in the v1.3 templates** that isn't a plain typo, left as written for the teams to confirm (Appendix A):
+    - Autorregulación emocional · Indicador 1 · Experto: *"…en acciones constructivas que favorecen y se adapten."* (the verbs don't agree and "favorecen" has no object).
+    - Autorregulación emocional · Indicador 3 · Experto: *"Modifica situaciones críticas e inesperadas en oportunidades… y promoviendo soluciones asertivas."* ("Modifica… en" and "y promoviendo").
+    - Autorregulación emocional · Indicador 4 · Avanzado: *"Remodela el desafío como situaciones temporales…"* (singular vs. plural).
+    - Autorregulación emocional · definición: *"Se puede entender como autorregulación emocional a la capacidad…"* (the "a").
+    - Pensamiento crítico · Indicador 2: the Básico and Avanzado levels speak of *"diferencias"*, but the indicator is about causes; and Indicador 4's title *"…conecta cada situación para resolver"* has no object.
+    - Orientación a resultados: the sources *"Cursos 2CN, s.f"* and *"UCC; Educación en USA"* are incomplete citations.
+17. **Template evaluator names** differ from the roster (Appendix B), e.g. "Felipe López Durán", "Adriana Pérez Solano", "Dorian Campos Madrigal", "Angelica Ramírez Molina", "Monserrat Cespedes". Display names can change in `equipos.ts` without changing the integrante ids.
 
 ---
 
-## Appendix A — Adaptabilidad (corrected text, goes into `src/config/competencias/adaptabilidad.ts`)
+## Appendix A — Rubrics (go into `src/config/competencias/*.ts`)
 
-Source: `plantilla.xlsx`, sheet "Plantilla sistematizada" (the Adaptabilidad team's systematized template, dated 12/10/2026). It replaces the v1.0/v1.1 rubric: the indicators were reordered and every level description was rewritten. Indicator ids are positional (`adaptabilidad-1` = Indicador 1); the change was made before any real evaluation existed.
+Each jornada's team writes the systematized template ("Plantilla sistematizada") for its competencia, so a rubric belongs to **jornada + competencia** (§9.1). A competencia is enabled in a jornada exactly when it has a rubric there; otherwise it shows "Próximamente". Each section below is one rubric, titled "A.n {competencia} · {jornadas that use it}"; the config test compares every section with config.
+
+| Competencia | Mañana | Noche |
+|---|---|---|
+| Pensamiento crítico y analítico | A.2 (Equipo 1) | Pending (Equipo 3) |
+| Autorregulación emocional | A.3 (Equipo 2) | Pending (Equipo 2) |
+| Orientación al detalle | A.4 (Equipo 3) | Pending (Equipo 4) |
+| Adaptabilidad | A.1 (Equipo 4) | A.1, the morning template, until the night team (Equipo 1) sends its own |
+| Orientación a resultados | A.5 (Equipo 5) | Pending (Equipo 5) |
+
+Corrections policy, the same for every template: only plain typos are fixed (accents, spelling, agreement, capital letters, a missing final period, double or trailing spaces, tabs, doubled periods), the "Nivel Básico:" style prefixes are dropped (the app shows the level name itself), and in-text citations move to **Fuente**. Everything else is kept verbatim, because the text is both what evaluators read and the rubric sent to Jev (§8.2). Wording that reads wrong but isn't a plain typo is left as written and listed in §16 for the team to confirm.
+
+Every template ends with the same *Nota técnica*, shown on the rating screen (§5.5). Notes about how a team used AI to review its template are not copied into the app.
+
+### A.1 Adaptabilidad · Mañana, Noche
+
+Source: `plantilla.xlsx` (the same file as `plantillas_dia/Plantilla sistematizada ADAPTABILIDAD.xlsx`), sheet "Plantilla sistematizada", the morning Adaptabilidad team's template, dated 12/10/2026. It replaced the v1.0/v1.1 rubric: the indicators were reordered and every level description was rewritten. Indicator ids are positional (`adaptabilidad-1` = Indicador 1); the change was made before any real evaluation existed. The night team rates with it too until it sends its own (§16).
 
 **Definición:** La adaptabilidad es la capacidad de modificar el propio comportamiento y responder de manera rápida y adecuada ante diferentes situaciones, personas y exigencias del entorno laboral, ajustándose a los cambios en los procedimientos, las tareas y las prioridades, y buscando soluciones eficaces ante los imprevistos.
+
 **Fuente:** Govern de les Illes Balears, s. f.
 
 **Indicador 1. Actúa de manera rápida y flexible.**
@@ -712,7 +747,6 @@ Source: `plantilla.xlsx`, sheet "Plantilla sistematizada" (the Adaptabilidad tea
 - Intermedio: Plantea una alternativa sencilla con orientación de otra persona.
 - Avanzado: Propone por iniciativa propia soluciones viables y las pone en práctica.
 - Experto: Implementa la solución más eficaz y comprueba que el imprevisto haya sido resuelto.
-
 Corrections applied to the template text (nothing else was changed):
 - Accent: "Actua" → "Actúa" (Indicador 1).
 - Agreement: "Responde cambio sencillos" → "Responde **a** cambios sencillos" (Indicador 1 · Intermedio; the preposition was added); "soluciones viable" → "soluciones viables" (Indicador 4 · Avanzado).
@@ -720,6 +754,159 @@ Corrections applied to the template text (nothing else was changed):
 - Final period added to Indicador 1 · Básico and Indicador 1 · Intermedio; double and trailing spaces removed; the "Nivel Básico:" style prefixes dropped (the app shows the level name itself).
 
 The template also carries a reviewer comment on Indicador 1 · Intermedio: *"Se repite el mismo verbo en el nivel 2 y 3. Debe ajustar."* (§16).
+
+### A.2 Pensamiento crítico y analítico · Mañana
+
+Source: `plantillas_dia/Herramienta 4_Plantilla sistematizada.xlsx`, sheet "Plantilla sistematizada", the morning Pensamiento crítico y analítico team's template (Equipo 1, "Semana 11"). Indicator ids `pensamiento-critico-1`…`4`.
+
+**Definición:** El pensamiento crítico es una habilidad que ayuda a analizar la información, utilizando pruebas y razones que permiten tomar decisiones y formar opiniones. También hace reflexionar sobre lo que se lee o se escucha, cuestiona y valora la información que recibió.
+
+El pensamiento analítico es la capacidad de dividir un problema o idea en partes más pequeñas para así entenderlo mejor, también identifica patrones entre los datos para extraer información y explicar cómo se conecta cada situación y se relaciona con el pensamiento crítico.
+
+**Fuente:** González Giraldo, F., 2023; Wang, M., et al., 2025
+
+**Indicador 1. Identifica aspectos relevantes de la información presentada.**
+- Básico: Presenta dificultad para reconocer los aspectos relevantes de la información presentada y requiere orientación para comprender la situación.
+- Intermedio: Reconoce los aspectos relevantes más evidentes de la información, pero presenta dificultad para explicar su relación con la situación planteada.
+- Avanzado: Analiza los aspectos relevantes de la información, establece relaciones entre ellos y explica su influencia en la situación planteada.
+- Experto: Evalúa críticamente los aspectos relevantes de la información, cuestiona su significado y establece relaciones fundamentadas para formular conclusiones sobre la situación planteada.
+
+**Indicador 2. Analiza la información para establecer posibles causas dividiendo un problema en partes.**
+- Básico: Describe las diferencias observadas.
+- Intermedio: Identifica posibles causas del problema.
+- Avanzado: Relaciona las diferencias con posibles causas utilizando la información disponible.
+- Experto: Formula explicaciones fundamentadas sobre el origen del problema, considerando la interacción y la influencia de sus diferentes componentes.
+
+**Indicador 3. Evalúa la coherencia de la información mediante la comparación de datos.**
+- Básico: Reconoce relaciones evidentes entre los datos de la información disponible.
+- Intermedio: Compara los datos e identifica relaciones y diferencias entre ellos.
+- Avanzado: Contrasta diferentes datos para determinar si existe coherencia entre la información analizada.
+- Experto: Evalúa la coherencia de la información y justifica su criterio.
+
+**Indicador 4. Toma decisiones fundamentadas y conecta cada situación para resolver.**
+- Básico: Expresa una decisión superficial sobre la situación sin examinar críticamente la información.
+- Intermedio: Relaciona la información e identifica inconsistencias para formular una decisión.
+- Avanzado: Analiza críticamente y conecta diferentes elementos de la situación para fundamentar su decisión.
+- Experto: Examina rigurosamente y con sentido crítico la información, cuestiona supuestos, identifica relaciones no evidentes y toma decisiones sólidas fundamentadas en evidencia.
+Corrections applied to the template text (nothing else was changed):
+- Spelling: "desiciones" → "decisiones" (Indicador 4 title and Experto) and "desición" → "decisión" (Indicador 4 · Básico and Intermedio).
+- Accent: "criticamente" → "críticamente" (Indicador 4 · Básico).
+- Final period added to the Indicador 1 title; a tab removed (Indicador 1 · Avanzado); the "Nivel Básico:" style prefixes dropped.
+- The in-text citations "(González Giraldo, F. , 2023)" and "(Wang, M., et al., 2025)" moved to **Fuente**, one per paragraph, in order.
+
+### A.3 Autorregulación emocional · Mañana
+
+Source: `plantillas_dia/Plantilla sistematizada autorregulación emocional.xlsx`, sheet "Plantilla sistematizada", the morning Autorregulación emocional team's template (Equipo 2). Indicator ids `autorregulacion-emocional-1`…`4`.
+
+**Definición:** Se puede entender como autorregulación emocional a la capacidad de manejo óptimo de las emociones. Es decir, es un constructo englobado dentro de la inteligencia emocional intrapersonal que nos permite transformar una vivencia potencialmente estresante y emocionalmente alterante en algo que, aunque continúe siendo desagradable, comprendemos que es pasajero, impersonal y controlable. Los individuos con una elevada capacidad de autorregulación tienden a manejar de manera eficaz situaciones de alta exigencia emocional, minimizando el impacto negativo del estrés, y favoreciendo respuestas resilientes frente a los desafíos organizacionales.
+
+**Fuente:** Montagud, 2020, párr. 1; Prado, 2025, p. 36
+
+**Indicador 1. Canaliza lo que siente de forma positiva y responde con inteligencia emocional, a pesar de altibajos emocionales.**
+- Básico: Presenta dificultades con conductas impulsivas o de alteración que generan tensión o presión.
+- Intermedio: Intenta regular sus respuestas mediante pausas o reflexiones para moderar sus emociones ante situaciones exigentes.
+- Avanzado: Identifica con rapidez y precisión sus emociones manteniendo una conducta constructiva ante los altibajos emocionales.
+- Experto: Transforma situaciones de tensión en acciones constructivas que favorecen y se adapten.
+
+**Indicador 2. Autorregula las emociones en situaciones difíciles, estresantes o perturbadoras.**
+- Básico: Demuestra dificultades para autorregular sus emociones evidenciando comportamientos que afectan su desempeño.
+- Intermedio: Aplica técnicas básicas para regular las emociones la mayor parte del tiempo.
+- Avanzado: Conserva la calma ante situaciones estresantes, mostrando estabilidad emocional durante las circunstancias.
+- Experto: Gestiona el equilibrio emocional ante situaciones estresantes o perturbadoras, manteniendo un comportamiento sereno.
+
+**Indicador 3. Transforma una situación alterante y estresante, en un escenario momentáneo donde mantenga la calma, buscando soluciones asertivas.**
+- Básico: Muestra dificultad para mantener la calma ante una situación estresante, por lo que requiere apoyo para enfrentarla.
+- Intermedio: Reconoce las circunstancias estresantes, pero necesita tiempo para gestionarlas.
+- Avanzado: Reinterpreta situaciones de alta tensión como circunstancias temporales y manejables, manteniendo la calma y propone soluciones efectivas.
+- Experto: Modifica situaciones críticas e inesperadas en oportunidades de acción constructiva y promoviendo soluciones asertivas.
+
+**Indicador 4. Maneja eficazmente situaciones de alta exigencia emocional respondiendo con resiliencia ante los desafíos.**
+- Básico: Revela dificultades para gestionar sus emociones en situaciones de alta exigencia, afectando su desempeño.
+- Intermedio: Valora las circunstancias emocionalmente exigentes, pero necesita tiempo, orientación e instrucciones específicas para la adaptación.
+- Avanzado: Remodela el desafío como situaciones temporales y manejables, manteniendo la calma y actúa proactivamente.
+- Experto: Afronta con resiliencia situaciones críticas e inesperadas, adaptando estrategias ante la adversidad y asegurando la continuidad de los procesos.
+Corrections applied to the template text (nothing else was changed):
+- Spelling: "Autoregula" → "Autorregula" (Indicador 2 title) and "autoregular" → "autorregular" (Indicador 2 · Básico); "presición" → "precisión" (Indicador 1 · Avanzado); "etresantes" → "estresantes" (Indicador 2 · Avanzado); "desempaño" → "desempeño" (Indicador 4 · Básico).
+- Accents: "reflexiónes" → "reflexiones" (Indicador 1 · Intermedio); "rápidez" → "rapidez" (Indicador 1 · Avanzado); "situacion" → "situación" (Indicador 3 title and Básico); "momentaneo" → "momentáneo" (Indicador 3 title); "estrátegias" → "estrategias" (Indicador 4 · Experto).
+- Spacing: "temporalesy" → "temporales y" (Indicador 4 · Avanzado); double and trailing spaces removed; the "Nivel Básico:" style prefixes dropped.
+- The in-text citations "(Montagud, 2020, párr. 1)" and "(Prado, 2025, p.36)" moved to **Fuente**.
+
+Left as written and listed in §16: Indicador 1 · Experto, Indicador 3 · Experto, Indicador 4 · Avanzado and the start of the definition.
+
+### A.4 Orientación al detalle · Mañana
+
+Source: `plantillas_dia/Plantilla Sistematizada Orientación al Detalle.xlsx`, sheet "Plantilla sistematizada", the morning Orientación al detalle team's template (Equipo 3), dated 12-10-2026. Indicator ids `orientacion-detalle-1`…`4`.
+
+**Definición:** La Orientación al detalle “es la capacidad de notar, procesar y completar con precisión todos los aspectos de una tarea sin omitir elementos pequeños pero significativos”. “Es la habilidad de procesar información detallada con efectividad y consistencia de manera minuciosa y exacta a partir de grandes volúmenes de información o datos”.
+
+Consiste en realizar una tarea con minuciosidad y precisión. Implica supervisar y verificar el trabajo o la información, así como planificar y organizar el tiempo y los recursos de manera eficiente.
+
+**Fuente:** Bermúdez, N., 2023, párr. 1; Kim, K., 2026, párr. 1; Government of the Northwest Territories, s. f.; Syracuse University Performance Partnership, s. f.
+
+**Indicador 1. Verifica aspectos minuciosos.**
+- Básico: Revisa detalles específicos de una tarea siguiendo indicaciones para determinar si son correctos.
+- Intermedio: Contrasta los detalles de una tarea con las indicaciones establecidas para reconocer pequeñas diferencias.
+- Avanzado: Inspecciona minuciosamente los elementos de una tarea para detectar errores que puedan afectar su exactitud.
+- Experto: Corrobora la exactitud de los detalles menos perceptibles, asegurando que todos cumplan con los criterios establecidos.
+
+**Indicador 2. Comprueba cambios significativos.**
+- Básico: Confirma que los cambios más evidentes de una tarea correspondan con las indicaciones recibidas.
+- Intermedio: Compara los cambios realizados con los resultados esperados para determinar si son importantes y coherentes.
+- Avanzado: Examina los cambios significativos de una tarea para determinar si mantienen consistencia con las condiciones establecidas.
+- Experto: Valida que los cambios significativos sean consistentes entre sí y cumplan con todos los criterios establecidos, incluso cuando presentan diferencias difíciles de detectar.
+
+**Indicador 3. Organiza recursos correctos y completos.**
+- Básico: Ordena los recursos necesarios para una tarea siguiendo indicaciones sobre su uso y verificando que estén completos.
+- Intermedio: Selecciona y prepara los recursos adecuados, asegurándose de que correspondan con lo solicitado.
+- Avanzado: Distribuye los recursos según las necesidades de la tarea, comprobando que sean correctos y suficientes.
+- Experto: Optimiza la organización y el procesamiento de los recursos, anticipando posibles errores o faltantes para asegurar su uso adecuado.
+
+**Indicador 4. Controla cambios con precisión y exactitud.**
+- Básico: Aplica cambios sencillos siguiendo instrucciones específicas para mantener la exactitud de una tarea.
+- Intermedio: Registra las modificaciones realizadas y comprueba que correspondan con las indicaciones establecidas.
+- Avanzado: Ajusta las modificaciones necesarias, evitando que se generen errores en los demás elementos de la tarea.
+- Experto: Supervisa las modificaciones realizadas, detectando y corrigiendo inconsistencias para garantizar la precisión del resultado final.
+Corrections applied to the template text (nothing else was changed):
+- Quotation marks: the two quoted definitions, written as `“…significativos." " Es la habilidad…datos.”`, became two closed quotes, `“…significativos”. “Es la habilidad…datos”.`, with the period outside each quote.
+- Final period added to the Indicador 1 and Indicador 2 titles and to Indicador 2 · Básico; doubled periods removed (Indicador 2 · Intermedio, Indicador 3 · Experto); double, trailing and blank-line spaces removed; the "Nivel Básico:" style prefixes dropped.
+- The in-text citations "(Bermúdez, N, 2023, párr.1)", "(Kim, K, 2026, párr,1)" and "(Government of the Northwest Territories, s. f.; Syracuse University Performance Partnership, s. f.)" moved to **Fuente**, with their punctuation normalized.
+
+### A.5 Orientación a resultados · Mañana
+
+Source: `plantillas_dia/Plantilla Sistematizada Orientación a resultados.xlsx`, sheet "Indicadores", the morning Orientación a resultados team's template ("Grupo: 5"). Indicator ids `orientacion-resultados-1`…`4`.
+
+**Definición:** La Orientación a Resultados es la capacidad, actitud y habilidad proactiva y persistente para encaminar las acciones al cumplimiento y superación de los objetivos o metas desafiantes. Implica la habilidad de planificar, priorizar, administrar eficazmente el tiempo y los recursos disponibles, demostrando resiliencia y adaptabilidad para superar obstáculos, evaluar riesgos y tomar decisiones pertinentes y acertadas enfocadas en el resultado final, todo ello bajo estándares de calidad, métricas e indicadores, con la finalidad de sostener e incrementar niveles altos de rendimiento e interés de la organización.
+
+**Fuente:** Aicad Business School, 2023; Cursos 2CN, s. f.; UCC, Educación en USA
+
+**Indicador 1. Planifica acciones hacia el cumplimiento de metas desafiantes y prioritarias.**
+- Básico: Presenta dificultades para reconocer las necesidades y establecer prioridades.
+- Intermedio: Reconoce las necesidades y prioridades, pero requiere orientación para definir acciones.
+- Avanzado: Organiza acciones considerando las prioridades, necesidades y recursos disponibles.
+- Experto: Planifica acciones y anticipa posibles obstáculos.
+
+**Indicador 2. Distribuye el tiempo disponible y supera obstáculos de manera persistente.**
+- Básico: Presenta dificultades para reconocer las tareas prioritarias y administrar el tiempo.
+- Intermedio: Organiza el tiempo disponible según la importancia de las tareas.
+- Avanzado: Administra el tiempo de manera autónoma y mantiene el esfuerzo ante las dificultades.
+- Experto: Reorganiza el tiempo y adapta sus acciones ante obstáculos y cambios en las prioridades.
+
+**Indicador 3. Propone alternativas de solución con niveles altos de rendimiento, ante discrepancias o errores.**
+- Básico: Presenta dificultades para reconocer errores y plantear soluciones.
+- Intermedio: Identifica errores y propone soluciones sencillas con orientación.
+- Avanzado: Desarrolla alternativas de solución ante discrepancias o errores.
+- Experto: Formula soluciones fundamentadas y anticipa sus posibles consecuencias.
+
+**Indicador 4. Toma decisiones proactivas ante riesgos para alcanzar el resultado final con criterios de calidad.**
+- Básico: Presenta dificultades para reconocer riesgos y requiere instrucciones para tomar decisiones.
+- Intermedio: Identifica riesgos y propone acciones para responder ante situaciones conocidas, con orientación.
+- Avanzado: Selecciona alternativas, considerando los posibles riesgos y criterios de calidad.
+- Experto: Ejecuta acciones para mantener la calidad de los resultados.
+Corrections applied to the template text (nothing else was changed):
+- Spelling: "pertienentes" → "pertinentes", "efocadas" → "enfocadas", "incremenrar" → "incrementar" (definition).
+- Agreement: "con criterios calidad" → "con criterios **de** calidad" (Indicador 4 title; the preposition was added).
+- Final period added to Indicador 1 · Intermedio; the "..." between the two sentences of the definition replaced by a period; double and trailing spaces removed; the "Nivel Básico:" style prefixes dropped.
+- The in-text citations "(Aicad Business School; 2023; Cursos 2CN, s.f)" and "(UCC; Educación en USA)" moved to **Fuente**; they are incomplete (§16).
 
 ## Appendix B — Teams (names only, goes into `src/config/equipos.ts`)
 
@@ -739,15 +926,15 @@ A team is identified by jornada + competencia; its number is only a display labe
 
 | Equipo | Competencia | Habilitada | AGRH 315 Psicología 2 | AGRH 613 Seminario |
 |---|---|---|---|---|
-| 1 | Pensamiento crítico y analítico | No | Mariana Alfaro Núñez, Mariela Castillo Zamora, Angelica Ramirez | Felipe López, Adriana Pérez, Dorian Campos |
-| 2 | Autorregulación emocional | No | Anny Varela, Kristel Rocha, Anyeli Segura, Tiffany Peña | Nancy Herrera Rojas, María Guadalupe Núñez Arguedas, Monserrat Céspedes Hidalgo |
-| 3 | Orientación al detalle | No | Melany Parrales, Valeria Mena | Fiorella Valverde Solano, Anthony Jimenez Espinoza, Genesis Herrera Norori, Yuliana Villalobos Arroyo |
+| 1 | Pensamiento crítico y analítico | Sí | Mariana Alfaro Núñez, Mariela Castillo Zamora, Angelica Ramirez | Felipe López, Adriana Pérez, Dorian Campos |
+| 2 | Autorregulación emocional | Sí | Anny Varela, Kristel Rocha, Anyeli Segura, Tiffany Peña | Nancy Herrera Rojas, María Guadalupe Núñez Arguedas, Monserrat Céspedes Hidalgo |
+| 3 | Orientación al detalle | Sí | Melany Parrales, Valeria Mena | Fiorella Valverde Solano, Anthony Jimenez Espinoza, Genesis Herrera Norori, Yuliana Villalobos Arroyo |
 | **4** | **Adaptabilidad** | **Sí** | Wesnlyn García Pérez, Stacy Zamora Rodríguez, Ramsés Salas Vargas, Sebastian Chaves | Kristel Barrantes López, Angelina Mata Arguedas, Allison Campos Morera, Jimena Salgado |
-| 5 | Orientación a resultados | No | Ariana Castillo Sánchez, Zury Castro Sandoval, Derroy Navas Valverde | Anyely Espinoza Mendoza, Génesis Ruiz Martínez, Nayeli Araya Solórzano |
+| 5 | Orientación a resultados | Sí | Ariana Castillo Sánchez, Zury Castro Sandoval, Derroy Navas Valverde | Anyely Espinoza Mendoza, Génesis Ruiz Martínez, Nayeli Araya Solórzano |
 
 ### Noche
 
-Ordered by the night team numbers. A team with no members would leave its competencia as "Próximamente" at night.
+Ordered by the night team numbers. A team with no members would leave its competencia as "Próximamente" at night, and so does a competencia without a night rubric (Appendix A): for now every night competencia except Adaptabilidad.
 
 | Equipo | Competencia | Habilitada | AGRH 315 Psicología 2 | AGRH 613 Seminario |
 |---|---|---|---|---|
@@ -772,6 +959,7 @@ Ordered by the night team numbers. A team with no members would leave its compet
 | Avance | "Avance de evaluadores · Equipo {numero}" · "{n} de {total} evaluadores completaron" · "Sin iniciar" · "En progreso" · "Completo" · "Sin correo" · "Pendiente de activar" · "Activa" · "Solo se cuentan las evaluaciones enviadas; los borradores quedan en el teléfono de cada evaluador." · KPI "Ausentes" · KPI "Evaluadores completos" |
 | Gráficos | "Participantes por nivel" · "Puntaje por indicador" · "{n} de {total} evaluadores eligieron {nivel}" · "Ver gráficos detallados" |
 | Resumen del grupo | "Resumen del grupo" · "Jornada" · "Mañana" · "Noche" · "Ambas jornadas" · "Puntaje promedio por indicador" |
+| Admin · participantes | "Nombres y carnés" · "Carné · Participante {nn}" · "Pegar lista de participantes" · "El carné del participante {nn} ya está en la lista." |
 | Admin · cuentas | "Cuentas de evaluadores" · "Equipo {numero} · {competencia}" · "Correo electrónico" · "Restablecer acceso" · "Último ingreso" |
 | Envío de resultados | "Enviar resultados por correo" · "Enviarme una prueba" · "Enviar a {n} participantes" · "Reenviar" · "Enviado el {fecha}" · "Sin correo" · "Sin evaluaciones" · "Ausente" · subject "Sus resultados de {competencia} · Nivela" |
 | Correo de código | "Su código de Nivela es {codigo}. Vence en {minutos} minutos. Si usted no lo solicitó, ignore este mensaje." |

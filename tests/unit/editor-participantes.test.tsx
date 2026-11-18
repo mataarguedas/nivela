@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EditorParticipantes } from "@/app/admin/EditorParticipantes";
+import { EditorParticipantes, leerLineaPegada } from "@/app/admin/EditorParticipantes";
 import { ProveedorToast } from "@/components/ui/Toast";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 
-// The admin's editor: count and names, the paste shortcut, client-side name
-// checks, and the 409 → confirm → resend flow.
+// The admin's editor: count, names and carnets, the paste shortcut,
+// client-side checks, and the 409 → confirm → resend flow.
 
 const fetchSimulado = vi.fn<typeof fetch>();
 
@@ -19,15 +19,20 @@ afterEach(() => {
   fetchSimulado.mockReset();
 });
 
-function montar(cantidad = 3, nombres: (string | null)[] = ["Ana", null, "Carlos", "Dani"]) {
+function montar(
+  cantidad = 3,
+  nombres: (string | null)[] = ["Ana", null, "Carlos", "Dani"],
+  carnets: (string | null)[] = nombres.map(() => null),
+) {
   render(
     <ProveedorToast>
-      <EditorParticipantes inicial={{ cantidad, nombres }} jornada="noche" />
+      <EditorParticipantes inicial={{ cantidad, nombres, carnets }} jornada="noche" />
     </ProveedorToast>,
   );
 }
 
 const campoNombre = (n: number) => screen.queryByLabelText(TEXTOS_ADMIN.participante(n));
+const campoCarne = (n: number) => screen.queryByLabelText(TEXTOS_ADMIN.carneDe(n));
 const campoCantidad = () => screen.getByLabelText(TEXTOS_ADMIN.cantidad);
 
 function responder(status: number, cuerpo: object) {
@@ -77,13 +82,43 @@ describe("EditorParticipantes", () => {
     expect(campoNombre(4)).toHaveValue("Hugo Vega");
   });
 
+  it("pegar «carné<TAB>nombre» (o con «;») llena el nombre y el carné; una línea sin carné lo borra", () => {
+    montar(2, ["Ana", "Bea"], ["111", "222"]);
+    fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.pegarLista }));
+    fireEvent.change(screen.getByLabelText(TEXTOS_ADMIN.pegarTitulo), {
+      target: { value: "100000001\tAna Lucía Mora Solís\nBruno José Chaves Ruiz; 100000002\nCarlos Andrés Vega\n" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.usarLista }));
+    expect(campoCantidad()).toHaveValue("3");
+    expect(campoNombre(1)).toHaveValue("Ana Lucía Mora Solís");
+    expect(campoCarne(1)).toHaveValue("100000001");
+    expect(campoNombre(2)).toHaveValue("Bruno José Chaves Ruiz");
+    expect(campoCarne(2)).toHaveValue("100000002");
+    expect(campoNombre(3)).toHaveValue("Carlos Andrés Vega");
+    expect(campoCarne(3)).toHaveValue("");
+  });
+
+  it("leerLineaPegada separa carné y nombre sin confundir un nombre de una palabra", () => {
+    expect(leerLineaPegada("100000001\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "100000001" });
+    expect(leerLineaPegada("Ana Mora;100000001")).toEqual({ nombre: "Ana Mora", carnet: "100000001" });
+    expect(leerLineaPegada("Ana Mora")).toEqual({ nombre: "Ana Mora", carnet: "" });
+    expect(leerLineaPegada("Ana\tMora")).toEqual({ nombre: "Ana Mora", carnet: "" });
+    expect(leerLineaPegada("A-12345\tAna")).toEqual({ nombre: "Ana", carnet: "A-12345" });
+  });
+
   it("guarda solo los participantes visibles, recortados", async () => {
     montar();
     fireEvent.change(campoNombre(2)!, { target: { value: "  Bea Solís " } });
     responder(200, { cantidad: 3 });
     await guardar();
     expect(fetchSimulado).toHaveBeenCalledWith("/api/admin/participantes", expect.objectContaining({ method: "PUT" }));
-    expect(cuerpoEnviado()).toEqual({ jornada: "noche", cantidad: 3, nombres: ["Ana", "Bea Solís", "Carlos"], confirmar: false });
+    expect(cuerpoEnviado()).toEqual({
+      jornada: "noche",
+      cantidad: 3,
+      nombres: ["Ana", "Bea Solís", "Carlos"],
+      carnets: ["", "", ""],
+      confirmar: false,
+    });
     expect(await screen.findByText(TEXTOS_ADMIN.guardado)).toBeInTheDocument();
   });
 
@@ -101,6 +136,25 @@ describe("EditorParticipantes", () => {
     expect(fetchSimulado).not.toHaveBeenCalled();
   });
 
+  it("guarda el carné recortado y no envía uno inválido ni uno repetido", async () => {
+    montar();
+    fireEvent.change(campoCarne(1)!, { target: { value: "12 34" } });
+    await guardar();
+    expect(campoCarne(1)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText(TEXTOS_ADMIN.carneInvalido(1))).toBeInTheDocument();
+
+    fireEvent.change(campoCarne(1)!, { target: { value: "100000001" } });
+    fireEvent.change(campoCarne(3)!, { target: { value: "100000001" } });
+    await guardar();
+    expect(screen.getByText(TEXTOS_ADMIN.carneRepetido(3))).toBeInTheDocument();
+    expect(fetchSimulado).not.toHaveBeenCalled();
+
+    fireEvent.change(campoCarne(3)!, { target: { value: " 100000002 " } });
+    responder(200, { cantidad: 3 });
+    await guardar();
+    expect(cuerpoEnviado().carnets).toEqual(["100000001", "", "100000002"]);
+  });
+
   it("si se ocultarían evaluaciones, pide confirmación y reenvía con confirmar", async () => {
     montar(4);
     fireEvent.change(campoCantidad(), { target: { value: "2" } });
@@ -113,7 +167,7 @@ describe("EditorParticipantes", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: TEXTOS_ADMIN.confirmar }));
     });
-    expect(cuerpoEnviado(1)).toEqual({ jornada: "noche", cantidad: 2, nombres: ["Ana", ""], confirmar: true });
+    expect(cuerpoEnviado(1)).toEqual({ jornada: "noche", cantidad: 2, nombres: ["Ana", ""], carnets: ["", ""], confirmar: true });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

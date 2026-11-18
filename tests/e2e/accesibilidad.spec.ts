@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { esperarCalificacion, esperarHidratacion } from "./hidratacion";
+import { abrirGraficosDetallados, esperarCalificacion, esperarHidratacion } from "./hidratacion";
 import { iniciarSesion, type Rol } from "./sesion";
 import { sinEnviosEnServidor } from "./servidor";
 
@@ -24,7 +24,7 @@ async function analizar(page: Page) {
 const PANTALLAS: { nombre: string; ruta: string; rol?: Rol; preparar?: (page: Page) => Promise<void> }[] = [
   { nombre: "Acceso", ruta: "/acceso" },
   { nombre: "Inicio", ruta: "/", rol: "evaluador" },
-  { nombre: "Evaluador", ruta: "/adaptabilidad/evaluador", rol: "evaluador" },
+  { nombre: "Evaluador", ruta: "/adaptabilidad/evaluador", rol: "docente" },
   { nombre: "Participantes", ruta: "/adaptabilidad", rol: "evaluador" },
   {
     nombre: "Calificación",
@@ -42,7 +42,8 @@ const PANTALLAS: { nombre: string; ruta: string; rol?: Rol; preparar?: (page: Pa
     ruta: "/reportes/adaptabilidad",
     rol: "docente",
     preparar: async (page) => {
-      await expect(page.locator("figure svg.recharts-surface:visible").first()).toBeVisible();
+      // Scan the simple charts and the detailed (Recharts) ones together.
+      await abrirGraficosDetallados(page);
     },
   },
   {
@@ -50,7 +51,8 @@ const PANTALLAS: { nombre: string; ruta: string; rol?: Rol; preparar?: (page: Pa
     ruta: "/reportes/adaptabilidad/P01",
     rol: "docente",
     preparar: async (page) => {
-      await expect(page.locator("figure svg.recharts-surface:visible").first()).toBeVisible();
+      // Scan the simple charts and the detailed (Recharts) ones together.
+      await abrirGraficosDetallados(page);
     },
   },
   { nombre: "No encontrado", ruta: "/ruta-inexistente", rol: "evaluador" },

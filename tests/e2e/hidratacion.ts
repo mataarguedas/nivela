@@ -21,3 +21,14 @@ export async function esperarHidratacion(page: Page, selector = "main") {
 export async function esperarCalificacion(page: Page) {
   await esperarHidratacion(page, '[role="radiogroup"]');
 }
+
+/**
+ * Report pages: opens "Ver gráficos detallados" (PRD §11 v1.2) and waits for
+ * its Recharts charts, which only load once that section is open. The
+ * toggle sits in a Suspense boundary, so wait for it to hydrate first.
+ */
+export async function abrirGraficosDetallados(page: Page) {
+  await esperarHidratacion(page, "h2 > button[aria-expanded]");
+  await page.getByRole("button", { name: "Ver gráficos detallados" }).click();
+  await page.locator("figure svg.recharts-surface").first().waitFor({ state: "visible" });
+}

@@ -25,7 +25,12 @@ afterEach(() => {
 });
 
 async function conSesion(rol: Rol) {
-  galletas.token = await firmarSesion({ rol, sid: SID, jornada: "manana" });
+  galletas.token = await firmarSesion({
+    rol,
+    sid: SID,
+    jornada: "manana",
+    integranteId: rol === "evaluador" ? "jimena-salgado" : undefined,
+  });
 }
 
 function cambiar(cuerpo: unknown) {

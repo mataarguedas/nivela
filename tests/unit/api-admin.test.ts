@@ -17,14 +17,22 @@ const { PUT } = await import("@/app/api/admin/participantes/route");
 
 const SID = "0123456789abcdef0123";
 const NOMBRES = ["Ana Pérez", "", "Carlos Peña"];
+const CARNETS = ["100000001", " 200000002 ", ""];
+/** What the db layer receives for NOMBRES + CARNETS: trimmed, blanks as null. */
+const LISTA = { nombres: ["Ana Pérez", null, "Carlos Peña"], carnets: ["100000001", "200000002", null] };
 
 function guardar(cuerpo: unknown) {
   return PUT(
     new Request("http://localhost/api/admin/participantes", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      // The editor always names the jornada it loaded; tests may override it.
-      body: JSON.stringify(cuerpo && typeof cuerpo === "object" ? { jornada: "manana", ...cuerpo } : cuerpo),
+      // The editor always names the jornada it loaded and sends a carnet per
+      // name; tests may override both.
+      body: JSON.stringify(
+        cuerpo && typeof cuerpo === "object"
+          ? { jornada: "manana", carnets: ((cuerpo as { nombres?: unknown[] }).nombres ?? []).map(() => ""), ...cuerpo }
+          : cuerpo,
+      ),
     }),
   );
 }
@@ -50,18 +58,33 @@ describe("PUT /api/admin/participantes", () => {
     expect(db.guardarParticipantes).not.toHaveBeenCalled();
   });
 
-  it("guarda los nombres validados (vacíos como null) sin caché", async () => {
-    const respuesta = await guardar({ cantidad: 3, nombres: NOMBRES });
+  it("guarda los nombres y carnés validados (vacíos como null) sin caché", async () => {
+    const respuesta = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS });
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("cache-control")).toBe("no-store");
     await expect(respuesta.json()).resolves.toEqual({ cantidad: 3 });
-    expect(db.guardarParticipantes).toHaveBeenCalledWith("manana", ["Ana Pérez", null, "Carlos Peña"], false);
+    expect(db.guardarParticipantes).toHaveBeenCalledWith("manana", LISTA, false);
+  });
+
+  it("400 con un carné inválido, repetido o con una lista de carnés de otro largo", async () => {
+    const invalido = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: ["100000001", "20 00", ""] });
+    expect(invalido.status).toBe(400);
+    await expect(invalido.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.carnetParticipante(2) });
+
+    const repetido = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: ["A-1", "", "a-1"] });
+    expect(repetido.status).toBe(400);
+    await expect(repetido.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.carnetRepetido(3) });
+
+    const corta = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: ["1"] });
+    expect(corta.status).toBe(400);
+    await expect(corta.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.listaParticipantes });
+    expect(db.guardarParticipantes).not.toHaveBeenCalled();
   });
 
   it("guarda la lista de la jornada de la sesión", async () => {
     sesion.getSesion.mockResolvedValue({ rol: "admin", sid: SID, jornada: "noche" });
-    expect((await guardar({ jornada: "noche", cantidad: 3, nombres: NOMBRES })).status).toBe(200);
-    expect(db.guardarParticipantes).toHaveBeenCalledWith("noche", ["Ana Pérez", null, "Carlos Peña"], false);
+    expect((await guardar({ jornada: "noche", cantidad: 3, nombres: NOMBRES, carnets: CARNETS })).status).toBe(200);
+    expect(db.guardarParticipantes).toHaveBeenCalledWith("noche", LISTA, false);
   });
 
   it("409 sin guardar si la jornada del editor no es la de la sesión (otra pestaña)", async () => {
@@ -89,17 +112,18 @@ describe("PUT /api/admin/participantes", () => {
       evaluacionesAfectadas: 9,
     });
 
-    expect((await guardar({ cantidad: 3, nombres: NOMBRES, confirmar: true })).status).toBe(200);
-    expect(db.guardarParticipantes).toHaveBeenLastCalledWith("manana", ["Ana Pérez", null, "Carlos Peña"], true);
+    expect((await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS, confirmar: true })).status).toBe(200);
+    expect(db.guardarParticipantes).toHaveBeenLastCalledWith("manana", LISTA, true);
   });
 
-  it("500 si falla la base de datos, sin registrar los nombres", async () => {
+  it("500 si falla la base de datos, sin registrar los nombres ni los carnés", async () => {
     const consola = vi.spyOn(console, "error").mockImplementation(() => {});
-    db.guardarParticipantes.mockRejectedValue(new Error('Failed query: params: "Ana Pérez"'));
-    const respuesta = await guardar({ cantidad: 3, nombres: NOMBRES });
+    db.guardarParticipantes.mockRejectedValue(new Error('Failed query: params: "Ana Pérez", "100000001"'));
+    const respuesta = await guardar({ cantidad: 3, nombres: NOMBRES, carnets: CARNETS });
     expect(respuesta.status).toBe(500);
     await expect(respuesta.json()).resolves.toEqual({ error: TEXTOS_ADMIN.errorGuardar });
     const registrado = consola.mock.calls.flat().join(" ");
     expect(registrado).not.toContain("Ana");
+    expect(registrado).not.toContain("100000001");
   });
 });

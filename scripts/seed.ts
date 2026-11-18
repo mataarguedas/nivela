@@ -1,34 +1,56 @@
 // Dev seed (CLAUDE.md → Commands, PRD §15.7): realistic fake evaluations for
-// every Adaptabilidad evaluator × every participant, in every jornada that
-// has a team for it, written through the same validation and upsert as POST
-// /api/evaluaciones. Never run it against production.
+// every evaluator × every participant of every competencia that has a rubric
+// and a team in a jornada (PRD Appendix A), written through the same validation and upsert as POST
+// /api/evaluaciones, plus the fake evaluator accounts (`<id>@ejemplo.test`,
+// password E2E_CONTRASENA; see cuentas-prueba.ts). Never run it against
+// production: it refuses unless DATABASE_URL comes from .env.local.
 //
-//   npm run db:seed                # upsert the fake evaluations (idempotent)
-//   npm run db:seed -- --limpiar   # TRUNCATE evaluaciones, calificaciones, uso_jev
+// Attendance (PRD §5.13): per jornada and competencia, two participants near the end of
+// the list are marked absent by most of the team (every evaluator but the
+// last), who then send nothing for them. The last evaluator sends nothing
+// for the first one and evaluates the second, so the reports show one
+// "Ausente" and one "Asistencia en conflicto". The team and its size always
+// come from equipoDeCompetencia(jornada, competenciaId).
+//
+//   npm run db:seed                # upsert the fake evaluations and marks (idempotent)
+//   npm run db:seed -- --limpiar   # TRUNCATE evaluaciones, calificaciones, uso_jev, asistencia
 //
 // Run through `tsx --conditions=react-server` so the `server-only` guard in
 // the db modules resolves to its no-op entry. Reproducible: a fixed PRNG seed
 // gives the same data on every run.
 
-for (const archivo of [".env.local", ".env"]) {
-  try {
-    process.loadEnvFile(archivo);
-  } catch {
-    // File not present: fine.
-  }
-}
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { Competencia } from "@/config/competencias";
+import { cargarEntornoDesarrollo } from "./entornoDesarrollo";
 
-const COMPETENCIA_ID = "adaptabilidad";
+const CARPETA_FIXTURES = "scripts/fixtures";
+type FixturesJev = {
+  competenciaId: string;
+  jornada?: string;
+  casos: { indicadorId: string; nivelEsperado?: number; texto: string }[];
+};
+
 const SEMILLA = 2026;
 const CONCURRENCIA = 6;
 const PROPORCION_IA = 0.25;
 const PROPORCION_OBSERVACION = 0.4;
 const MODELO = "jev-1.13.0";
+/**
+ * Positions from the end of the list of the two absent participants (P18 and
+ * P19 with 20). The e2e specs rate P01–P16 and P20 as real evaluators, so
+ * these never block a spec's send.
+ */
+const AUSENTE_DESDE_FINAL = 3;
+const CONFLICTO_DESDE_FINAL = 2;
+
+type BancoObservaciones = Record<number, Record<number, string[]>>;
 
 // Hand-written observations per indicator number and level, matching the
-// rubric in PRD Appendix A (plantilla.xlsx). No names, only observable
-// behavior, as the rating screen asks.
-const OBSERVACIONES: Record<number, Record<number, string[]>> = {
+// Adaptabilidad rubric in PRD Appendix A.1 (plantilla.xlsx). No names, only
+// observable behavior, as the rating screen asks. The other rubrics take
+// theirs from their Jev golden set (bancoObservaciones).
+const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {
   // Indicador 1. Actúa de manera rápida y flexible.
   1: {
     1: [
@@ -119,6 +141,25 @@ function generador(semilla: number) {
   };
 }
 
+/**
+ * Observations for one jornada's rubric: Adaptabilidad's above plus the
+ * golden-set texts written for that rubric (scripts/fixtures/jev-*.json),
+ * keyed by indicator number and expected level.
+ */
+function bancoObservaciones(competencia: Competencia, jornada: string): BancoObservaciones {
+  const banco: BancoObservaciones = structuredClone(competencia.id === "adaptabilidad" ? OBSERVACIONES_ADAPTABILIDAD : {});
+  for (const archivo of readdirSync(CARPETA_FIXTURES).filter((a) => /^jev-.+\.json$/.test(a))) {
+    const fixtures = JSON.parse(readFileSync(join(CARPETA_FIXTURES, archivo), "utf8")) as FixturesJev;
+    if (fixtures.competenciaId !== competencia.id || (fixtures.jornada ?? "manana") !== jornada) continue;
+    for (const caso of fixtures.casos) {
+      const numero = competencia.indicadores.find((i) => i.id === caso.indicadorId)?.numero;
+      if (numero === undefined || caso.nivelEsperado === undefined) continue;
+      ((banco[numero] ??= {})[caso.nivelEsperado] ??= []).push(caso.texto);
+    }
+  }
+  return banco;
+}
+
 const azar = generador(SEMILLA);
 const entre = (min: number, max: number) => min + azar() * (max - min);
 const elegir = <T>(opciones: readonly T[]): T => opciones[Math.floor(azar() * opciones.length)];
@@ -136,103 +177,142 @@ function probabilidades(nivel: number): Record<string, number> {
 }
 
 async function main() {
-  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
-    console.error("Refusing to seed: NODE_ENV or VERCEL_ENV is production.");
-    process.exit(1);
-  }
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL is not set (see .env.example).");
-    process.exit(1);
-  }
+  const host = cargarEntornoDesarrollo();
 
   // Imported after the env files load: the db modules read DATABASE_URL.
-  const { sql } = await import("drizzle-orm");
-  const { obtenerCompetenciaHabilitada } = await import("@/config/competencias");
+  const { and, eq, inArray, sql } = await import("drizzle-orm");
+  const { competenciasDeJornada } = await import("@/config/competencias");
   const { equipoDeCompetencia } = await import("@/config/equipos");
   const { JORNADAS } = await import("@/config/jornadas");
   const { getDb } = await import("@/lib/db");
   const { guardarEvaluacion } = await import("@/lib/db/evaluaciones");
+  const { marcarAsistencia } = await import("@/lib/db/asistencia");
+  const { asistencia, evaluaciones } = await import("@/lib/db/schema");
   const { obtenerParticipantes } = await import("@/lib/db/participantes");
   const { validarEvaluacion } = await import("@/lib/validacion");
 
-  console.log(`Base de datos: ${new URL(process.env.DATABASE_URL).host}`);
+  console.log(`Base de datos: ${host}`);
 
   if (process.argv.includes("--limpiar")) {
-    await getDb().execute(sql`truncate table evaluaciones, calificaciones, uso_jev`);
-    console.log("Tablas vaciadas: evaluaciones, calificaciones, uso_jev.");
+    await getDb().execute(sql`truncate table evaluaciones, calificaciones, uso_jev, asistencia`);
+    console.log("Tablas vaciadas: evaluaciones, calificaciones, uso_jev, asistencia.");
     return;
   }
 
-  const competencia = obtenerCompetenciaHabilitada(COMPETENCIA_ID);
-  if (!competencia) throw new Error(`${COMPETENCIA_ID} is not enabled`);
-
   for (const { id: jornada } of JORNADAS) {
-    const equipo = equipoDeCompetencia(jornada, COMPETENCIA_ID);
-    if (!equipo) {
-      console.log(`Jornada ${jornada}: sin equipo para ${COMPETENCIA_ID}; se omite.`);
-      continue;
-    }
     // The admin's list for the jornada if one was saved; otherwise the unnamed fallback.
     const PARTICIPANTES = await obtenerParticipantes(jornada);
-
-    // Each participant has a "true" level per indicator; each evaluator is a bit
-    // stricter or more lenient; every rating adds its own noise.
-    const base = new Map(
-      PARTICIPANTES.map((p) => {
-        const aptitud = entre(1.2, 3.9);
-        return [p.id, competencia.indicadores.map(() => aptitud + entre(-0.6, 0.6))];
-      }),
-    );
-    const severidad = new Map(equipo.integrantes.map((i) => [i.id, entre(-0.4, 0.4)]));
-
-    const pendientes = equipo.integrantes.flatMap((evaluador) =>
-      PARTICIPANTES.map((participante) => {
-        const calificaciones = competencia.indicadores.map((indicador, i) => {
-          const nivel = nivelAcotado(base.get(participante.id)![i] + severidad.get(evaluador.id)! + entre(-0.7, 0.7));
-          const observacion = azar() < PROPORCION_OBSERVACION ? elegir(OBSERVACIONES[indicador.numero][nivel]) : null;
-          if (azar() >= PROPORCION_IA) return { indicadorId: indicador.id, nivel, observacion, origen: "manual" as const };
-
-          // Usually the evaluator applied the suggestion; sometimes they then
-          // picked an adjacent level by hand (origen manual, metadata kept).
-          const corregida = azar() < 0.2;
-          const nivelSugerido = corregida ? nivelAcotado(nivel + (nivel === 4 ? -1 : 1)) : nivel;
-          const p = probabilidades(nivelSugerido);
-          return {
-            indicadorId: indicador.id,
-            nivel,
-            observacion,
-            origen: corregida ? ("manual" as const) : ("ia" as const),
-            ia: { nivelSugerido, probabilidades: p, confianza: redondear(p[String(nivelSugerido)] * entre(0.85, 0.98)), modelo: MODELO },
-          };
-        });
-        const resultado = validarEvaluacion(
-          {
-            competenciaId: competencia.id,
-            evaluadorId: evaluador.id,
-            participanteId: participante.id,
-            calificaciones,
-          },
-          PARTICIPANTES,
-          jornada,
-        );
-        if (!resultado.ok) throw new Error(`Invalid seed data for ${evaluador.id}/${participante.id}: ${resultado.error}`);
-        return resultado.datos;
-      }),
-    );
-
-    let guardadas = 0;
-    async function trabajador() {
-      for (let evaluacion = pendientes.shift(); evaluacion; evaluacion = pendientes.shift()) {
-        await guardarEvaluacion(jornada, evaluacion);
-        guardadas += 1;
+    for (const competencia of competenciasDeJornada(jornada)) {
+      const equipo = equipoDeCompetencia(jornada, competencia.id);
+      if (!competencia.habilitada || !equipo) {
+        console.log(`Jornada ${jornada}: ${competencia.id} sin rúbrica o sin equipo; se omite.`);
+        continue;
       }
+      const observaciones = bancoObservaciones(competencia, jornada);
+
+      // Each participant has a "true" level per indicator; each evaluator is a bit
+      // stricter or more lenient; every rating adds its own noise.
+      const base = new Map(
+        PARTICIPANTES.map((p) => {
+          const aptitud = entre(1.2, 3.9);
+          return [p.id, competencia.indicadores.map(() => aptitud + entre(-0.6, 0.6))];
+        }),
+      );
+      const severidad = new Map(equipo.integrantes.map((i) => [i.id, entre(-0.4, 0.4)]));
+
+      // Attendance: who marks whom absent, and the pairs nobody sends.
+      const ausente = PARTICIPANTES.at(-AUSENTE_DESDE_FINAL);
+      const conflicto = PARTICIPANTES.at(-CONFLICTO_DESDE_FINAL);
+      const ultimo = equipo.integrantes.at(-1)?.id;
+      const marcan = equipo.integrantes.filter((i) => i.id !== ultimo).map((i) => i.id);
+      const idsAusentes = [ausente, conflicto].flatMap((p) => (p && PARTICIPANTES.length > AUSENTE_DESDE_FINAL ? [p.id] : []));
+      const sinEnviar = (evaluadorId: string, participanteId: string) =>
+        (marcan.includes(evaluadorId) && idsAusentes.includes(participanteId)) ||
+        (evaluadorId === ultimo && participanteId === ausente?.id && idsAusentes.length > 0);
+
+      // Start from a clean slate for this jornada's marks and the absent pairs'
+      // evaluations, so re-running the seed is idempotent (marking absent is
+      // refused while an evaluation exists).
+      const db = getDb();
+      await db
+        .delete(asistencia)
+        .where(and(eq(asistencia.jornada, jornada), eq(asistencia.competenciaId, competencia.id)));
+      if (idsAusentes.length > 0) {
+        await db
+          .delete(evaluaciones)
+          .where(
+            and(
+              eq(evaluaciones.jornada, jornada),
+              eq(evaluaciones.competenciaId, competencia.id),
+              inArray(evaluaciones.evaluadorId, [...marcan, ...(ultimo ? [ultimo] : [])]),
+              inArray(evaluaciones.participanteId, idsAusentes),
+            ),
+          );
+      }
+      let marcas = 0;
+      for (const evaluadorId of marcan) {
+        for (const participanteId of idsAusentes) {
+          const resultado = await marcarAsistencia(jornada, { competenciaId: competencia.id, evaluadorId, participanteId }, true);
+          if (!resultado.ok) throw new Error(`Could not mark ${evaluadorId}/${participanteId} absent`);
+          marcas += 1;
+        }
+      }
+
+      const pendientes = equipo.integrantes.flatMap((evaluador) =>
+        PARTICIPANTES.filter((participante) => !sinEnviar(evaluador.id, participante.id)).map((participante) => {
+          const calificaciones = competencia.indicadores.map((indicador, i) => {
+            const nivel = nivelAcotado(base.get(participante.id)![i] + severidad.get(evaluador.id)! + entre(-0.7, 0.7));
+            const opciones = observaciones[indicador.numero]?.[nivel] ?? [];
+            const observacion = opciones.length > 0 && azar() < PROPORCION_OBSERVACION ? elegir(opciones) : null;
+            if (azar() >= PROPORCION_IA) return { indicadorId: indicador.id, nivel, observacion, origen: "manual" as const };
+
+            // Usually the evaluator applied the suggestion; sometimes they then
+            // picked an adjacent level by hand (origen manual, metadata kept).
+            const corregida = azar() < 0.2;
+            const nivelSugerido = corregida ? nivelAcotado(nivel + (nivel === 4 ? -1 : 1)) : nivel;
+            const p = probabilidades(nivelSugerido);
+            return {
+              indicadorId: indicador.id,
+              nivel,
+              observacion,
+              origen: corregida ? ("manual" as const) : ("ia" as const),
+              ia: { nivelSugerido, probabilidades: p, confianza: redondear(p[String(nivelSugerido)] * entre(0.85, 0.98)), modelo: MODELO },
+            };
+          });
+          const resultado = validarEvaluacion(
+            {
+              competenciaId: competencia.id,
+              evaluadorId: evaluador.id,
+              participanteId: participante.id,
+              calificaciones,
+            },
+            PARTICIPANTES,
+            jornada,
+          );
+          if (!resultado.ok) throw new Error(`Invalid seed data for ${evaluador.id}/${participante.id}: ${resultado.error}`);
+          return resultado.datos;
+        }),
+      );
+
+      let guardadas = 0;
+      async function trabajador() {
+        for (let evaluacion = pendientes.shift(); evaluacion; evaluacion = pendientes.shift()) {
+          await guardarEvaluacion(jornada, evaluacion);
+          guardadas += 1;
+        }
+      }
+      const total = pendientes.length;
+      await Promise.all(Array.from({ length: CONCURRENCIA }, trabajador));
+      console.log(
+        `Jornada ${jornada} · ${competencia.id}: ${guardadas} de ${total} evaluaciones (${equipo.integrantes.length} evaluadores × ${PARTICIPANTES.length} participantes), ${marcas} marcas de ausencia (${idsAusentes.join(", ") || "ninguna"}).`,
+      );
     }
-    const total = pendientes.length;
-    await Promise.all(Array.from({ length: CONCURRENCIA }, trabajador));
-    console.log(
-      `Jornada ${jornada}: ${guardadas} de ${total} evaluaciones (${equipo.integrantes.length} evaluadores × ${PARTICIPANTES.length} participantes).`,
-    );
   }
+
+  const { contrasenaDePrueba, CUENTAS_PENDIENTES } = await import("../tests/e2e/cuentas");
+  const { prepararCuentasPrueba } = await import("./cuentasPrueba");
+  const cuentas = await prepararCuentasPrueba(getDb(), contrasenaDePrueba(), CUENTAS_PENDIENTES);
+  console.log(`Cuentas de prueba: ${cuentas.total} (${cuentas.pendientes} pendientes de activar).`);
 }
 
 main().catch((error: unknown) => {

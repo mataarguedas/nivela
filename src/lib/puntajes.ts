@@ -98,9 +98,75 @@ export function proporcion(parte: number, total: number): number | null {
   return parte / total;
 }
 
-/** Cobertura: evaluations received ÷ (evaluators × participants), or null if none are expected. */
-export function cobertura(recibidas: number, evaluadores: number, participantes: number): number | null {
-  const esperadas = evaluadores * participantes;
+/**
+ * Expected evaluations (PRD §7 Cobertura): evaluators × active participants,
+ * minus the evaluator × participant pairs marked absent (§5.13). Never below 0.
+ */
+export function evaluacionesEsperadas(evaluadores: number, participantes: number, paresAusentes = 0): number {
+  return Math.max(0, evaluadores * participantes - paresAusentes);
+}
+
+/**
+ * Cobertura: evaluations received ÷ expected evaluations (see
+ * evaluacionesEsperadas), or null if none are expected.
+ */
+export function cobertura(recibidas: number, evaluadores: number, participantes: number, paresAusentes = 0): number | null {
+  const esperadas = evaluacionesEsperadas(evaluadores, participantes, paresAusentes);
   if (esperadas <= 0) return null;
   return recibidas / esperadas;
+}
+
+export type Asistencia = "ausente" | "conflicto";
+
+/**
+ * A participant's attendance in the reports (PRD §5.13): "ausente" with at
+ * least one absent mark and no evaluations; "conflicto" ("Asistencia en
+ * conflicto") with marks and evaluations; null without marks.
+ */
+export function asistenciaParticipante(marcasAusente: number, evaluaciones: number): Asistencia | null {
+  if (marcasAusente <= 0) return null;
+  return evaluaciones > 0 ? "conflicto" : "ausente";
+}
+
+/** Gap to the next level (PRD §7 "Brecha al siguiente nivel"). */
+export type Brecha = {
+  nivelActual: NivelValor;
+  /** Null at Experto: "Nivel máximo alcanzado". */
+  siguiente: NivelValor | null;
+  /** The threshold that opens `siguiente` (1.5 / 2.5 / 3.5). */
+  umbral: number | null;
+  /** umbral − score, to 2 decimals. */
+  faltante: number | null;
+};
+
+const UMBRAL_DEL_SIGUIENTE: Record<Exclude<NivelValor, 4>, number> = {
+  1: UMBRALES_NIVEL.intermedio,
+  2: UMBRALES_NIVEL.avanzado,
+  3: UMBRALES_NIVEL.experto,
+};
+
+/**
+ * The gap from a score (a puntaje general, an indicator mean or the group
+ * mean) to the next level. The score is rounded to 2 decimals first, exactly
+ * like nivelGeneral(), so the number on screen and the gap always agree:
+ * 2,49 → 0,01 to Avanzado; 2,4999 shows as 2,50 → Avanzado, 1,00 to Experto.
+ */
+export function brechaSiguienteNivel(puntaje: number): Brecha {
+  const p = redondear2(puntaje);
+  const nivelActual = nivelGeneral(p);
+  if (nivelActual === 4) return { nivelActual, siguiente: null, umbral: null, faltante: null };
+  const umbral = UMBRAL_DEL_SIGUIENTE[nivelActual];
+  return { nivelActual, siguiente: (nivelActual + 1) as NivelValor, umbral, faltante: redondear2(umbral - p) };
+}
+
+export type EstadoAvance = "sin-iniciar" | "en-progreso" | "completo";
+
+/**
+ * An evaluator's progress (PRD §7 "Avance de un evaluador"). `esperadas` is
+ * the active participants minus those this evaluator marked absent. Nothing
+ * left to send (everyone sent, or everyone absent) is "completo".
+ */
+export function estadoAvance(enviadas: number, esperadas: number): EstadoAvance {
+  if (enviadas >= esperadas) return "completo";
+  return enviadas === 0 ? "sin-iniciar" : "en-progreso";
 }

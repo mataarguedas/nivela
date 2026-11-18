@@ -7,25 +7,41 @@ import { Campo, CampoTexto } from "@/components/ui/Campo";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { useToast } from "@/components/ui/Toast";
 import type { JornadaId } from "@/config/jornadas";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esNombreValido } from "@/config/participantes";
+import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esNombreValido } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import type { EstadoParticipantes } from "@/lib/db/participantes";
-import type { CuerpoParticipantes } from "@/lib/validacion";
+import { indiceCarnetRepetido, type CuerpoParticipantes } from "@/lib/validacion";
 
-// The admin's participant editor (PRD §5.10): a count, then one name field
-// per participant. Lowering the count only hides rows: their names stay in
+// The admin's participant editor (PRD §5.10): a count, then a name and a
+// carnet field per participant (evaluators see the name; the reports show
+// only the carnet). Lowering the count only hides rows: their data stays in
 // state (and in the DB once saved), so raising it again brings them back.
-// "Pegar lista" fills the names from one-per-line text, e.g. a spreadsheet
-// column. Saving PUTs the list; a 409 means hidden participants already have
+// "Pegar lista" fills the rows from one-per-line text, e.g. two spreadsheet
+// columns (carnet and name, tab- or ";"-separated) or names alone. Saving PUTs the list; a 409 means hidden participants already have
 // evaluations, and the dialog asks before resending with `confirmar`. The
 // list is the jornada's the page loaded (PRD §5.11): the body names it, and
 // the server refuses (409 `jornadaDistinta`) if the session switched since.
 
-type Errores = { cantidad?: string; nombres: Record<number, string>; general?: string };
+type Errores = { cantidad?: string; nombres: Record<number, string>; carnets: Record<number, string>; general?: string };
 type Confirmacion = { ocultos: number; evaluaciones: number };
 
-const SIN_ERRORES: Errores = { nombres: {} };
+const SIN_ERRORES: Errores = { nombres: {}, carnets: {} };
+
+// A pasted field that is a carnet: carnet characters and at least one digit
+// (so a one-word name is never taken for one).
+const PARECE_CARNET = /^(?=.*\d)[0-9A-Za-z-]+$/;
+
+/** One pasted line → name and carnet. "100000001<TAB>Ana Mora", "Ana Mora;100000001" or "Ana Mora". */
+export function leerLineaPegada(linea: string): { nombre: string; carnet: string } {
+  const campos = linea
+    .split(/\t|;/)
+    .map((c) => c.trim())
+    .filter(Boolean);
+  const indice = campos.length > 1 ? campos.findIndex((c) => PARECE_CARNET.test(c)) : -1;
+  if (indice < 0) return { nombre: campos.join(" "), carnet: "" };
+  return { nombre: campos.filter((_, i) => i !== indice).join(" "), carnet: campos[indice] };
+}
 
 function leerCantidad(texto: string): number | null {
   if (!/^\d{1,2}$/.test(texto.trim())) return null;
@@ -43,6 +59,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
   const [textoCantidad, setTextoCantidad] = useState(String(inicial.cantidad));
   const [cantidad, setCantidad] = useState(inicial.cantidad);
   const [nombres, setNombres] = useState(() => completar(inicial.nombres.map((n) => n ?? ""), inicial.cantidad));
+  const [carnets, setCarnets] = useState(() => completar(inicial.carnets.map((c) => c ?? ""), inicial.cantidad));
   const [pegando, setPegando] = useState(false);
   const [textoPegado, setTextoPegado] = useState("");
   const [errorPegado, setErrorPegado] = useState<string>();
@@ -57,6 +74,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
     if (n === null) return;
     setCantidad(n);
     setNombres((actuales) => completar(actuales, n));
+    setCarnets((actuales) => completar(actuales, n));
     setErrores((e) => ({ ...e, cantidad: undefined }));
   }
 
@@ -71,6 +89,17 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
     }
   }
 
+  function cambiarCarnet(indice: number, valor: string) {
+    setCarnets((actuales) => actuales.map((c, i) => (i === indice ? valor : c)));
+    if (errores.carnets[indice]) {
+      setErrores((e) => {
+        const resto = { ...e.carnets };
+        delete resto[indice];
+        return { ...e, carnets: resto };
+      });
+    }
+  }
+
   function usarLista() {
     const lineas = textoPegado
       .split(/\r?\n/)
@@ -80,8 +109,12 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       setErrorPegado(TEXTOS_ADMIN.cantidadInvalida);
       return;
     }
-    // Names past the new count stay, hidden, as when the count is lowered.
-    setNombres((actuales) => [...lineas, ...actuales.slice(lineas.length)]);
+    // Rows past the new count stay, hidden, as when the count is lowered. A
+    // pasted line replaces its row's name and carnet (a line without a
+    // carnet clears it, so an old carnet never sticks to a new name).
+    const filas = lineas.map(leerLineaPegada);
+    setNombres((actuales) => [...filas.map((f) => f.nombre), ...actuales.slice(filas.length)]);
+    setCarnets((actuales) => [...filas.map((f) => f.carnet), ...actuales.slice(filas.length)]);
     setCantidad(lineas.length);
     setTextoCantidad(String(lineas.length));
     setErrores(SIN_ERRORES);
@@ -92,13 +125,20 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
 
   /** Client-side check with the server's rules; focuses the first problem. */
   function validar(): boolean {
-    const nuevos: Errores = { nombres: {} };
+    const nuevos: Errores = { nombres: {}, carnets: {} };
     if (leerCantidad(textoCantidad) === null) nuevos.cantidad = TEXTOS_ADMIN.cantidadInvalida;
     nombres.slice(0, cantidad).forEach((nombre, i) => {
       if (!esNombreValido(nombre.trim())) nuevos.nombres[i] = TEXTOS_ADMIN.nombreInvalido(i + 1);
     });
+    const visibles = carnets.slice(0, cantidad).map((c) => c.trim());
+    visibles.forEach((carnet, i) => {
+      if (!esCarnetValido(carnet)) nuevos.carnets[i] = TEXTOS_ADMIN.carneInvalido(i + 1);
+    });
+    const repetido = indiceCarnetRepetido(visibles.map((c) => c || null));
+    if (repetido >= 0 && !nuevos.carnets[repetido]) nuevos.carnets[repetido] = TEXTOS_ADMIN.carneRepetido(repetido + 1);
     setErrores(nuevos);
-    const valido = !nuevos.cantidad && Object.keys(nuevos.nombres).length === 0;
+    const valido =
+      !nuevos.cantidad && Object.keys(nuevos.nombres).length === 0 && Object.keys(nuevos.carnets).length === 0;
     if (!valido) {
       requestAnimationFrame(() => formulario.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
     }
@@ -112,6 +152,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       jornada,
       cantidad,
       nombres: nombres.slice(0, cantidad).map((n) => n.trim()),
+      carnets: carnets.slice(0, cantidad).map((c) => c.trim()),
       confirmar,
     };
     try {
@@ -131,10 +172,10 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       } else if (respuesta.status === 409 && !datos.jornadaDistinta) {
         setConfirmacion({ ocultos: datos.ocultos ?? 0, evaluaciones: datos.evaluacionesAfectadas ?? 0 });
       } else {
-        setErrores({ nombres: {}, general: datos.error ?? TEXTOS_ADMIN.errorGuardar });
+        setErrores({ ...SIN_ERRORES, general: datos.error ?? TEXTOS_ADMIN.errorGuardar });
       }
     } catch {
-      setErrores({ nombres: {}, general: TEXTOS_ADMIN.errorGuardar });
+      setErrores({ ...SIN_ERRORES, general: TEXTOS_ADMIN.errorGuardar });
     }
     setGuardando(false);
   }
@@ -192,7 +233,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
           <p className="mt-1 mb-4 text-caption text-ink-2">{TEXTOS_ADMIN.ayudaNombres}</p>
           <ol className="flex flex-col gap-4">
             {nombres.slice(0, cantidad).map((nombre, i) => (
-              <li key={i}>
+              <li key={i} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem] sm:gap-3">
                 <Campo
                   etiqueta={TEXTOS_ADMIN.participante(i + 1)}
                   error={errores.nombres[i]}
@@ -200,6 +241,16 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
                   onChange={(e) => cambiarNombre(i, e.target.value)}
                   autoComplete="off"
                   autoCapitalize="words"
+                  spellCheck={false}
+                />
+                <Campo
+                  etiqueta={TEXTOS_ADMIN.carneDe(i + 1)}
+                  error={errores.carnets[i]}
+                  value={carnets[i] ?? ""}
+                  onChange={(e) => cambiarCarnet(i, e.target.value)}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
                   spellCheck={false}
                 />
               </li>

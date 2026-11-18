@@ -11,6 +11,11 @@ import { COOKIE_SESION, COOKIE_SESION_PREVIA, verificarSesion } from "@/lib/sesi
 // /api/salir only clears cookies, and must work once the session has expired.
 const RUTAS_PUBLICAS = new Set([RUTA_ACCESO, "/api/acceso", "/api/salir"]);
 
+/** The evaluator email login (PRD §5.12): /api/acceso/correo, /activar, /contrasena, /recuperar. */
+function esRutaIngreso(ruta: string): boolean {
+  return ruta.startsWith("/api/acceso/");
+}
+
 // Open to every signed-in role, admin included; the route checks the role
 // itself (an evaluador's jornada can't change).
 const RUTAS_TODOS_LOS_ROLES = new Set(["/api/jornada"]);
@@ -29,7 +34,7 @@ const RUTA_CORREOS_DEV = "/api/dev/correos";
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  if (RUTAS_PUBLICAS.has(pathname)) return NextResponse.next();
+  if (RUTAS_PUBLICAS.has(pathname) || esRutaIngreso(pathname)) return NextResponse.next();
   if (pathname === RUTA_CORREOS_DEV && process.env.NODE_ENV !== "production") return NextResponse.next();
 
   const esApi = pathname.startsWith("/api/");
@@ -74,7 +79,7 @@ function redirigirAAcceso(request: NextRequest, siguiente: string, motivo: Motiv
 
 export const config = {
   // Static assets never need a session: Next build output, PWA files, icons.
-  // /acceso and /api/acceso are skipped in code above (exact matches).
+  // /acceso, /api/acceso and /api/acceso/* are skipped in code above.
   matcher: [
     "/((?!_next/static|_next/image|favicon\\.ico|manifest\\.webmanifest|sw\\.js|icons/|robots\\.txt).*)",
   ],

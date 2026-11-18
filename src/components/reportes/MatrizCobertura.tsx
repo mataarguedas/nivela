@@ -1,10 +1,19 @@
 import { IconoCheck } from "@/components/ui/iconos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearEntero } from "@/lib/formato";
-import type { Reporte } from "@/lib/reportes";
+import type { EstadoCobertura, Reporte } from "@/lib/reportes";
+
+const ETIQUETA_CELDA: Record<EstadoCobertura, string> = {
+  enviada: TEXTOS_REPORTES.enviada,
+  ausente: TEXTOS_REPORTES.ausente,
+  pendiente: TEXTOS_REPORTES.pendiente,
+};
 
 // "Cobertura de evaluaciones" (PRD §11.2): evaluador × participante, so the
-// docente sees who is missing. With 20 participants the grid is wider than a
+// docente sees who is missing: sent (check), "Ausente" (that evaluator marked
+// the participant absent, PRD §5.13; shown as "A") or pending. The total
+// column counts against each evaluator's own expected evaluations, which
+// leave out their absent marks. With 20 participants the grid is wider than a
 // phone: only this wrapper scrolls (keyboard-focusable, labelled), the page
 // never does, and the names column stays put. Print shows it whole.
 
@@ -42,22 +51,26 @@ export function MatrizCobertura({ cobertura, etiquetadaPor }: { cobertura: Repor
               <th scope="row" className="sticky left-0 z-10 max-w-36 bg-inherit py-2 pr-3 pl-1 text-left font-normal">
                 {fila.nombre}
               </th>
-              {fila.enviadas.map((enviada, i) => (
+              {fila.celdas.map((celda, i) => (
                 <td key={participantes[i].id} className="px-0.5 py-2 text-center">
-                  {enviada ? (
+                  {celda === "enviada" ? (
                     <IconoCheck className="inline text-link" />
+                  ) : celda === "ausente" ? (
+                    <abbr title={TEXTOS_REPORTES.ausente} aria-hidden="true" className="font-semibold text-ink-3 no-underline">
+                      A
+                    </abbr>
                   ) : (
                     <span aria-hidden="true" className="text-ink-2">
                       ·
                     </span>
                   )}
                   <span className="sr-only">
-                    {participantes[i].etiqueta}: {enviada ? TEXTOS_REPORTES.enviada : TEXTOS_REPORTES.pendiente}
+                    {participantes[i].etiqueta}: {ETIQUETA_CELDA[celda]}
                   </span>
                 </td>
               ))}
               <td className="py-2 pl-3 text-right tabular-nums">
-                {TEXTOS_REPORTES.deTotal(formatearEntero(fila.total), formatearEntero(participantes.length))}
+                {TEXTOS_REPORTES.deTotal(formatearEntero(fila.total), formatearEntero(fila.esperadas))}
               </td>
             </tr>
           ))}

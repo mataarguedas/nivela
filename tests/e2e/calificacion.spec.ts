@@ -72,7 +72,7 @@ test("calificar 3 de 4, recargar, conservar y habilitar el envío con el 4.º", 
   await expect(enviar).toBeEnabled();
   await expect(barra(page)).not.toContainText("Falta");
 
-  await page.getByRole("link", { name: "Volver a Participantes" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Volver a Participantes" }).click();
   await expect(page).toHaveURL(/\/adaptabilidad$/);
   const fila = page.getByRole("listitem").filter({ hasText: "Participante 01" });
   await expect(fila.getByText("Completado")).toBeVisible();
@@ -119,14 +119,21 @@ test("navega al participante anterior y al siguiente", async ({ page }) => {
 });
 
 test("participantes desconocidos dan 404", async ({ page }) => {
-  for (const ruta of ["/adaptabilidad/P99", "/adaptabilidad/no-existe", "/pensamiento-critico/P01"]) {
+  // Rejected by the layouts from config alone: a real 404 status.
+  for (const ruta of ["/adaptabilidad/no-existe", "/no-existe/P01"]) {
     const respuesta = await page.goto(ruta);
     expect(respuesta?.status(), ruta).toBe(404);
     await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
   }
+  // Not in the jornada's list (read from the DB behind Suspense): the not-found
+  // page streams in after the shell, so the status can be 200 (layout.tsx note).
+  await page.goto("/adaptabilidad/P99");
+  await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
+  await expect(page.getByRole("radiogroup")).toHaveCount(0);
 });
 
-test("sin evaluador seleccionado redirige a la selección", async ({ page }) => {
+test("la docente sin evaluador seleccionado va a la selección", async ({ page }) => {
+  await iniciarSesion(page, "docente");
   await page.goto("/adaptabilidad/P01");
   await expect(page).toHaveURL(/\/adaptabilidad\/evaluador$/);
 });

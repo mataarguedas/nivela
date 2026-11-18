@@ -6,13 +6,29 @@
 // Rows whose evaluador, participante or indicador isn't in config (e.g. an id
 // removed after the activity) are left out, so every mean and the cobertura
 // describe the same population the config defines.
+//
+// Attendance (PRD §5.13): absent marks are per evaluator x participante. A
+// participant with marks and no evaluations is "ausente"; with marks and
+// evaluations, "conflicto" (Asistencia en conflicto). Absent pairs leave the
+// expected evaluations; a pair that has both a mark and a sent evaluation
+// (only possible through a race) counts as sent, so cobertura never exceeds
+// what was actually expected.
+//
+// Gaps (PRD §7): every puntaje general and indicator mean carries its gap to
+// the next level, plus that level's behavior description from the rubric.
+// Evaluator progress (PRD §11.2) covers every member of the jornada's team
+// for the competencia; account status comes in from the caller (the DB), so
+// this module never reads accounts and never sees an email.
 
 import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
+import type { EstadoCuenta } from "@/lib/cuentas";
 import { esNivelValor, type NivelValor } from "@/config/niveles";
 import type { Participante } from "@/config/participantes";
 import {
   acuerdo,
+  asistenciaParticipante,
+  brechaSiguienteNivel,
   cobertura,
   distribucion,
   nivelGeneral,
@@ -20,8 +36,13 @@ import {
   proporcion,
   puntajeGeneral,
   puntajeIndicador,
+  estadoAvance,
+  evaluacionesEsperadas,
   redondear2,
   type Acuerdo,
+  type Asistencia,
+  type Brecha,
+  type EstadoAvance,
 } from "@/lib/puntajes";
 
 /** One calificación joined with its evaluación, as read from the DB. */
@@ -38,6 +59,12 @@ export type FilaReporte = {
   iaConfianza: number | null;
 };
 
+/** An evaluator's account as the reports need it: status and last access, never the email. */
+export type InfoCuenta = { estado: EstadoCuenta; /** ISO, or null if they never signed in. */ ultimoAcceso: string | null };
+
+/** One absent mark (asistencia.ausente = true), as read from the DB. */
+export type ParAusente = { evaluadorId: string; participanteId: string };
+
 export type Observacion = { evaluador: string; nivel: NivelValor; texto: string };
 
 export type ResumenIndicador = {
@@ -48,6 +75,10 @@ export type ResumenIndicador = {
   distribucion: Record<NivelValor, number>;
   acuerdo: Acuerdo | null;
   observaciones: Observacion[];
+  /** Gap from `media` to the next level; null without ratings. */
+  brecha: Brecha | null;
+  /** The rubric's description of the next level for this indicator; null at Experto or without ratings. */
+  descripcionSiguiente: string | null;
 };
 
 export type ReporteParticipante = {
@@ -58,8 +89,13 @@ export type ReporteParticipante = {
   indicadores: ResumenIndicador[];
   puntajeGeneral: number | null;
   nivelGeneral: NivelValor | null;
+  /** Gap from the puntaje general to the next level; null without evaluations. */
+  brecha: Brecha | null;
   /** Share of this participant's levels that came from an applied AI suggestion. */
   proporcionIa: number | null;
+  /** Evaluators who marked this participant absent. */
+  marcasAusente: number;
+  asistencia: Asistencia | null;
 };
 
 export type DistribucionIndicador = {
@@ -83,12 +119,41 @@ export type Destacado = PosicionRanking & {
   medias: (number | null)[];
 };
 
+export type EstadoCobertura = "enviada" | "ausente" | "pendiente";
+
 export type FilaCobertura = {
   evaluadorId: string;
   nombre: string;
   /** Aligned with `participantes` (config order). */
-  enviadas: boolean[];
+  celdas: EstadoCobertura[];
+  /** Sent by this evaluator. */
   total: number;
+  /** Active participants minus the ones this evaluator marked absent. */
+  esperadas: number;
+};
+
+export type AvanceEvaluador = {
+  evaluadorId: string;
+  nombre: string;
+  curso: string;
+  cuenta: EstadoCuenta;
+  ultimoAcceso: string | null;
+  enviadas: number;
+  /** Active participants minus the ones this evaluator marked absent. */
+  esperadas: number;
+  /** Participants this evaluator marked absent (and didn't send). */
+  ausentes: number;
+  estado: EstadoAvance;
+};
+
+/** "Avance de evaluadores" (PRD §11.2). */
+export type Avance = {
+  /** This jornada's display label for the team ("Equipo 1" at night, "Equipo 4" in the morning for Adaptabilidad). */
+  numeroEquipo: number;
+  completos: number;
+  total: number;
+  /** Incomplete first (Sin iniciar, En progreso, then Completo), team order within each. */
+  evaluadores: AvanceEvaluador[];
 };
 
 export type Reporte = {
@@ -102,6 +167,10 @@ export type Reporte = {
     cobertura: number | null;
     puntajePromedio: number | null;
     proporcionIa: number | null;
+    /** Participants whose attendance is "ausente". */
+    ausentes: number;
+    evaluadoresCompletos: number;
+    evaluadoresTotal: number;
   };
   distribucion: DistribucionIndicador[];
   /** Evaluated participants only, puntaje descending (ties by id). */
@@ -111,7 +180,11 @@ export type Reporte = {
   /** Every participant in config order, evaluated or not. */
   participantes: ReporteParticipante[];
   cobertura: { participantes: { id: string; etiqueta: string }[]; filas: FilaCobertura[] };
+  avance: Avance;
 };
+
+const ORDEN_AVANCE: Record<EstadoAvance, number> = { "sin-iniciar": 0, "en-progreso": 1, completo: 2 };
+const SIN_CUENTA: InfoCuenta = { estado: "sin-correo", ultimoAcceso: null };
 
 type FilaValida = FilaReporte & { nivel: NivelValor };
 
@@ -120,6 +193,9 @@ export function agregarReporte(
   equipo: Equipo,
   participantes: readonly Participante[],
   filas: readonly FilaReporte[],
+  ausencias: readonly ParAusente[] = [],
+  /** By integrante id; a member without an entry reads as "Sin correo". */
+  cuentas: Readonly<Record<string, InfoCuenta>> = {},
 ): Reporte {
   const nombres = new Map(equipo.integrantes.map((i) => [i.id, i.nombre]));
   const ordenEvaluador = new Map(equipo.integrantes.map((i, indice) => [i.id, indice]));
@@ -146,6 +222,15 @@ export function agregarReporte(
     evaluadoresPorParticipante.set(fila.participanteId, enviados);
   }
 
+  // participante -> evaluadores who marked them absent (team and list only).
+  const ausentesPorParticipante = new Map<string, Set<string>>();
+  for (const { evaluadorId, participanteId } of ausencias) {
+    if (!nombres.has(evaluadorId) || !idsParticipantes.has(participanteId)) continue;
+    const marcas = ausentesPorParticipante.get(participanteId) ?? new Set<string>();
+    marcas.add(evaluadorId);
+    ausentesPorParticipante.set(participanteId, marcas);
+  }
+
   const reportesParticipantes = participantes.map((participante): ReporteParticipante => {
     const propias = porParticipante.get(participante.id) ?? [];
     const indicadores = competencia.indicadores.map((indicador): ResumenIndicador => {
@@ -153,29 +238,39 @@ export function agregarReporte(
         .filter((f) => f.indicadorId === indicador.id)
         .sort((a, b) => (ordenEvaluador.get(a.evaluadorId) ?? 0) - (ordenEvaluador.get(b.evaluadorId) ?? 0));
       const niveles = delIndicador.map((f) => f.nivel);
+      const media = puntajeIndicador(niveles);
+      const brecha = media === null ? null : brechaSiguienteNivel(media);
       return {
         indicadorId: indicador.id,
         numero: indicador.numero,
         titulo: indicador.titulo,
-        media: puntajeIndicador(niveles),
+        media,
         distribucion: distribucion(niveles),
         acuerdo: acuerdo(niveles),
         observaciones: delIndicador.flatMap((f) => {
           const texto = f.observacion?.trim();
           return texto ? [{ evaluador: nombres.get(f.evaluadorId) ?? f.evaluadorId, nivel: f.nivel, texto }] : [];
         }),
+        brecha,
+        descripcionSiguiente: brecha?.siguiente ? indicador.niveles[brecha.siguiente] : null,
       };
     });
     const medias = indicadores.flatMap((i) => (i.media === null ? [] : [i.media]));
     const puntaje = puntajeGeneral(medias);
+    const recibidas = evaluadoresPorParticipante.get(participante.id)?.size ?? 0;
+    const marcasAusente = ausentesPorParticipante.get(participante.id)?.size ?? 0;
     return {
       id: participante.id,
-      etiqueta: participante.etiqueta,
-      evaluaciones: evaluadoresPorParticipante.get(participante.id)?.size ?? 0,
+      // Reports name participants by carnet, never by name (PRD §11).
+      etiqueta: participante.etiquetaReporte,
+      evaluaciones: recibidas,
       indicadores,
       puntajeGeneral: puntaje,
       nivelGeneral: puntaje === null ? null : nivelGeneral(puntaje),
+      brecha: puntaje === null ? null : brechaSiguienteNivel(puntaje),
       proporcionIa: proporcion(propias.filter((f) => f.origen === "ia").length, propias.length),
+      marcasAusente,
+      asistencia: asistenciaParticipante(marcasAusente, recibidas),
     };
   });
 
@@ -211,14 +306,40 @@ export function agregarReporte(
   const evaluadores = equipo.integrantes.length;
 
   const filasCobertura = equipo.integrantes.map((integrante): FilaCobertura => {
-    const enviadas = participantes.map((p) => evaluadoresPorParticipante.get(p.id)?.has(integrante.id) ?? false);
+    const celdas = participantes.map((p): EstadoCobertura => {
+      if (evaluadoresPorParticipante.get(p.id)?.has(integrante.id)) return "enviada";
+      return ausentesPorParticipante.get(p.id)?.has(integrante.id) ? "ausente" : "pendiente";
+    });
     return {
       evaluadorId: integrante.id,
       nombre: integrante.nombre,
-      enviadas,
-      total: enviadas.filter(Boolean).length,
+      celdas,
+      total: celdas.filter((c) => c === "enviada").length,
+      esperadas: evaluacionesEsperadas(1, participantes.length, celdas.filter((c) => c === "ausente").length),
     };
   });
+  const avanceEvaluadores = equipo.integrantes
+    .map((integrante, indice) => {
+      const fila = filasCobertura[indice];
+      const cuenta = cuentas[integrante.id] ?? SIN_CUENTA;
+      return {
+        evaluadorId: integrante.id,
+        nombre: integrante.nombre,
+        curso: integrante.curso,
+        cuenta: cuenta.estado,
+        ultimoAcceso: cuenta.ultimoAcceso,
+        enviadas: fila.total,
+        esperadas: fila.esperadas,
+        ausentes: fila.celdas.filter((c) => c === "ausente").length,
+        estado: estadoAvance(fila.total, fila.esperadas),
+      } satisfies AvanceEvaluador;
+    })
+    // Array.prototype.sort is stable, so team order holds within each status.
+    .sort((a, b) => ORDEN_AVANCE[a.estado] - ORDEN_AVANCE[b.estado]);
+  const completos = avanceEvaluadores.filter((a) => a.estado === "completo").length;
+
+  // Absent pairs without an evaluation leave the denominator (PRD §7 Cobertura).
+  const paresAusentes = filasCobertura.reduce((suma, f) => suma + f.celdas.filter((c) => c === "ausente").length, 0);
 
   return {
     competencia: { id: competencia.id, nombre: competencia.nombre },
@@ -227,10 +348,13 @@ export function agregarReporte(
       participantesEvaluados: ranking.length,
       participantesTotal: participantes.length,
       recibidas,
-      esperadas: evaluadores * participantes.length,
-      cobertura: cobertura(recibidas, evaluadores, participantes.length),
+      esperadas: evaluacionesEsperadas(evaluadores, participantes.length, paresAusentes),
+      cobertura: cobertura(recibidas, evaluadores, participantes.length, paresAusentes),
       puntajePromedio: promedio(ranking.map((r) => r.puntaje)),
       proporcionIa: proporcion(validas.filter((f) => f.origen === "ia").length, validas.length),
+      ausentes: reportesParticipantes.filter((p) => p.asistencia === "ausente").length,
+      evaluadoresCompletos: completos,
+      evaluadoresTotal: evaluadores,
     },
     distribucion: competencia.indicadores.map((indicador) => {
       const niveles = validas.filter((f) => f.indicadorId === indicador.id).map((f) => f.nivel);
@@ -246,8 +370,9 @@ export function agregarReporte(
     mejores,
     participantes: reportesParticipantes,
     cobertura: {
-      participantes: participantes.map(({ id, etiqueta }) => ({ id, etiqueta })),
+      participantes: participantes.map(({ id, etiquetaReporte }) => ({ id, etiqueta: etiquetaReporte })),
       filas: filasCobertura,
     },
+    avance: { numeroEquipo: equipo.numero, completos, total: evaluadores, evaluadores: avanceEvaluadores },
   };
 }

@@ -8,8 +8,8 @@ import { Chip, TONO_POR_ESTADO } from "@/components/ui/Chip";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
 import { TEXTOS } from "@/config/textos";
-import { borrarTodo, estadoParticipante, useBorrador, useEvaluadorSeleccionado } from "@/lib/borrador";
-import { consultarEnviadas } from "@/lib/envio";
+import { borrarTodo, estadoParticipante, useBorrador, useEvaluadorActivo } from "@/lib/borrador";
+import { consultarEnviadas, type EstadoServidor } from "@/lib/envio";
 
 type ListaParticipantesProps = {
   competenciaId: string;
@@ -19,31 +19,35 @@ type ListaParticipantesProps = {
   indicadorIds: string[];
   /** Team member ids, to reject a stale or foreign stored selection. */
   evaluadorIds: string[];
+  /** The signed-in evaluador (their account); null for the docente, who picks. */
+  evaluadorSesion: string | null;
 };
 
 /**
- * Server `updated_at` by participanteId (PRD §5.4), from GET
- * /api/evaluaciones, fetched each time the list mounts. estadoParticipante()
- * merges it with the local drafts. If the request fails the list just shows
- * the local statuses: sends recorded on this device still read "Enviado".
+ * What the server knows about this evaluator (PRD §5.4): `updated_at` by
+ * participanteId and the participants they marked absent, from one GET
+ * /api/evaluaciones each time the list mounts. estadoParticipante() merges
+ * the sends with the local drafts; an absent mark overrides every status.
+ * If the request fails the list just shows the local statuses: sends
+ * recorded on this device still read "Enviado".
  */
-function useEnviadosServidor(competenciaId: string, evaluadorId: string | null): Record<string, string> {
-  const [enviados, setEnviados] = useState<{ clave: string; porParticipante: Record<string, string> } | null>(null);
+function useEstadoServidor(competenciaId: string, evaluadorId: string | null): EstadoServidor {
+  const [estado, setEstado] = useState<{ clave: string; datos: EstadoServidor } | null>(null);
   const clave = evaluadorId ? `${competenciaId}:${evaluadorId}` : null;
 
   useEffect(() => {
     if (!evaluadorId || !clave) return;
     const control = new AbortController();
-    consultarEnviadas(competenciaId, evaluadorId, control.signal).then((porParticipante) => {
-      if (porParticipante && !control.signal.aborted) setEnviados({ clave, porParticipante });
+    consultarEnviadas(competenciaId, evaluadorId, control.signal).then((datos) => {
+      if (datos && !control.signal.aborted) setEstado({ clave, datos });
     });
     return () => control.abort();
   }, [competenciaId, evaluadorId, clave]);
 
   // Ignore a previous evaluator's answer until the new one arrives.
-  return enviados && enviados.clave === clave ? enviados.porParticipante : SIN_ENVIOS;
+  return estado && estado.clave === clave ? estado.datos : SIN_DATOS;
 }
-const SIN_ENVIOS: Record<string, string> = {};
+const SIN_DATOS: EstadoServidor = { enviadas: {}, ausentes: [] };
 
 export function ListaParticipantes({
   competenciaId,
@@ -51,13 +55,12 @@ export function ListaParticipantes({
   participantes,
   indicadorIds,
   evaluadorIds,
+  evaluadorSesion,
 }: ListaParticipantesProps) {
   const router = useRouter();
-  const guardado = useEvaluadorSeleccionado(competenciaId);
-  const evaluadorId = guardado && evaluadorIds.includes(guardado) ? guardado : null;
-  const leido = guardado !== undefined;
+  const { evaluadorId, leido } = useEvaluadorActivo(competenciaId, evaluadorIds, evaluadorSesion);
   const { borrador } = useBorrador(competenciaId, evaluadorId);
-  const enviadosServidor = useEnviadosServidor(competenciaId, evaluadorId);
+  const servidor = useEstadoServidor(competenciaId, evaluadorId);
   const [confirmando, setConfirmando] = useState(false);
   // Borrar todo also clears the evaluator; don't bounce to the evaluator step then.
   const saliendo = useRef(false);
@@ -67,11 +70,16 @@ export function ListaParticipantes({
   }, [leido, evaluadorId, competenciaId, router]);
 
   const listo = evaluadorId !== null && borrador !== undefined;
-  const estados = participantes.map((p) =>
-    listo ? estadoParticipante(borrador.participantes[p.id], indicadorIds, enviadosServidor[p.id]) : undefined,
-  );
+  const ausentes = new Set(servidor.ausentes);
+  const estados = participantes.map((p) => {
+    if (!listo) return undefined;
+    if (ausentes.has(p.id)) return "ausente" as const;
+    return estadoParticipante(borrador.participantes[p.id], indicadorIds, servidor.enviadas[p.id]);
+  });
   const enviadas = estados.filter((e) => e === "enviado").length;
-  const total = participantes.length;
+  const cantidadAusentes = estados.filter((e) => e === "ausente").length;
+  // Absent participants leave the total and are counted apart (PRD §5.4).
+  const total = participantes.length - cantidadAusentes;
 
   function confirmarBorrado() {
     saliendo.current = true;
@@ -89,7 +97,11 @@ export function ListaParticipantes({
         <div className="mx-auto mt-4 h-10 max-w-[280px]">
           {listo && (
             <>
-              <p className="text-body text-ink-3">{TEXTOS.lista.enviadas(enviadas, total)}</p>
+              <p className="text-body text-ink-3">
+                {cantidadAusentes > 0
+                  ? TEXTOS.asistencia.resumen(enviadas, total, cantidadAusentes)
+                  : TEXTOS.lista.enviadas(enviadas, total)}
+              </p>
               <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-pill bg-hairline">
                 <div className="h-full rounded-pill bg-link" style={{ width: `${total ? (enviadas / total) * 100 : 0}%` }} />
               </div>

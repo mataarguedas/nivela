@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { EQUIPOS } from "../../src/config/equipos";
 import { esperarHidratacion } from "./hidratacion";
+import { evaluadorAdaptabilidad } from "./cuentas";
 import { iniciarSesion } from "./sesion";
 
-// Jornadas (PRD §5.11): the night class code opens only the night cohort,
-// and docente and admin switch jornada in the app. Nothing here writes to the
+// Jornadas (PRD §5.11): a night evaluator's account opens only the night
+// cohort, and docente and admin switch jornada in the app. Nothing here writes to the
 // DB. The night roster may still be empty (PRD §16), in which case every
 // competencia is "Próximamente" at night; the specs read config to know.
 
@@ -22,30 +23,22 @@ async function elegirJornada(page: Page, nombre: "Mañana" | "Noche") {
   await expect(opcion).toHaveAttribute("aria-checked", "true");
 }
 
-test.describe("con el código de la noche", () => {
+test.describe("con una cuenta del equipo de la noche", () => {
+  test.skip(!nocheConEquipo, "the night roster has no Adaptabilidad team");
   test.beforeEach(async ({ page }) => {
-    await iniciarSesion(page, "evaluadorNoche");
+    await iniciarSesion(page, { integranteId: evaluadorAdaptabilidad("noche") });
   });
 
   test("Inicio muestra la jornada y solo lo disponible de noche", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/");
     await expect(page.getByText("Jornada: Noche")).toBeVisible();
-    if (nocheConEquipo) {
-      await expect(filaAdaptabilidad(page)).toHaveAttribute("href", "/adaptabilidad/evaluador");
-    } else {
-      await expect(filaAdaptabilidad(page)).toHaveAttribute("aria-disabled", "true");
-      await expect(filaAdaptabilidad(page).getByText("Próximamente")).toBeVisible();
-    }
+    await expect(filaAdaptabilidad(page)).toHaveAttribute("href", "/adaptabilidad");
   });
 
   test("nunca muestra nombres de la mañana", async ({ page }) => {
-    await page.goto("/adaptabilidad/evaluador");
-    if (nocheConEquipo) {
-      await expect(page.getByRole("heading", { level: 1, name: "¿Quién está evaluando?" })).toBeVisible();
-    } else {
-      await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
-    }
+    await page.goto("/adaptabilidad");
+    await expect(page.getByRole("heading", { level: 1, name: "Participantes" })).toBeVisible();
     for (const integrante of equipoManana.integrantes) {
       await expect(page.getByText(integrante.nombre)).toHaveCount(0);
     }
@@ -57,11 +50,11 @@ test.describe("con el código de la noche", () => {
   });
 });
 
-test("con el código de la mañana, Inicio dice Jornada: Mañana", async ({ page }) => {
-  await iniciarSesion(page, "evaluador");
+test("con una cuenta del equipo de la mañana, Inicio dice Jornada: Mañana", async ({ page }) => {
+  await iniciarSesion(page, { integranteId: evaluadorAdaptabilidad("manana") });
   await page.goto("/");
   await expect(page.getByText("Jornada: Mañana")).toBeVisible();
-  await expect(filaAdaptabilidad(page)).toHaveAttribute("href", "/adaptabilidad/evaluador");
+  await expect(filaAdaptabilidad(page)).toHaveAttribute("href", "/adaptabilidad");
 });
 
 test("la docente cambia de jornada en Reportes", async ({ page }) => {

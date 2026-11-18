@@ -1,13 +1,11 @@
-import type { Competencia } from "./index";
+import type { DefinicionCompetencia, Rubrica } from "./index";
 
-// Text from plantilla.xlsx ("Plantilla sistematizada", PRD Appendix A) with
-// only the minimal corrections listed there. Keep it verbatim: it is also the
-// rubric sent to Jev. Ids are positional (adaptabilidad-1 = Indicador 1); the
-// v1.2 template reordered the indicators before any real evaluation existed.
-export const adaptabilidad: Competencia = {
-  id: "adaptabilidad",
-  nombre: "Adaptabilidad",
-  habilitada: true,
+// Text from the morning team's template (plantilla.xlsx, "Plantilla
+// sistematizada", PRD Appendix A.1) with only the minimal corrections listed
+// there. Keep it verbatim: it is also the rubric sent to Jev. Ids are
+// positional (adaptabilidad-1 = Indicador 1); the v1.2 template reordered the
+// indicators before any real evaluation existed.
+const RUBRICA_MANANA: Rubrica = {
   definicion:
     "La adaptabilidad es la capacidad de modificar el propio comportamiento y responder de manera rápida y adecuada ante diferentes situaciones, personas y exigencias del entorno laboral, ajustándose a los cambios en los procedimientos, las tareas y las prioridades, y buscando soluciones eficaces ante los imprevistos.",
   fuente: "Govern de les Illes Balears, s. f.",
@@ -57,4 +55,16 @@ export const adaptabilidad: Competencia = {
       },
     },
   ],
+};
+
+export const adaptabilidad: DefinicionCompetencia = {
+  id: "adaptabilidad",
+  nombre: "Adaptabilidad",
+  rubricas: {
+    manana: RUBRICA_MANANA,
+    // The night team (Equipo 1) rates with the morning template until it sends
+    // its own (PRD §16). Its evaluations already use these indicator ids, so a
+    // night rubric of its own needs new ids (see competencias/index.ts).
+    noche: RUBRICA_MANANA,
+  },
 };

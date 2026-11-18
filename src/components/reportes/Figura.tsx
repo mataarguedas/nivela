@@ -8,22 +8,60 @@ import { TEXTOS_REPORTES } from "@/config/textosReportes";
 // shadows), and for charts a <figure> whose drawing is aria-hidden while a
 // visually hidden table carries the same numbers for screen readers (PRD §13).
 
-export function SeccionReporte({ id, titulo, children }: { id: string; titulo: string; children: ReactNode }) {
+export function SeccionReporte({
+  id,
+  titulo,
+  mensaje,
+  children,
+}: {
+  id: string;
+  titulo: string;
+  /**
+   * A simple chart's message (PRD §11 v1.2), e.g. "La mayoría de los
+   * participantes está en nivel Avanzado (12 de 20)". It reads as the title;
+   * the heading above it keeps the chart's stable name. Its id is `{id}-mensaje`.
+   */
+  mensaje?: string;
+  children: ReactNode;
+}) {
   return (
     <section aria-labelledby={`${id}-titulo`} className="seccion-reporte rounded-tile bg-surface p-4 md:p-6">
-      <h2 id={`${id}-titulo`} className="mb-4 text-sub font-semibold">
-        {titulo}
-      </h2>
+      {mensaje === undefined ? (
+        <h2 id={`${id}-titulo`} className="mb-4 text-sub font-semibold">
+          {titulo}
+        </h2>
+      ) : (
+        <>
+          <h2 id={`${id}-titulo`} className="text-caption font-semibold text-ink-2">
+            {titulo}
+          </h2>
+          <p id={`${id}-mensaje`} className="mt-1 mb-4 text-sub font-semibold text-balance">
+            {mensaje}
+          </p>
+        </>
+      )}
       {children}
     </section>
   );
 }
 
+/** A titled block inside "Ver gráficos detallados" (a sub-heading, not a section). */
+export function BloqueDetallado({ id, titulo, children }: { id: string; titulo: string; children: ReactNode }) {
+  return (
+    <div>
+      <h3 id={`${id}-titulo`} className="mb-3 text-body font-semibold">
+        {titulo}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
 type FiguraGraficoProps = {
-  /** id of the heading that names the figure. */
+  /** id(s) of the heading (and message) that name the figure. */
   etiquetadaPor: string;
-  /** Reserved before the chart chunk loads, so nothing shifts. */
-  alto: number;
+  /** Reserved before a client chart chunk loads, so nothing shifts. Omit for server-drawn charts. */
+  alto?: number;
   grafico: ReactNode;
   leyenda?: boolean;
   /** The text equivalent (a TablaEquivalente). */
@@ -33,7 +71,7 @@ type FiguraGraficoProps = {
 export function FiguraGrafico({ etiquetadaPor, alto, grafico, leyenda = false, children }: FiguraGraficoProps) {
   return (
     <figure aria-labelledby={etiquetadaPor} className="grafico">
-      <div aria-hidden="true" className="w-full" style={{ height: alto }}>
+      <div aria-hidden="true" className="w-full" style={alto === undefined ? undefined : { height: alto }}>
         {grafico}
       </div>
       {leyenda && <LeyendaNiveles />}

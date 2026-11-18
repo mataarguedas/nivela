@@ -74,11 +74,22 @@ describe("consultarEnviadas", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchSimulado);
-    await expect(consultarEnviadas("adaptabilidad", "jimena-salgado")).resolves.toEqual({ P01: "2026-10-25T10:00:00.000Z" });
+    await expect(consultarEnviadas("adaptabilidad", "jimena-salgado")).resolves.toEqual({
+      enviadas: { P01: "2026-10-25T10:00:00.000Z" },
+      ausentes: [],
+    });
     expect(fetchSimulado).toHaveBeenCalledWith(
       "/api/evaluaciones?competencia=adaptabilidad&evaluador=jimena-salgado",
       expect.anything(),
     );
+  });
+
+  it("incluye los ausentes marcados e ignora valores que no son códigos", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ evaluaciones: [], ausentes: ["P03", 4, "P07"] })),
+    );
+    await expect(consultarEnviadas("adaptabilidad", "jimena-salgado")).resolves.toEqual({ enviadas: {}, ausentes: ["P03", "P07"] });
   });
 
   it("null si falla", async () => {

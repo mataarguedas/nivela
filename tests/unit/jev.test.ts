@@ -21,7 +21,7 @@ vi.mock("@typesafe-ai/sdk", async (importOriginal) => {
 
 const { mapear, reiniciarCliente, sugerirNivel } = await import("@/lib/jev");
 
-const competencia = obtenerCompetencia("adaptabilidad")!;
+const competencia = obtenerCompetencia("manana", "adaptabilidad")!;
 const indicador = competencia.indicadores[0];
 const TEXTO = "Adaptó su método de trabajo apenas recibió el nuevo procedimiento, sin pedir ayuda.";
 

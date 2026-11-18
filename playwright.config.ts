@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Load the same env files `next dev` reads (.env.local wins over .env), so
-// the specs know CODIGO_ACCESO / CODIGO_DOCENTE. Existing variables (e.g. CI
+// the specs know CODIGO_DOCENTE / E2E_CONTRASENA. Existing variables (e.g. CI
 // secrets) are never overwritten. Next 16 allows one dev server per project,
 // so a running `npm run dev` is reused and must share these values.
 for (const archivo of [".env.local", ".env"]) {

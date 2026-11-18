@@ -3,15 +3,17 @@ import { IconoCheck } from "./iconos";
 
 // Status pill (PRD §12): 12 px, grayscale tones, plus "enviado" in #0066cc.
 // Tones are generic so the same chip serves participant status and the
-// competencia badges; TONO_POR_ESTADO maps the four PRD §5.4 statuses.
+// competencia badges; TONO_POR_ESTADO maps the PRD §5.4 statuses. "ausente"
+// is grayscale too, told apart by its dashed outline and always by its text.
 
-export type TonoChip = "suave" | "medio" | "fuerte" | "enviado";
+export type TonoChip = "suave" | "medio" | "fuerte" | "enviado" | "ausente";
 
 export const TONO_POR_ESTADO = {
   pendiente: "suave",
   enProgreso: "medio",
   completado: "fuerte",
   enviado: "enviado",
+  ausente: "ausente",
 } as const satisfies Record<string, TonoChip>;
 
 const TONOS: Record<TonoChip, string> = {
@@ -20,6 +22,7 @@ const TONOS: Record<TonoChip, string> = {
   fuerte: "border-transparent bg-ink text-white",
   // 8 % tint keeps #0066cc text ≥ 4.5:1 on white and on the canvas.
   enviado: "border-transparent bg-link/8 font-semibold text-link",
+  ausente: "border-dashed border-ink-2 text-ink-3",
 };
 
 type ChipProps = {

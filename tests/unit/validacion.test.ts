@@ -36,6 +36,11 @@ function cuerpo(cambios: Record<string, unknown> = {}, calificaciones?: Califica
   };
 }
 
+/** 4 valid manual calificaciones for a competencia's positional indicator ids. */
+function calificacionesDe(competenciaId: string): Calificacion[] {
+  return [1, 2, 3, 4].map((n) => ({ indicadorId: `${competenciaId}-${n}`, nivel: n, origen: "manual" }));
+}
+
 /** The 4 valid calificaciones with the first one changed. */
 function conPrimera(cambios: Calificacion): Calificacion[] {
   const base = cuerpo().calificaciones as Calificacion[];
@@ -91,9 +96,18 @@ describe("validarEvaluacion: rechazos (PRD §10)", () => {
     },
   );
 
-  it("competencia inexistente o no habilitada", () => {
+  it("competencia inexistente o sin rúbrica en la jornada de la sesión", () => {
     expect(error(cuerpo({ competenciaId: "no-existe" }))).toBe(MENSAJES_VALIDACION.competencia);
-    expect(error(cuerpo({ competenciaId: "pensamiento-critico" }))).toBe(MENSAJES_VALIDACION.competencia);
+    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
+    const deNoche = cuerpo({ competenciaId: "pensamiento-critico", evaluadorId: "diana-hidalgo" }, calificacionesDe("pensamiento-critico"));
+    expect(evaluar(deNoche, PARTICIPANTES, "noche")).toEqual({ ok: false, error: MENSAJES_VALIDACION.competencia });
+  });
+
+  it("cada rúbrica exige sus propios indicadores", () => {
+    const pensamiento = cuerpo({ competenciaId: "pensamiento-critico", evaluadorId: "felipe-lopez" }, calificacionesDe("pensamiento-critico"));
+    expect(evaluar(pensamiento).ok).toBe(true);
+    // Adaptabilidad's indicator ids don't belong to another competencia's rubric.
+    expect(error(cuerpo({ competenciaId: "pensamiento-critico", evaluadorId: "felipe-lopez" }))).toBe(MENSAJES_VALIDACION.indicadores);
   });
 
   it("evaluador que no pertenece al equipo de la competencia", () => {
@@ -173,9 +187,10 @@ describe("validarConsultaEnviadas", () => {
     });
   });
 
-  it("rechaza parámetros faltantes, competencia no habilitada o evaluador ajeno", () => {
+  it("rechaza parámetros faltantes, competencia sin rúbrica en la jornada o evaluador ajeno", () => {
     expect(consulta("competencia=adaptabilidad")).toEqual({ ok: false, error: MENSAJES_VALIDACION.consulta });
-    expect(consulta("competencia=pensamiento-critico&evaluador=felipe-lopez")).toEqual({
+    expect(consulta("competencia=pensamiento-critico&evaluador=felipe-lopez").ok).toBe(true);
+    expect(consulta("competencia=pensamiento-critico&evaluador=diana-hidalgo", "noche")).toEqual({
       ok: false,
       error: MENSAJES_VALIDACION.competencia,
     });
@@ -196,7 +211,7 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
 
   it("acepta una solicitud válida y devuelve la competencia y el indicador de la configuración", () => {
     const resultado = validarSolicitudJev({ ...BASE, texto: `
- ${TEXTO} 	` });
+ ${TEXTO} 	` }, "manana");
     expect(resultado.ok).toBe(true);
     if (!resultado.ok) return;
     expect(resultado.datos.competencia.id).toBe("adaptabilidad");
@@ -205,7 +220,7 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
   });
 
   it("descarta campos extra: no llegan a Jev", () => {
-    const resultado = validarSolicitudJev({ ...BASE, participanteId: "P01", evaluadorId: "jimena-salgado" });
+    const resultado = validarSolicitudJev({ ...BASE, participanteId: "P01", evaluadorId: "jimena-salgado" }, "manana");
     expect(resultado.ok && Object.keys(resultado.datos)).toEqual(["competencia", "indicador", "texto"]);
   });
 
@@ -218,15 +233,25 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
     ["19 caracteres tras recortar", { ...BASE, texto: `  ${"a".repeat(19)}  ` }, MENSAJES_VALIDACION.descripcion],
     ["1501 caracteres", { ...BASE, texto: "a".repeat(1501) }, MENSAJES_VALIDACION.descripcion],
     ["competencia inexistente", { ...BASE, competenciaId: "liderazgo" }, MENSAJES_VALIDACION.competencia],
-    ["competencia deshabilitada", { ...BASE, competenciaId: "orientacion-resultados" }, MENSAJES_VALIDACION.competencia],
     ["indicador inexistente", { ...BASE, indicadorId: "adaptabilidad-5" }, MENSAJES_VALIDACION.indicador],
+    ["indicador de otra competencia", { ...BASE, indicadorId: "orientacion-resultados-1" }, MENSAJES_VALIDACION.indicador],
   ])("rechaza: %s", (_caso, datos, mensaje) => {
-    expect(validarSolicitudJev(datos)).toEqual({ ok: false, error: mensaje });
+    expect(validarSolicitudJev(datos, "manana")).toEqual({ ok: false, error: mensaje });
+  });
+
+  it("usa la rúbrica de la jornada de la sesión", () => {
+    const solicitud = { competenciaId: "orientacion-resultados", indicadorId: "orientacion-resultados-2", texto: TEXTO };
+    const manana = validarSolicitudJev(solicitud, "manana");
+    expect(manana.ok && manana.datos.indicador.titulo).toBe(
+      "Distribuye el tiempo disponible y supera obstáculos de manera persistente.",
+    );
+    // No night rubric yet (PRD Appendix A): the competencia is disabled there.
+    expect(validarSolicitudJev(solicitud, "noche")).toEqual({ ok: false, error: MENSAJES_VALIDACION.competencia });
   });
 
   it("los límites 20 y 1500 son inclusivos", () => {
-    expect(validarSolicitudJev({ ...BASE, texto: "a".repeat(20) }).ok).toBe(true);
-    expect(validarSolicitudJev({ ...BASE, texto: "a".repeat(1500) }).ok).toBe(true);
+    expect(validarSolicitudJev({ ...BASE, texto: "a".repeat(20) }, "manana").ok).toBe(true);
+    expect(validarSolicitudJev({ ...BASE, texto: "a".repeat(1500) }, "manana").ok).toBe(true);
   });
 
   it("el mensaje de longitud usa el formato es-CR", () => {
@@ -239,13 +264,14 @@ describe("validarParticipantes (PUT /api/admin/participantes)", () => {
     jornada: "manana",
     cantidad: nombres.length,
     nombres,
+    carnets: nombres.map(() => ""),
     ...extra,
   });
 
   it("acepta nombres con tildes, recorta y guarda los vacíos como null", () => {
     expect(validarParticipantes(lista(["  Ana Pérez ", "", "José Ñúñez Solís"]))).toEqual({
       ok: true,
-      datos: { jornada: "manana", nombres: ["Ana Pérez", null, "José Ñúñez Solís"], confirmar: false },
+      datos: { jornada: "manana", nombres: ["Ana Pérez", null, "José Ñúñez Solís"], carnets: [null, null, null], confirmar: false },
     });
     expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
   });

@@ -116,6 +116,7 @@ export function Muestrario({ indicador, nombreEvaluador }: MuestrarioProps) {
           <Chip tono={TONO_POR_ESTADO.enProgreso}>{TEXTOS.estados.enProgreso}</Chip>
           <Chip tono={TONO_POR_ESTADO.completado}>{TEXTOS.estados.completado}</Chip>
           <Chip tono={TONO_POR_ESTADO.enviado}>{TEXTOS.estados.enviado}</Chip>
+          <Chip tono={TONO_POR_ESTADO.ausente}>{TEXTOS.estados.ausente}</Chip>
         </Fila>
         <Fila etiqueta="Sobre fondo blanco">
           <div className="flex flex-wrap gap-2 rounded-tile bg-surface p-4">

@@ -7,7 +7,8 @@ import { validarSolicitudJev } from "@/lib/validacion";
 
 // POST /api/jev: the Jev proxy (PRD §8.3, §5.6). Both roles may use it; the
 // session is re-verified here, not only in proxy.ts. Takes only
-// { competenciaId, indicadorId, texto }; the rubric comes from config.
+// { competenciaId, indicadorId, texto }; the rubric comes from config, for
+// the session's jornada (each jornada's team has its own, PRD Appendix A).
 //
 // Order: session → validation → per-session cap (uso_jev) → Jev. The cap is
 // checked before calling Jev. If the cap can't be checked (database down) the
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   if (!sesion) return responder({ error: TEXTOS.sesion.requerida }, 401);
   if (sesion.rol === "admin") return responder({ error: TEXTOS.sesion.noParaAdmin }, 403);
 
-  const validacion = validarSolicitudJev(await request.json().catch(() => null));
+  const validacion = validarSolicitudJev(await request.json().catch(() => null), sesion.jornada);
   if (!validacion.ok) return responder({ error: validacion.error }, 400);
   const { competencia, indicador, texto } = validacion.datos;
 

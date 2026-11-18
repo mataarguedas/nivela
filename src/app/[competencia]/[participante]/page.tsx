@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { obtenerCompetenciaHabilitada } from "@/config/competencias";
-import { equipoDeCompetencia } from "@/config/equipos";
 import { TEXTOS } from "@/config/textos";
 import { cargarParticipantes } from "@/lib/db/participantes";
-import { jornadaActual } from "@/lib/jornadaActual";
+import { contextoEvaluacion } from "@/lib/jornadaActual";
 import { PantallaCalificacion } from "./PantallaCalificacion";
 
 // Rating screen (PRD §5.5, FR-5, FR-6). The layouts already answered 404 for
@@ -35,10 +33,11 @@ export default function PaginaCalificacion({ params }: PageProps<"/[competencia]
 
 async function Calificacion({ params }: Pick<PageProps<"/[competencia]/[participante]">, "params">) {
   const { competencia: idCompetencia, participante: idParticipante } = await params;
-  const jornada = await jornadaActual();
-  const competencia = obtenerCompetenciaHabilitada(idCompetencia);
-  const equipo = competencia && equipoDeCompetencia(jornada, competencia.id);
-  if (!competencia || !equipo) notFound();
+  // Null too when an evaluador opens another team's competencia, or when
+  // the jornada has no rubric for it. The rubric is the session jornada's.
+  const contexto = await contextoEvaluacion(idCompetencia);
+  if (!contexto) notFound();
+  const { jornada, competencia, equipo, evaluadorSesion } = contexto;
 
   const participantes = await cargarParticipantes("/[competencia]/[participante]", jornada);
   if (!participantes) {
@@ -65,6 +64,7 @@ async function Calificacion({ params }: Pick<PageProps<"/[competencia]/[particip
       anterior={participantes[indice - 1] ?? null}
       siguiente={participantes[indice + 1] ?? null}
       evaluadorIds={equipo.integrantes.map((i) => i.id)}
+      evaluadorSesion={evaluadorSesion}
     />
   );
 }

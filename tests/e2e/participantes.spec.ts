@@ -1,11 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
+import { competenciasDeJornada, DEFINICIONES_COMPETENCIA } from "../../src/config/competencias";
 import { CURSOS, equipoDeCompetencia } from "../../src/config/equipos";
 import { esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 import { sinEnviosEnServidor } from "./servidor";
 
 // Inicio → evaluator step → participant list, local drafts and Borrar todo
-// (PRD §5.2–§5.4, §5.8, §9.3).
+// (PRD §5.2–§5.4, §5.8, §9.3). Since v1.2 only the docente picks which team
+// member it rates as (evaluadores are who their account says, see
+// cuentas.spec.ts), so these specs sign in as the docente.
 
 const EVALUADORA = "Jimena Salgado";
 const OTRA = "Stacy Zamora Rodríguez";
@@ -31,15 +34,29 @@ async function clavesNivela(page: Page): Promise<string[]> {
 }
 
 test.beforeEach(async ({ page }) => {
-  await iniciarSesion(page);
+  await iniciarSesion(page, "docente");
   await sinEnviosEnServidor(page);
 });
 
-test("las competencias deshabilitadas se ven pero no se pueden abrir", async ({ page }) => {
+test("de mañana se abren las 5 competencias", async ({ page }) => {
   await page.goto("/");
   await esperarHidratacion(page);
-  const deshabilitadas = page.locator("[aria-disabled='true']");
-  await expect(deshabilitadas).toHaveCount(4);
+  // Every competencia has a morning rubric (PRD Appendix A).
+  const lista = page.locator("#competencias");
+  await expect(lista.locator("[aria-disabled='true']")).toHaveCount(0);
+  for (const { id, nombre } of DEFINICIONES_COMPETENCIA) {
+    await expect(lista.getByRole("link", { name: new RegExp(nombre) })).toHaveAttribute("href", `/${id}/evaluador`);
+  }
+});
+
+test("de noche, las competencias sin rúbrica se ven pero no se pueden abrir", async ({ page }) => {
+  expect((await page.request.post("/api/jornada", { data: { jornada: "noche" } })).status()).toBe(200);
+  await page.goto("/");
+  await esperarHidratacion(page);
+  // Only the list's rows: the Next dev-tools overlay has aria-disabled buttons too.
+  const deshabilitadas = page.locator("#competencias [aria-disabled='true']");
+  const sinRubrica = competenciasDeJornada("noche").filter((c) => !c.habilitada);
+  await expect(deshabilitadas).toHaveCount(sinRubrica.length);
   for (const fila of await deshabilitadas.all()) {
     await expect(fila).toContainText("Próximamente");
     await expect(fila).not.toHaveAttribute("href");
@@ -49,11 +66,33 @@ test("las competencias deshabilitadas se ven pero no se pueden abrir", async ({ 
   await deshabilitadas.filter({ hasText: "Pensamiento crítico y analítico" }).click({ force: true });
   await expect(page).toHaveURL(/\/$/);
 
-  for (const ruta of ["/pensamiento-critico", "/pensamiento-critico/evaluador", "/no-existe/evaluador"]) {
+  // Its routes exist (it has a morning rubric), so the not-found page streams
+  // in behind Suspense and the status can be 200 (see app/[competencia]/layout.tsx).
+  for (const ruta of ["/pensamiento-critico", "/pensamiento-critico/evaluador", "/pensamiento-critico/P01"]) {
+    await page.goto(ruta);
+    await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" }), ruta).toBeVisible();
+    await expect(page.getByRole("radiogroup")).toHaveCount(0);
+  }
+  // An unknown competencia is a real 404 from the layout, in any jornada.
+  for (const ruta of ["/no-existe", "/no-existe/evaluador"]) {
     const respuesta = await page.goto(ruta);
     expect(respuesta?.status(), ruta).toBe(404);
     await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
   }
+});
+
+test("de mañana, una competencia nueva muestra su propia rúbrica", async ({ page }) => {
+  const equipo = equipoDeCompetencia("manana", "orientacion-detalle")!;
+  await page.goto("/orientacion-detalle/evaluador");
+  await esperarHidratacion(page);
+  await page.getByRole("button", { name: equipo.integrantes[0].nombre }).click();
+  await expect(page).toHaveURL(/\/orientacion-detalle$/);
+  await page.goto("/orientacion-detalle/P01");
+  const indicador = page.getByRole("radiogroup", { name: /^Indicador 1\. Verifica aspectos minuciosos\./ });
+  await expect(indicador).toBeVisible();
+  await expect(indicador.getByText(/Corrobora la exactitud de los detalles menos perceptibles/)).toBeVisible();
+  // Never another competencia's rubric.
+  await expect(page.getByText("Actúa de manera rápida y flexible.")).toHaveCount(0);
 });
 
 test("Inicio lleva a la selección de evaluador de Adaptabilidad", async ({ page }) => {

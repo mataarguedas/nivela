@@ -2,10 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { SelectorNivel } from "@/components/ui/SelectorNivel";
-import { adaptabilidad } from "@/config/competencias/adaptabilidad";
+import { obtenerCompetencia } from "@/config/competencias";
 import type { NivelValor } from "@/config/niveles";
 
-const descripciones = adaptabilidad.indicadores[0].niveles;
+const descripciones = obtenerCompetencia("manana", "adaptabilidad")!.indicadores[0].niveles;
 
 function SelectorControlado({ inicial = null }: { inicial?: NivelValor | null }) {
   const [valor, setValor] = useState<NivelValor | null>(inicial);

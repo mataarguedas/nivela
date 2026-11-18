@@ -8,9 +8,10 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
 2. **Light mode only.** Don't add `dark:` variants.
 3. **The TypeSafe API key never reaches the client.** All Jev calls go through `src/lib/jev.ts` (`import "server-only"`), called only from `app/api/jev/route.ts`.
 4. **Never send names or participant codes to Jev.** Send only the competencia/indicator text from server config plus the evaluator's observation.
-5. **Names in config; emails only in the DB; never phone numbers.** Evaluator names live in config. Participant names are entered by the admin and stored in the `participantes` table (PRD §5.10). Since v1.2, evaluator emails live only in `cuentas` and participant emails only in `participantes.correo` (PRD §5.12, §5.14). Emails are never in config, never committed (the import file and the roster screenshots stay in the gitignored `privado/`), never sent to Jev, never logged, and never shown in reports or the CSV. Names are never sent to Jev or logged either. Never write a real student email into code, tests, docs or prompts; tests use `@ejemplo.test`.
+5. **Names in config; emails and carnets only in the DB; never phone numbers.** Evaluator names live in config. Participant names and carnets are entered by the admin and stored in the `participantes` table (PRD §5.10). **Reports and the CSV identify participants by carnet (`etiquetaReporte`), never by name** (PRD §11, v1.4); evaluators, the admin and the results email use the name (`etiqueta`). Carnets follow the email rules below (DB only, never committed, logged or sent to Jev), except that reports and the CSV show them. Since v1.2, evaluator emails live only in `cuentas` and participant emails only in `participantes.correo` (PRD §5.12, §5.14). Emails are never in config, never committed (the import file and the roster screenshots stay in the gitignored `privado/`), never sent to Jev, never logged, and never shown in reports or the CSV. Names are never sent to Jev or logged either. Never write a real student email into code, tests, docs or prompts; tests use `@ejemplo.test`.
 6. **Jev suggests, the human decides.** A suggestion is never applied without a tap on "Aplicar sugerencia". A Jev failure must never block manual rating or submission.
 7. **Competencias, indicators and teams are data** in `src/config/`; participants are runtime data in the DB. No competencia-specific logic in components. Enabling a competencia means editing config only.
+   - **A rubric belongs to jornada + competencia** (PRD §9.1, Appendix A): each jornada's team writes its own template. A competencia is enabled in a jornada exactly when its config has a rubric for that jornada. Always resolve it with the session's jornada: `obtenerCompetenciaHabilitada(jornada, id)` / `competenciasDeJornada(jornada)`; `obtenerDefinicionCompetencia(id)` is for names only. A new rubric gets new indicator ids (they are stored in the DB), its Appendix A section and a golden-set fixture.
    - **A team is identified by jornada + competencia.** Its number is a per-jornada display label and its size varies: Adaptabilidad is Equipo 4 (8 members) in the morning and Equipo 1 (7 members) at night. Never look a team up by number, and never hard-code a team number or size in code, tests, seed data or copy. Use `equipoDeCompetencia(jornada, competenciaId)` and read `numero` and `integrantes` from it.
 8. **Design**: DESIGN.md tokens only.
    - Pill buttons (980 px radius).
@@ -25,7 +26,7 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
   - On Next 16+, request interception lives in `src/proxy.ts`; on older versions it's `middleware.ts`.
   - `params` and `searchParams` are Promises in page and route props, so `await` them.
 - **Tailwind CSS v4** (CSS-first `@theme` in `src/app/globals.css`, no `tailwind.config.js`).
-- **Recharts** for charts. Report routes only, loaded with `next/dynamic` (`ssr: false`) inside client components.
+- **Charts**: the default report view uses simple horizontal bars drawn on the server in plain HTML (`components/reportes/BarrasHorizontales.tsx`, PRD §11 v1.2). **Recharts** draws only the detailed charts under "Ver gráficos detallados": report routes only, loaded with `next/dynamic` (`ssr: false`) inside client components, mounted only when that section opens.
 - **Neon Postgres** (Vercel Marketplace integration) + **Drizzle ORM** (`drizzle-orm/neon-http`) + `drizzle-kit` migrations.
 - **zod** for every request body and query.
 - **jose** for HMAC-signed session cookies. It's Edge-compatible, so it works in `proxy.ts`.
@@ -49,11 +50,12 @@ npm run typecheck      # tsc --noEmit
 npm test               # vitest run
 npm run test:e2e       # playwright test (mobile WebKit, Chromium, Firefox projects)
 npm run db:generate    # drizzle-kit generate
-npm run db:migrate     # drizzle-kit migrate
-npm run db:seed        # dev only: fake evaluations for each jornada's team x N participants (refuses if NODE_ENV=production)
-npm run jev:evaluar    # golden-set accuracy check against live Jev (PRD §8.5)
+npm run db:migrate     # drizzle-kit migrate via scripts/migrar.ts; refuses the production host unless `-- --produccion`
+npm run db:seed        # dev only: fake evaluations for every rubric's team x N participants in each jornada, plus the fake accounts (refuses unless DATABASE_URL is .env.local's)
+npm run jev:evaluar    # golden-set accuracy check against live Jev, every rubric (PRD §8.5); `-- --competencia <id>` for one
 npm run correo:prueba -- --para <correo>   # v1.2 (Prompt 13): send a sample email through Resend
-npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv [--produccion]   # v1.2 (Prompt 14): load evaluator emails
+npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv [--produccion]   # v1.2: load evaluator emails (prints counts and host, never emails)
+npm run cuentas:prueba # dev/e2e: reset every evaluator account to <id>@ejemplo.test + E2E_CONTRASENA (the e2e global setup runs it)
 ```
 
 Before declaring a task done, run `lint`, `typecheck` and `test`. Also run `test:e2e` for UI changes.
@@ -65,8 +67,6 @@ Before declaring a task done, run `lint`, `typecheck` and `test`. Also run `test
 | `TYPESAFE_API_KEY` | Server only. |
 | `JEV_MODEL` | Default `jev-1.13.0` (pinned). Don't switch to `jev-latest` without being asked. |
 | `DATABASE_URL` | Set by the Neon integration. |
-| `CODIGO_ACCESO` | **Retired in v1.2** (PRD §5.1). Morning class code; still read until the email login ships (Prompt 14), which removes it. |
-| `CODIGO_ACCESO_NOCHE` | **Retired in v1.2**. Night class code; removed with `CODIGO_ACCESO`. |
 | `CODIGO_DOCENTE` | Report code (role `docente`). |
 | `SESSION_SECRET` | ≥ 32 random bytes, used for HMAC. |
 | `CODIGO_ADMIN` | Admin code (role `admin`, `/admin` only). Never commit its value. |
@@ -74,6 +74,7 @@ Before declaring a task done, run `lint`, `typecheck` and `test`. Also run `test
 | `RESEND_API_KEY` | Server only. A "Sending access" key from the owner's existing Resend team, set by hand in Vercel (not the Marketplace install, which needed a paid plan; PRD §13 Email). Locally it comes from `.env`. Never run `vercel env pull .env.local`: it would overwrite the dev-branch `DATABASE_URL`. |
 | `CORREO_REMITENTE` | `Nivela <no-responder@correo.nivela.snhware.lat>`; the domain must be verified in Resend. |
 | `CORREO_MODO` | `consola` (default outside production) keeps messages in memory for `/dev/correos`; `resend` sends. Production always sends through Resend. |
+| `E2E_CONTRASENA` | Dev/e2e only, in `.env.local`: password of the fake accounts `<integranteId>@ejemplo.test`. Never in Vercel. |
 
 Keep `.env.example` in sync. Never commit `.env*` except the example.
 
@@ -115,17 +116,19 @@ src/
     niveles.ts
     equipos.ts
     participantes.ts        # id/label scheme + fallback list; the real list is in the DB
-    competencias/index.ts   # registry
+    competencias/index.ts   # registry; rubrics per jornada (obtenerCompetenciaHabilitada(jornada, id))
     competencias/adaptabilidad.ts
     competencias/{pensamiento-critico,autorregulacion-emocional,orientacion-detalle,orientacion-resultados}.ts
   lib/
     jev.ts                  # server-only Jev client + mapping to proxy contract
     sesion.ts               # sign/verify cookie, constant-time code compare
-    cuentas.ts              # v1.2, server-only: scrypt, verification codes, lockout
+    cuentas.ts              # v1.2, server-only: scrypt, verification codes, lockout, sign-in flows
+    acceso.ts               # v1.2: shared by /api/acceso/* (schemas, failure delay, code email after the response)
+    importarCuentas.ts      # v1.2: CSV validation for cuentas:importar
     correo.ts               # v1.2, server-only: send email (Resend | consola)
     correos/                # v1.2: email templates { asunto, html, texto }
-    db/{index.ts,schema.ts,participantes.ts}  # participantes.ts: the admin's list per jornada, read at request time
-    jornadaActual.ts        # the session's jornada for Server Components
+    db/{index.ts,schema.ts,participantes.ts,cuentas.ts}  # participantes.ts: the admin's list per jornada; cuentas.ts: account statements
+    jornadaActual.ts        # the session's jornada (and contextoEvaluacion: team + evaluador id) for Server Components
     puntajes.ts             # pure scoring (PRD §7)
     reportes.ts             # aggregation for report routes
     borrador.ts             # localStorage drafts (client), try/catch + memory fallback
@@ -134,12 +137,13 @@ src/
   components/
     ui/                     # Boton, Chip, Campo, Dialogo, Toast, Nav, SelectorNivel
     calificacion/           # IndicadorSeccion, PanelSugerencia, BarraEnvio
-    reportes/               # RadarIndicadores, DistribucionNiveles, PuntajesParticipantes, TablaParticipantes, MatrizCobertura
+    reportes/               # datosGraficos (chart data + title sentences), BarrasHorizontales, GraficosDetallados (RadarIndicadores, DistribucionNiveles), TablaParticipantes, MatrizCobertura
 scripts/
   seed.ts
   evaluar-jev.ts
   importar-cuentas.ts       # v1.2
-  fixtures/jev-adaptabilidad.json
+  cuentas-prueba.ts         # v1.2, dev/e2e: fake accounts (cuentasPrueba.ts); entornoDesarrollo.ts guards dev-only writes
+  fixtures/jev-{competencia}.json   # one golden set per rubric (its `jornada`, default manana)
 privado/                    # gitignored: roster screenshots and the evaluator email CSV (PII)
 public/
   sw.js
@@ -236,8 +240,8 @@ Rules for this module:
 ## Sessions and access (`src/lib/sesion.ts`, `src/proxy.ts`)
 
 - **Evaluadores sign in with email + password** (PRD §5.12, v1.2): `POST /api/acceso/correo`, `/activar`, `/contrasena`, `/recuperar`. The first visit verifies the email with a 6-digit code before a password is created. Passwords use `scrypt` with a per-account salt; codes are stored as HMAC hashes, expire in 10 min, allow 5 attempts, and are limited to 5 per email per hour; 5 wrong passwords lock the account for 15 min. An email outside the roster gets the same response and no email. Never log emails, codes or passwords.
-- `POST /api/acceso` compares the code with `CODIGO_ADMIN` / `CODIGO_DOCENTE` using `crypto.timingSafeEqual` (pad to equal length first). Add a ~400 ms delay on failure. The class codes `CODIGO_ACCESO_NOCHE` / `CODIGO_ACCESO` are retired in v1.2 and removed when the email login ships (Prompt 14).
-- The cookie is `nivela_sesion`: a JWT (HS256, jose) with `{ rol, sid, jornada }`, plus `integranteId` for evaluadores. httpOnly, Secure (in prod), SameSite=Lax, `maxAge` 12 h. `sid` is a random id used only for the Jev cap. A token without `jornada` (signed before v1.1) reads as `manana`. Once the email login ships, an evaluador token without `integranteId` is invalid.
+- `POST /api/acceso` compares the code with `CODIGO_ADMIN` / `CODIGO_DOCENTE` using `crypto.timingSafeEqual` (pad to equal length first). Add a ~400 ms delay on failure. There are no class codes since v1.2.
+- The cookie is `nivela_sesion`: a JWT (HS256, jose) with `{ rol, sid, jornada }`, plus `integranteId` for evaluadores. httpOnly, Secure (in prod), SameSite=Lax, `maxAge` 12 h. `sid` is a random id used only for the Jev cap. A token without `jornada` (signed before v1.1) reads as `manana`. An evaluador token without a known `integranteId`, or whose jornada isn't that integrante's team's, is invalid (it reads as expired).
 - **Identity**: for an evaluador, the evaluator id is the session's `integranteId`. Any evaluation or attendance write for another evaluator gets `403`. Only the docente picks an evaluator.
 - **Jornadas** (PRD §5.11): every read and write is scoped by `sesion.jornada`, taken from the session and never from the request. The single exception is the docente-only, read-only group summary (`?jornada=manana|noche|ambas`, PRD §11.3). An evaluador's jornada comes from their account (their team's jornada). Docente and admin switch it with `POST /api/jornada`; `proxy.ts` lets every role through to that route, and the route refuses evaluadores.
 - `proxy.ts`:
@@ -249,8 +253,8 @@ Rules for this module:
 
 ## Database
 
-- The schema in `src/lib/db/schema.ts` matches PRD §9.2 exactly: `evaluaciones`, `calificaciones`, `uso_jev`, `participantes`, and since v1.2 `cuentas`, `codigos_verificacion`, `asistencia`, `envios_resultados` (plus `participantes.correo`). Participant ids P01…P99 repeat across jornadas, so every query on `participantes`, `evaluaciones`, `asistencia` or `envios_resultados` filters by `jornada`. Team ids and numbers are never stored.
-- Before any DB-writing command (migrate, seed, import), check which host `DATABASE_URL` points to: `.env.local` is the Neon dev branch and `.env` is production. Production writes only happen deliberately, with the owner's go-ahead.
+- The schema in `src/lib/db/schema.ts` matches PRD §9.2 exactly: `evaluaciones`, `calificaciones`, `uso_jev`, `participantes`, and since v1.2 `cuentas`, `codigos_verificacion`, `asistencia`, `envios_resultados` (plus `participantes.correo`), and since v1.4 `participantes.carnet`. Participant ids P01…P99 repeat across jornadas, so every query on `participantes`, `evaluaciones`, `asistencia` or `envios_resultados` filters by `jornada`. Team ids and numbers are never stored.
+- Before any DB-writing command (migrate, seed, import), check which host `DATABASE_URL` points to: `.env.local` is the Neon dev branch and `.env` is production. Production writes only happen deliberately, with the owner's go-ahead. `scripts/baseProduccion.ts` enforces it: migrate and `cuentas:importar` refuse a host that matches `.env`'s production endpoint unless `--produccion` is passed; `db:seed` and `cuentas:prueba` refuse it always.
 - **Participants are runtime data** (`src/lib/db/participantes.ts`), not config. Never import a static list. Pages read them behind Suspense after `connection()` (`cargarParticipantes`), so the build never needs the DB. Route handlers read them uncached (`obtenerParticipantes`). Rows are never deleted; `activo = false` hides them.
 - Migrations go through `drizzle-kit`, committed under `drizzle/`.
 - **Upsert flow** (`POST /api/evaluaciones`), all in one transaction:
@@ -292,7 +296,7 @@ Rules for this module:
   - `jev.ts` mapping: normal, low-confidence, off-topic, malformed response, timeout.
   - `validacion.ts`: every rejection case in PRD §10.
   - `borrador.ts`: storage failures.
-  - The **config validation test**: unique ids, exactly 4 levels per indicator, enabled competencias have a team and indicators, the teams match PRD Appendix B for each jornada (including the per-jornada numbering).
+  - The **config validation test**: unique ids (indicator ids across rubrics too), exactly 4 levels per indicator, every rubric has a team in its jornada, every rubric matches its PRD Appendix A section word for word, the teams match PRD Appendix B for each jornada (including the per-jornada numbering).
   - v1.2: account hashing, codes, lockout and enumeration-safe responses; attendance aggregation; the gap rule's boundaries; evaluator progress for both jornadas; email templates with the provider mocked.
 - **E2E (Playwright)**: the full happy path (PRD §15.1), disabled competencias, refresh persistence, Borrar todo, Jev suggestion with the `/api/jev` route mocked, docente report rendering with seeded data, and CSV download.
 - Use `npm run db:seed` data for report development. Never seed production.
@@ -308,4 +312,4 @@ Rules for this module:
 
 ## Out of scope (don't build unless asked)
 
-Accounts for anyone other than the evaluators in config (and self-registration or SSO), editing indicators through a UI, dark mode, i18n, offline rating, other competencias' content, storing phone numbers, storing emails anywhere except the DB, analytics or trackers.
+Accounts for anyone other than the evaluators in config (and self-registration or SSO), editing indicators through a UI, dark mode, i18n, offline rating, writing rubric content the teams didn't send, storing phone numbers, storing emails anywhere except the DB, analytics or trackers.

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { esperarHidratacion } from "./hidratacion";
+import { abrirGraficosDetallados, esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 import { sinEnviosEnServidor } from "./servidor";
 
@@ -73,7 +73,8 @@ test("la CSP no bloquea nada en el flujo ni en los reportes", async ({ page }) =
     await page.evaluate(() => localStorage.setItem("nivela:v1:evaluador:adaptabilidad", "jimena-salgado"));
     await page.goto(ruta);
     await esperarHidratacion(page);
-    if (ruta.startsWith("/reportes")) await expect(page.locator("figure svg.recharts-surface:visible").first()).toBeVisible();
+    // Also loads the Recharts chunk, which only arrives when the details open.
+    if (ruta.startsWith("/reportes")) await abrirGraficosDetallados(page);
     expect(await violacionesCsp(page), ruta).toEqual([]);
   }
 });

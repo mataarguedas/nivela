@@ -6,7 +6,10 @@ import { useEffect, useState } from "react";
 import { BarraEnvio } from "@/components/calificacion/BarraEnvio";
 import { IndicadorSeccion } from "@/components/calificacion/IndicadorSeccion";
 import { PanelSugerencia } from "@/components/calificacion/PanelSugerencia";
+import { Boton } from "@/components/ui/Boton";
+import { Chip, TONO_POR_ESTADO } from "@/components/ui/Chip";
 import { Desplegable } from "@/components/ui/Desplegable";
+import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
 import { useToast } from "@/components/ui/Toast";
 import type { Indicador } from "@/config/competencias";
@@ -20,11 +23,12 @@ import {
   marcarEnviado,
   nivelManual,
   useBorrador,
-  useEvaluadorSeleccionado,
+  useEvaluadorActivo,
   vaciarEscrituras,
 } from "@/lib/borrador";
+import { guardarAsistencia } from "@/lib/asistencia";
 import { RUTA_ACCESO } from "@/lib/destino";
-import { cuerpoEvaluacion, enviarEvaluacion } from "@/lib/envio";
+import { consultarEnviadas, cuerpoEvaluacion, enviarEvaluacion } from "@/lib/envio";
 
 // The rating screen's interactive part. Every change goes straight into the
 // selected evaluator's draft (useBorrador: readers see it at once, storage
@@ -39,6 +43,39 @@ import { cuerpoEvaluacion, enviarEvaluacion } from "@/lib/envio";
 // Each indicator has a Jev panel (PRD §5.6); only one is open at a time, so
 // a single filled "Analizar" is on screen. Applying a suggestion stores
 // origen "ia" with its metadata; a later manual pick switches to "manual".
+//
+// Attendance (PRD §5.13): "Marcar ausente" (secondary, under the header)
+// asks for confirmation and saves the mark to the server at once; nothing
+// is stored offline. While absent, the bottom bar shows the notice and
+// "Marcar presente" instead of "Enviar evaluación". The draft is never
+// touched by either action.
+
+/**
+ * This evaluator's absent mark for the participant, read from GET
+ * /api/evaluaciones on mount. `conocido` is false until the server answers;
+ * if it can't, the screen behaves as "present" and the server still refuses
+ * to accept an evaluation for an absent participant (409).
+ */
+function useAsistencia(competenciaId: string, evaluadorId: string | null, participanteId: string) {
+  const clave = evaluadorId ? `${competenciaId}:${evaluadorId}:${participanteId}` : null;
+  const [estado, setEstado] = useState<{ clave: string; ausente: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!evaluadorId || !clave) return;
+    const control = new AbortController();
+    consultarEnviadas(competenciaId, evaluadorId, control.signal).then((datos) => {
+      if (control.signal.aborted) return;
+      setEstado({ clave, ausente: datos?.ausentes.includes(participanteId) ?? false });
+    });
+    return () => control.abort();
+  }, [competenciaId, evaluadorId, participanteId, clave]);
+
+  const actual = estado && estado.clave === clave ? estado : null;
+  const fijar = (ausente: boolean) => {
+    if (clave) setEstado({ clave, ausente });
+  };
+  return { ausente: actual?.ausente ?? false, conocido: actual !== null, fijar };
+}
 
 type PantallaCalificacionProps = {
   competencia: { id: string; nombre: string; definicion: string; fuente: string; indicadores: Indicador[] };
@@ -47,6 +84,8 @@ type PantallaCalificacionProps = {
   siguiente: Participante | null;
   /** Team member ids, to reject a stale or foreign stored selection. */
   evaluadorIds: string[];
+  /** The signed-in evaluador (their account); null for the docente, who picks. */
+  evaluadorSesion: string | null;
 };
 
 export function PantallaCalificacion({
@@ -55,11 +94,10 @@ export function PantallaCalificacion({
   anterior,
   siguiente,
   evaluadorIds,
+  evaluadorSesion,
 }: PantallaCalificacionProps) {
   const router = useRouter();
-  const guardado = useEvaluadorSeleccionado(competencia.id);
-  const evaluadorId = guardado && evaluadorIds.includes(guardado) ? guardado : null;
-  const leido = guardado !== undefined;
+  const { evaluadorId, leido } = useEvaluadorActivo(competencia.id, evaluadorIds, evaluadorSesion);
   const { borrador, actualizar } = useBorrador(competencia.id, evaluadorId);
   const rutaLista = `/${competencia.id}`;
 
@@ -73,9 +111,41 @@ export function PantallaCalificacion({
   const { mostrar } = useToast();
   const [envio, setEnvio] = useState<"inactivo" | "enviando" | "error">("inactivo");
   const [panelAbierto, setPanelAbierto] = useState<string | null>(null);
+  const asistencia = useAsistencia(competencia.id, evaluadorId, participante.id);
+  const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
+  const [confirmandoAusente, setConfirmandoAusente] = useState(false);
+
+  function irAAcceso() {
+    vaciarEscrituras();
+    const destino = new URLSearchParams({ next: `${rutaLista}/${participante.id}`, motivo: "expirada" });
+    router.push(`${RUTA_ACCESO}?${destino}`);
+  }
+
+  async function cambiarAsistencia(ausente: boolean) {
+    if (!evaluadorId || guardandoAsistencia) return;
+    setGuardandoAsistencia(true);
+    const respuesta = await guardarAsistencia({
+      competenciaId: competencia.id,
+      evaluadorId,
+      participanteId: participante.id,
+      ausente,
+    });
+    setGuardandoAsistencia(false);
+    if (respuesta.ok) {
+      asistencia.fijar(respuesta.ausente);
+      return;
+    }
+    if (respuesta.status === 401) irAAcceso();
+    else mostrar(respuesta.status === 409 ? TEXTOS.asistencia.yaEnviada : TEXTOS.asistencia.error);
+  }
+
+  function confirmarAusente() {
+    setConfirmandoAusente(false);
+    void cambiarAsistencia(true);
+  }
 
   async function enviar() {
-    if (!evaluadorId || !entrada || envio === "enviando") return;
+    if (!evaluadorId || !entrada || envio === "enviando" || asistencia.ausente) return;
     const ids = { competenciaId: competencia.id, evaluadorId, participanteId: participante.id };
     const cuerpo = cuerpoEvaluacion(ids, entrada, indicadorIds);
     if (!cuerpo) return;
@@ -84,7 +154,9 @@ export function PantallaCalificacion({
     const respuesta = await enviarEvaluacion(cuerpo);
     // Next keeps this page's state alive after navigating away (back/forward
     // and revisits restore it), so never leave "enviando" behind.
-    setEnvio(respuesta.ok || respuesta.status === 401 ? "inactivo" : "error");
+    // 409: marked absent (e.g. on another device): show that instead of an error.
+    setEnvio(respuesta.ok || respuesta.status === 401 || respuesta.status === 409 ? "inactivo" : "error");
+    if (!respuesta.ok && respuesta.status === 409) asistencia.fijar(true);
 
     if (respuesta.ok) {
       // Applied to the current draft: the user may have edited while the request was in flight.
@@ -94,11 +166,7 @@ export function PantallaCalificacion({
       router.push(rutaLista);
       return;
     }
-    if (respuesta.status === 401) {
-      vaciarEscrituras();
-      const destino = new URLSearchParams({ next: `${rutaLista}/${participante.id}`, motivo: "expirada" });
-      router.push(`${RUTA_ACCESO}?${destino}`);
-    }
+    if (respuesta.status === 401) irAAcceso();
   }
 
   function cambiar(indicadorId: string, cambio: Parameters<typeof conCalificacion>[3]) {
@@ -123,11 +191,31 @@ export function PantallaCalificacion({
           <h1 className="mt-1 text-h3 font-semibold break-words md:text-h2">{participante.etiqueta}</h1>
           {/* With a name, the number still matches the person's tag. */}
           {participante.nombre && <p className="mt-1 text-[14px] text-ink-2">{etiquetaNumero(participante.numero)}</p>}
+          {/* Attendance (PRD §5.5, §5.13): the way back is "Marcar presente" in the bar. */}
+          <div className="mt-4 flex min-h-11 justify-center">
+            {asistencia.ausente ? (
+              <Chip tono={TONO_POR_ESTADO.ausente} className="self-center">
+                {TEXTOS.estados.ausente}
+              </Chip>
+            ) : (
+              <Boton
+                variante="secundario"
+                onClick={() => setConfirmandoAusente(true)}
+                disabled={!evaluadorId || !asistencia.conocido}
+                cargando={guardandoAsistencia}
+                textoCargando={TEXTOS.asistencia.guardando}
+              >
+                {TEXTOS.asistencia.marcarAusente}
+              </Boton>
+            )}
+          </div>
         </header>
 
         <div className="mt-8 rounded-tile bg-surface px-4 py-2">
           <Desplegable titulo={TEXTOS.calificacion.definicion}>
-            <p className="text-body text-ink">{competencia.definicion}</p>
+            {/* Some templates have more than one paragraph, separated by "
+". */}
+            <p className="text-body whitespace-pre-line text-ink">{competencia.definicion}</p>
             <p className="mt-2 pb-2 text-caption text-ink-3">{TEXTOS.calificacion.fuente(competencia.fuente)}</p>
           </Desplegable>
         </div>
@@ -174,7 +262,30 @@ export function PantallaCalificacion({
         </nav>
       </div>
 
-      <BarraEnvio faltan={faltan} alEnviar={enviar} enviando={envio === "enviando"} error={envio === "error"} />
+      <BarraEnvio
+        faltan={faltan}
+        alEnviar={enviar}
+        enviando={envio === "enviando"}
+        error={envio === "error"}
+        ausente={asistencia.ausente}
+        alMarcarPresente={() => void cambiarAsistencia(false)}
+        guardandoAsistencia={guardandoAsistencia}
+      />
+
+      <Dialogo
+        abierto={confirmandoAusente}
+        alCerrar={() => setConfirmandoAusente(false)}
+        titulo={TEXTOS.asistencia.marcarAusente}
+        descripcion={TEXTOS.asistencia.confirmar(participante.etiqueta)}
+        acciones={
+          <>
+            <Boton variante="secundario" onClick={() => setConfirmandoAusente(false)}>
+              {TEXTOS.ui.cancelar}
+            </Boton>
+            <Boton onClick={confirmarAusente}>{TEXTOS.asistencia.marcarAusente}</Boton>
+          </>
+        }
+      />
     </>
   );
 }

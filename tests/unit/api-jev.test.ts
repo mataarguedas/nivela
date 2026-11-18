@@ -40,7 +40,7 @@ function analizar(cuerpo: unknown) {
 let registro: { info: ReturnType<typeof vi.spyOn>; error: ReturnType<typeof vi.spyOn> };
 
 beforeEach(() => {
-  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: SID, jornada: "manana" });
+  sesion.getSesion.mockResolvedValue({ rol: "evaluador", sid: SID, jornada: "manana", integranteId: "jimena-salgado" });
   uso.registrarUsoJev.mockResolvedValue({ conteo: 1, segundosRestantes: 1800 });
   jev.sugerirNivel.mockResolvedValue({ ok: true, sugerencia: SUGERENCIA });
   registro = {
@@ -63,7 +63,7 @@ describe("POST /api/jev", () => {
     sesion.getSesion.mockResolvedValue(null);
     const respuesta = await analizar(CUERPO);
     expect(respuesta.status).toBe(401);
-    await expect(respuesta.json()).resolves.toEqual({ error: "Debe ingresar el código de acceso para continuar." });
+    await expect(respuesta.json()).resolves.toEqual({ error: "Debe ingresar para continuar." });
     expect(uso.registrarUsoJev).not.toHaveBeenCalled();
     expect(jev.sugerirNivel).not.toHaveBeenCalled();
   });
@@ -96,12 +96,30 @@ describe("POST /api/jev", () => {
     ["texto de más de 1500", { ...CUERPO, texto: "a".repeat(1501) }, MENSAJES_VALIDACION.descripcion],
     ["sin indicador", { competenciaId: "adaptabilidad", texto: TEXTO }, MENSAJES_VALIDACION.solicitudIa],
     ["indicador ajeno", { ...CUERPO, indicadorId: "adaptabilidad-9" }, MENSAJES_VALIDACION.indicador],
-    ["competencia deshabilitada", { ...CUERPO, competenciaId: "pensamiento-critico" }, MENSAJES_VALIDACION.competencia],
+    ["competencia inexistente", { ...CUERPO, competenciaId: "liderazgo" }, MENSAJES_VALIDACION.competencia],
+    ["indicador de otra competencia", { ...CUERPO, indicadorId: "pensamiento-critico-1" }, MENSAJES_VALIDACION.indicador],
   ])("400 con mensaje en español: %s", async (_caso, cuerpo, mensaje) => {
     const respuesta = await analizar(cuerpo);
     expect(respuesta.status).toBe(400);
     await expect(respuesta.json()).resolves.toEqual({ error: mensaje });
     expect(uso.registrarUsoJev).not.toHaveBeenCalled();
+    expect(jev.sugerirNivel).not.toHaveBeenCalled();
+  });
+
+  it("usa la rúbrica de la jornada de la sesión; sin rúbrica en ella, 400", async () => {
+    const cuerpo = { competenciaId: "pensamiento-critico", indicadorId: "pensamiento-critico-2", texto: TEXTO };
+    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID, jornada: "manana" });
+    expect((await analizar(cuerpo)).status).toBe(200);
+    const [competencia, indicador] = jev.sugerirNivel.mock.calls[0];
+    expect(competencia.id).toBe("pensamiento-critico");
+    expect(indicador.titulo).toBe("Analiza la información para establecer posibles causas dividiendo un problema en partes.");
+
+    // No night rubric yet (PRD Appendix A).
+    jev.sugerirNivel.mockClear();
+    sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID, jornada: "noche" });
+    const respuesta = await analizar(cuerpo);
+    expect(respuesta.status).toBe(400);
+    await expect(respuesta.json()).resolves.toEqual({ error: MENSAJES_VALIDACION.competencia });
     expect(jev.sugerirNivel).not.toHaveBeenCalled();
   });
 

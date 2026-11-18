@@ -4,7 +4,7 @@ import { BarraEnvio } from "@/components/calificacion/BarraEnvio";
 import { IndicadorSeccion } from "@/components/calificacion/IndicadorSeccion";
 import { obtenerCompetencia } from "@/config/competencias";
 
-const indicador = obtenerCompetencia("adaptabilidad")!.indicadores[0];
+const indicador = obtenerCompetencia("manana", "adaptabilidad")!.indicadores[0];
 
 describe("BarraEnvio", () => {
   it("con indicadores pendientes muestra cuántos faltan y deshabilita el envío", () => {

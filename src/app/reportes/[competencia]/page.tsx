@@ -12,6 +12,7 @@ import {
 import {
   BloqueDetallado,
   ClaveIndicadores,
+  EscalaPuntos,
   FiguraGrafico,
   Kpi,
   SeccionReporte,
@@ -28,7 +29,7 @@ import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
+import { formatearPuntos, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { nivelGeneral, proporcion } from "@/lib/puntajes";
 import { CANTIDAD_MEJORES, type Reporte } from "@/lib/reportes";
 import type { UltimoEnvio } from "@/lib/resultados";
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
 };
 
 const ALTO_FILA_DISTRIBUCION = 44;
-// Value gutters, wide enough for "12 · 60 %" and "2,10 · Intermedio".
+// Value gutters, wide enough for "12 · 60 %" and "100 · Intermedio".
 const ANCHO_CONTEO = "4.5rem";
 const ANCHO_PUNTAJE = "7rem";
 
@@ -136,7 +137,7 @@ function Contenido({
         />
         <Kpi
           etiqueta={TEXTOS_REPORTES.puntajePromedio}
-          valor={kpis.puntajePromedio === null ? "—" : formatearDecimal(kpis.puntajePromedio)}
+          valor={kpis.puntajePromedio === null ? "—" : formatearPuntos(kpis.puntajePromedio)}
           detalle={kpis.puntajePromedio === null ? undefined : obtenerNivel(nivelGeneral(kpis.puntajePromedio)).etiqueta}
         />
         <Kpi
@@ -149,6 +150,7 @@ function Contenido({
           valor={total(kpis.evaluadoresCompletos, kpis.evaluadoresTotal)}
         />
       </dl>
+      <EscalaPuntos />
 
       <SeccionReporte id="avance" titulo={TEXTOS_REPORTES.avanceTitulo(reporte.avance.numeroEquipo)}>
         <AvanceEvaluadores avance={reporte.avance} etiquetadaPor="avance-titulo" />
@@ -191,7 +193,7 @@ function Contenido({
           <TablaEquivalente
             titulo={TEXTOS_REPORTES.puntajePorParticipante}
             encabezados={[TEXTOS_REPORTES.participante, TEXTOS.reportes.puntajeGeneral, TEXTOS.reportes.nivelGeneral]}
-            filas={reporte.ranking.map((r) => [r.etiqueta, formatearDecimal(r.puntaje), obtenerNivel(r.nivel).etiqueta])}
+            filas={reporte.ranking.map((r) => [r.etiqueta, formatearPuntos(r.puntaje), obtenerNivel(r.nivel).etiqueta])}
           />
         </FiguraGrafico>
       </SeccionReporte>

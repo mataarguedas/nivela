@@ -1,8 +1,8 @@
 import { NIVELES, obtenerNivel, type NivelValor } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
-import { nivelGeneral, proporcion, redondear2, UMBRALES_NIVEL } from "@/lib/puntajes";
+import { formatearPuntos, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
+import { ESCALA_PUNTOS, nivelGeneral, proporcion, redondearPuntos, UMBRALES_NIVEL } from "@/lib/puntajes";
 import type {
   CifrasGrupo,
   CompetenciaConsolidada,
@@ -66,7 +66,7 @@ export type Barra = {
   etiqueta: string;
   /** Bar length as a share of the axis, 0–100. */
   ancho: number;
-  /** Value label at the bar end, e.g. "3,25 · Avanzado". */
+  /** Value label at the bar end, e.g. "75 · Experto". */
   texto: string;
   /** Fill; null draws no bar (no data). */
   nivel: NivelValor | null;
@@ -77,8 +77,8 @@ export type Referencia = { posicion: number; etiqueta: string };
 
 export type DatosBarras = { titulo: string; barras: Barra[]; referencias: Referencia[] };
 
-/** Puntaje axis: fixed 1–4, the rating scale (PRD §11.1). */
-export const EJE_PUNTAJE = { min: 1, max: 4 } as const;
+/** Puntaje axis: fixed 0–100, the report scale in points (PRD §7, §11.1). */
+export const EJE_PUNTAJE = ESCALA_PUNTOS;
 
 /** Share of the axis, clamped to 0–100 and rounded so the markup stays stable. */
 export function posicionEnEje(valor: number, min: number, max: number): number {
@@ -87,7 +87,7 @@ export function posicionEnEje(valor: number, min: number, max: number): number {
   return Math.round(Math.min(100, Math.max(0, p)) * 100) / 100;
 }
 
-/** The thresholds 1,5 / 2,5 / 3,5 on the 1–4 axis, labelled Intermedio / Avanzado / Experto. */
+/** The thresholds 25 / 50 / 75 on the 0–100 axis, labelled Intermedio / Avanzado / Experto. */
 export const REFERENCIAS_NIVEL: readonly Referencia[] = (
   [
     [UMBRALES_NIVEL.intermedio, 2],
@@ -103,16 +103,16 @@ function barraPuntaje(clave: string, etiqueta: string, puntaje: number | null): 
     clave,
     etiqueta,
     ancho: posicionEnEje(puntaje, EJE_PUNTAJE.min, EJE_PUNTAJE.max),
-    texto: TEXTOS_REPORTES.valorNivel(formatearDecimal(puntaje), etiquetaNivel(nivel)),
+    texto: TEXTOS_REPORTES.valorNivel(formatearPuntos(puntaje), etiquetaNivel(nivel)),
     nivel,
   };
 }
 
-/** Values tied at their 2-decimal display are one value. */
+/** Values tied at their whole-number display are one value. */
 function maximos<T>(elementos: readonly T[], valor: (e: T) => number): { valor: number; elementos: T[] } | null {
   if (elementos.length === 0) return null;
-  const maximo = Math.max(...elementos.map((e) => redondear2(valor(e))));
-  return { valor: maximo, elementos: elementos.filter((e) => redondear2(valor(e)) === maximo) };
+  const maximo = Math.max(...elementos.map((e) => redondearPuntos(valor(e))));
+  return { valor: maximo, elementos: elementos.filter((e) => redondearPuntos(valor(e)) === maximo) };
 }
 
 // --- Participantes por nivel (Reporte general §11.2, Resumen del grupo §11.3)
@@ -168,13 +168,13 @@ export function tituloPuntajePorIndicador(indicadores: readonly MediaIndicador[]
   const conMedia = indicadores.filter((i): i is MediaIndicador & { media: number } => i.media !== null);
   const mas = maximos(conMedia, (i) => i.media);
   if (!mas) return t.sinPromedios;
-  const media = formatearDecimal(mas.valor);
+  const media = formatearPuntos(mas.valor);
   if (mas.elementos.length === 1) return t.indicadorMasAlto(sinPuntoFinal(mas.elementos[0].titulo), media);
   if (mas.elementos.length === indicadores.length) return t.indicadoresIguales(media);
   return t.indicadoresMasAltos(formatearLista(mas.elementos.map((i) => String(i.numero))), media);
 }
 
-/** One bar per indicator on the fixed 1–4 axis, with the threshold lines. */
+/** One bar per indicator on the fixed 0–100 axis, with the threshold lines. */
 export function barrasPuntajePorIndicador(indicadores: readonly MediaIndicador[]): DatosBarras {
   return {
     titulo: tituloPuntajePorIndicador(indicadores),
@@ -190,15 +190,15 @@ export function barrasPuntajePorIndicador(indicadores: readonly MediaIndicador[]
 export function tituloPuntajePorParticipante(ranking: readonly PosicionRanking[]): string {
   const t = TEXTOS_REPORTES.titulos;
   if (ranking.length === 0) return t.sinPuntajes;
-  const puntajes = ranking.map((r) => redondear2(r.puntaje));
+  const puntajes = ranking.map((r) => redondearPuntos(r.puntaje));
   const min = Math.min(...puntajes);
   const max = Math.max(...puntajes);
-  if (ranking.length === 1) return t.puntajeUnico(formatearDecimal(max));
-  if (min === max) return t.puntajesIguales(formatearDecimal(max));
-  return t.rangoPuntajes(formatearDecimal(min), formatearDecimal(max));
+  if (ranking.length === 1) return t.puntajeUnico(formatearPuntos(max));
+  if (min === max) return t.puntajesIguales(formatearPuntos(max));
+  return t.rangoPuntajes(formatearPuntos(min), formatearPuntos(max));
 }
 
-/** The ranking (already sorted descending) as bars on the 1–4 axis. */
+/** The ranking (already sorted descending) as bars on the 0–100 axis. */
 export function barrasPuntajePorParticipante(ranking: readonly PosicionRanking[]): DatosBarras {
   return {
     titulo: tituloPuntajePorParticipante(ranking),
@@ -216,14 +216,14 @@ export function tituloPuntajePorCompetencia(competencias: readonly PuntajeCompet
   const conPuntaje = competencias.filter((c): c is PuntajeCompetencia & { puntaje: number } => c.puntaje !== null);
   const mas = maximos(conPuntaje, (c) => c.puntaje);
   if (!mas) return t.sinPuntajes;
-  const valor = formatearDecimal(mas.valor);
+  const valor = formatearPuntos(mas.valor);
   if (conPuntaje.length === 1) return t.unaCompetencia(conPuntaje[0].nombre, valor);
   if (mas.elementos.length === conPuntaje.length) return t.todasIguales(valor);
   if (mas.elementos.length === 1) return t.masAlta(mas.elementos[0].nombre, valor);
   return t.empateAltas(formatearLista(mas.elementos.map((c) => `«${c.nombre}»`)), valor);
 }
 
-/** One bar per competencia with a rubric in the jornada, on the 1–4 axis with the threshold lines. */
+/** One bar per competencia with a rubric in the jornada, on the 0–100 axis with the threshold lines. */
 export function barrasPuntajePorCompetencia(competencias: readonly PuntajeCompetencia[]): DatosBarras {
   return {
     titulo: tituloPuntajePorCompetencia(competencias),
@@ -235,11 +235,11 @@ export function barrasPuntajePorCompetencia(competencias: readonly PuntajeCompet
 // --- Dashboard sentences (Reporte consolidado §11.4, Reporte del participante §11.5)
 
 const listaCompetencias = (competencias: readonly CompetenciaDestacada[]) =>
-  formatearLista(competencias.map((c) => TEXTOS_REPORTES.consolidado.parrafo.competencia(c.nombre, formatearDecimal(c.puntaje))));
+  formatearLista(competencias.map((c) => TEXTOS_REPORTES.consolidado.parrafo.competencia(c.nombre, formatearPuntos(c.puntaje))));
 
 /**
- * "La competencia más fuerte es «A» (3,10) y la que más necesita refuerzo es
- * «B» (2,19)." Null with fewer than 2 competencias with a score; equal scores
+ * "La competencia más fuerte es «A» (70) y la que más necesita refuerzo es
+ * «B» (40)." Null with fewer than 2 competencias with a score; equal scores
  * get a neutral sentence; ties list every competencia.
  */
 export function fraseFuertesDebiles(
@@ -249,7 +249,7 @@ export function fraseFuertesDebiles(
 ): string | null {
   const p = TEXTOS_REPORTES.consolidado.parrafo;
   if (conPuntaje < 2 || masFuertes.length === 0 || masDebiles.length === 0) return null;
-  if (masFuertes.length === conPuntaje) return p.iguales(formatearDecimal(masFuertes[0].puntaje));
+  if (masFuertes.length === conPuntaje) return p.iguales(formatearPuntos(masFuertes[0].puntaje));
   const fuerte = masFuertes.length === 1 ? p.fuerte(listaCompetencias(masFuertes)) : p.fuertes(listaCompetencias(masFuertes));
   const debil = masDebiles.length === 1 ? p.debil(listaCompetencias(masDebiles)) : p.debiles(listaCompetencias(masDebiles));
   return `${fuerte} y ${debil}.`;
@@ -260,7 +260,7 @@ export function parrafoConsolidado(reporte: Pick<ReporteConsolidado, "kpis" | "c
   const p = TEXTOS_REPORTES.consolidado.parrafo;
   const { promedioGrupo, nivelGrupo, brechaGrupo } = reporte.kpis;
   if (promedioGrupo === null || nivelGrupo === null) return p.sinPromedio;
-  const frases = [p.grupo(etiquetaNivel(nivelGrupo), formatearDecimal(promedioGrupo))];
+  const frases = [p.grupo(etiquetaNivel(nivelGrupo), formatearPuntos(promedioGrupo))];
   if (brechaGrupo) frases.push(`${textoBrecha(brechaGrupo)}.`);
   const conPuntaje = reporte.competencias.filter((c) => c.puntaje !== null).length;
   const extremos = fraseFuertesDebiles(tablero.masFuertes, tablero.masDebiles, conPuntaje);
@@ -275,7 +275,7 @@ export function parrafoParticipante(reporte: ReporteParticipanteConsolidado): st
   if (reporte.promedio === null || reporte.nivel === null) return p.sinPromedio;
   const frases = [
     p.participante(
-      formatearDecimal(reporte.promedio),
+      formatearPuntos(reporte.promedio),
       etiquetaNivel(reporte.nivel),
       formatearEntero(reporte.competenciasEvaluadas),
       formatearEntero(reporte.competenciasDisponibles),
@@ -302,7 +302,7 @@ export function lineaNivelMasElegido(distribucion: Readonly<Record<NivelValor, n
 
 // --- Resumen del grupo (§11.3): the one-paragraph summary
 
-/** «Actúa de manera rápida» (3,25) for one indicator, "1 y 3" (3,25) for a tie. */
+/** «Actúa de manera rápida» (75) for one indicator, "1 y 3" (75) for a tie. */
 function frasesExtremo(
   indicadores: readonly IndicadorGrupo[],
   uno: (titulo: string, media: string) => string,
@@ -310,16 +310,16 @@ function frasesExtremo(
 ): string | null {
   const media = indicadores[0]?.media;
   if (media === null || media === undefined) return null;
-  const valor = formatearDecimal(media);
+  const valor = formatearPuntos(media);
   return indicadores.length === 1
     ? uno(sinPuntoFinal(indicadores[0].titulo), valor)
     : varios(formatearLista(indicadores.map((i) => String(i.numero))), valor);
 }
 
 /**
- * "El grupo alcanzó un nivel Avanzado (2,84). Le faltan 0,66 puntos para
- * Experto. El indicador más fuerte es «…» (3,10) y el que más necesita
- * refuerzo es «…» (2,40)." The indicator sentence is left out when the
+ * "El grupo alcanzó un nivel Avanzado (61). Le faltan 14 puntos para
+ * Experto. El indicador más fuerte es «…» (70) y el que más necesita
+ * refuerzo es «…» (47)." The indicator sentence is left out when the
  * indicators can't be averaged together (two rubrics); ties are listed by
  * number, and equal means get a neutral sentence.
  */
@@ -328,13 +328,13 @@ export function parrafoResumenGrupo(
 ): string {
   const p = TEXTOS_REPORTES.parrafo;
   if (grupo.puntaje === null || grupo.nivel === null) return TEXTOS_REPORTES.titulos.sinNivelGeneral;
-  const frases = [p.nivel(etiquetaNivel(grupo.nivel), formatearDecimal(grupo.puntaje))];
+  const frases = [p.nivel(etiquetaNivel(grupo.nivel), formatearPuntos(grupo.puntaje))];
   if (grupo.brecha) frases.push(`${textoBrecha(grupo.brecha)}.`);
 
   const conMedia = grupo.indicadores?.filter((i) => i.media !== null) ?? [];
   if (conMedia.length > 0 && grupo.masFuertes.length > 0 && grupo.masDebiles.length > 0) {
     if (grupo.masFuertes.length === conMedia.length) {
-      frases.push(p.indicadoresIguales(formatearDecimal(grupo.masFuertes[0].media as number)));
+      frases.push(p.indicadoresIguales(formatearPuntos(grupo.masFuertes[0].media as number)));
     } else {
       const fuerte = frasesExtremo(grupo.masFuertes, p.masFuerte, p.masFuertes);
       const debil = frasesExtremo(grupo.masDebiles, p.masDebil, p.masDebiles);
@@ -389,6 +389,6 @@ export function puntosRadar(indicadores: readonly ResumenIndicador[]): PuntoRada
   return indicadores.map((i) => ({
     eje: TEXTOS_REPORTES.indicadorCorto(i.numero),
     media: i.media ?? 0,
-    texto: i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
+    texto: i.media === null ? TEXTOS_REPORTES.sinDatos : formatearPuntos(i.media),
   }));
 }

@@ -90,7 +90,7 @@ test.describe("como docente", () => {
     expect(prueba.asunto).toBe(`[Prueba] Sus resultados de ${competencia.nombre} · Nivela`);
     // Greeted by name, or plain "Hola:" for a participant without one.
     expect(prueba.texto).toMatch(/^Hola(, .+)?:$/m);
-    expect(prueba.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares.");
+    expect(prueba.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100");
     // Never an evaluator's name.
     for (const integrante of equipoDeCompetencia("manana", id)!.integrantes) {
       expect(prueba.texto).not.toContain(integrante.nombre);

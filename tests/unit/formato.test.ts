@@ -5,6 +5,7 @@ import {
   formatearFecha,
   formatearFechaHora,
   formatearPorcentaje,
+  formatearPuntos,
 } from "@/lib/formato";
 
 describe("formato es-CR", () => {
@@ -12,6 +13,13 @@ describe("formato es-CR", () => {
     expect(formatearDecimal(2.75)).toBe("2,75");
     expect(formatearDecimal(3)).toBe("3,00");
     expect(formatearDecimal(1.5)).toBe("1,50");
+  });
+
+  it("puntos enteros de 0 a 100, redondeados como el nivel", () => {
+    expect(formatearPuntos(66.666)).toBe("67");
+    expect(formatearPuntos(0)).toBe("0");
+    expect(formatearPuntos(100)).toBe("100");
+    expect(formatearPuntos(24.499999999999996)).toBe("25");
   });
 
   it("porcentaje con espacio no separable", () => {

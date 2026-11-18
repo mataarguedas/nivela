@@ -8,7 +8,7 @@ import type { Asistencia, Brecha } from "@/lib/puntajes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ENVIO, TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero } from "@/lib/formato";
+import { formatearPuntos, formatearEntero } from "@/lib/formato";
 
 // "Tabla de participantes" (PRD §11.2): code, the indicator means, puntaje
 // and nivel general, the gap to the next level, evaluations and attendance ("Ausente" / "Asistencia en
@@ -184,11 +184,11 @@ export function TablaParticipantes({ filas, indicadores, etiquetadaPor }: Props)
               </th>
               {fila.medias.map((media, i) => (
                 <td key={i} className="px-2 text-right tabular-nums">
-                  {media === null ? "—" : formatearDecimal(media)}
+                  {media === null ? "—" : formatearPuntos(media)}
                 </td>
               ))}
               <td className="px-2 text-right font-semibold tabular-nums">
-                {fila.puntaje === null ? "—" : formatearDecimal(fila.puntaje)}
+                {fila.puntaje === null ? "—" : formatearPuntos(fila.puntaje)}
               </td>
               <td className="px-2">{fila.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(fila.nivel).etiqueta}</td>
               <td className="px-2 text-right whitespace-nowrap tabular-nums">

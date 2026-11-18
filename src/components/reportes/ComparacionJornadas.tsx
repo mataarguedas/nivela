@@ -2,7 +2,7 @@ import { TEXTOS } from "@/config/textos";
 import { nombreJornada } from "@/config/jornadas";
 import { obtenerNivel } from "@/config/niveles";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
+import { formatearPuntos, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import type { IndicadorGrupo, ResumenJornada } from "@/lib/reportes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 
@@ -25,7 +25,7 @@ function filasKpi(jornadas: readonly ResumenJornada[]): Fila[] {
     celdas: jornadas.map((j) => ({ valor: valor(j) })),
   });
   return [
-    fila("puntaje", TEXTOS_REPORTES.puntajeGrupo, (j) => sinDatos(j.puntaje, formatearDecimal)),
+    fila("puntaje", TEXTOS_REPORTES.puntajeGrupo, (j) => sinDatos(j.puntaje, formatearPuntos)),
     fila("nivel", TEXTOS.reportes.nivelGeneral, (j) => (j.nivel === null ? "—" : obtenerNivel(j.nivel).etiqueta)),
     fila("brecha", TEXTOS_REPORTES.paraSiguienteNivel, (j) => (j.brecha === null ? "—" : textoBrechaCorto(j.brecha))),
     fila("evaluados", TEXTOS_REPORTES.participantesEvaluados, (j) => deTotal(j.participantesEvaluados, j.participantesTotal)),
@@ -36,7 +36,7 @@ function filasKpi(jornadas: readonly ResumenJornada[]): Fila[] {
   ];
 }
 
-const media = (i: IndicadorGrupo | undefined) => (i ? sinDatos(i.media, formatearDecimal) : "—");
+const media = (i: IndicadorGrupo | undefined) => (i ? sinDatos(i.media, formatearPuntos) : "—");
 
 function filasIndicadores(jornadas: readonly ResumenJornada[], mismaRubrica: boolean): Fila[] {
   const cantidad = Math.max(0, ...jornadas.map((j) => j.indicadores.length));

@@ -42,7 +42,7 @@ import {
   extremos,
   puntajeEntreCompetencias,
   puntajeGrupo,
-  redondear2,
+  redondearPuntos,
   type Acuerdo,
   type Asistencia,
   type Brecha,
@@ -290,7 +290,7 @@ export function agregarReporte(
     )
     // Compare at display precision, so participants shown with the same score
     // are ordered by code rather than by float noise.
-    .sort((a, b) => redondear2(b.puntaje) - redondear2(a.puntaje) || a.id.localeCompare(b.id));
+    .sort((a, b) => redondearPuntos(b.puntaje) - redondearPuntos(a.puntaje) || a.id.localeCompare(b.id));
 
   // Standard competition ranking at display precision: a tie shares the
   // position and skips the next ones, and everyone tied at the cut stays in,
@@ -299,7 +299,7 @@ export function agregarReporte(
   const mejores: Destacado[] = [];
   for (const [indice, posicion] of ranking.entries()) {
     const anterior = mejores.at(-1);
-    const lugar = anterior && redondear2(anterior.puntaje) === redondear2(posicion.puntaje) ? anterior.posicion : indice + 1;
+    const lugar = anterior && redondearPuntos(anterior.puntaje) === redondearPuntos(posicion.puntaje) ? anterior.posicion : indice + 1;
     if (lugar > CANTIDAD_MEJORES) break;
     const participante = porId.get(posicion.id);
     mejores.push({
@@ -783,7 +783,7 @@ export function tableroConsolidado(reporte: ReporteConsolidado): TableroConsolid
       ),
     }))
     .filter((p) => p.competencias.length > 0)
-    .sort((a, b) => redondear2(a.promedio ?? 0) - redondear2(b.promedio ?? 0) || a.id.localeCompare(b.id));
+    .sort((a, b) => redondearPuntos(a.promedio ?? 0) - redondearPuntos(b.promedio ?? 0) || a.id.localeCompare(b.id));
   return {
     ...destacadas(disponibles),
     conteoNiveles: distribucion(reporte.participantes.flatMap((p) => (p.nivel === null ? [] : [p.nivel]))),

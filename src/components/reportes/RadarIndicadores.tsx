@@ -3,8 +3,8 @@
 import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer } from "recharts";
 import { COLOR_EJE, COLOR_REJILLA, COLOR_TEXTO, TAMANO_ETIQUETA, type PuntoRadar } from "./datosGraficos";
 
-// Mean per indicator on a 1–4 radial scale (PRD §11.1). Each axis label
-// carries the formatted mean, so the values are readable without hovering.
+// Score per indicator on a 0–100 radial scale in points (PRD §7, §11.1). Each
+// axis label carries the formatted score, so the values are readable without hovering.
 // Loaded through graficos.tsx.
 
 const SERIE = "#0066cc";
@@ -17,8 +17,8 @@ export default function RadarIndicadores({ puntos }: { puntos: PuntoRadar[] }) {
         <PolarGrid stroke={COLOR_REJILLA} />
         <PolarAngleAxis dataKey="rotulo" tick={{ fill: COLOR_TEXTO, fontSize: TAMANO_ETIQUETA }} />
         <PolarRadiusAxis
-          domain={[0, 4]}
-          ticks={[1, 2, 3, 4]}
+          domain={[0, 100]}
+          ticks={[25, 50, 75, 100]}
           angle={90}
           axisLine={false}
           tick={{ fill: COLOR_EJE, fontSize: 10 }}

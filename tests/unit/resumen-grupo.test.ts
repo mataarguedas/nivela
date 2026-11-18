@@ -3,6 +3,7 @@ import { obtenerCompetencia, type Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { crearParticipante } from "@/config/participantes";
+import { puntosDesdeNiveles as pts } from "@/lib/puntajes";
 import { agregarReporte, agregarResumenGrupo, type EntradaResumen, type FilaReporte, type ParAusente } from "@/lib/reportes";
 
 // agregarResumenGrupo (PRD §11.3) over hand-computed fixtures, one per
@@ -10,7 +11,11 @@ import { agregarReporte, agregarResumenGrupo, type EntradaResumen, type FilaRepo
 // template). Teams differ in number and size per jornada, as in config: the
 // morning one is "Equipo 4" with 3 members here, the night one "Equipo 1"
 // with 2. P01 exists in both jornadas with different results, so any mixing
-// across jornadas would show up in the numbers.
+// across jornadas would show up in the numbers. Means are worked out in
+// levels (1–4); the report gives them in points, pts(m) = (m − 1) ÷ 3 × 100.
+
+/** Each value in points, compared with float tolerance. */
+const enPuntos = (medias: number[]) => medias.map((m) => expect.closeTo(pts(m), 10));
 
 const competencia = obtenerCompetencia("manana", "adaptabilidad")!;
 
@@ -54,7 +59,7 @@ function evaluacion(evaluadorId: string, participanteId: string, niveles: number
 // Mañana: P01 rated 4,4,4,4 by m1 and 4,4,3,3 by m2 → means 4, 4, 3,5, 3,5
 // → general 3,75 (Experto). P02 rated 2,2,2,2 by m1 → 2 (Intermedio). P03
 // marked absent by m3 and never rated → Ausente.
-// Group mean (3,75 + 2) / 2 = 2,875 → shown 2,88 → Avanzado, 0,62 to Experto.
+// Group mean (3,75 + 2) / 2 = 2,875 → 62,5 puntos → shown 63 → Avanzado, 12 to Experto.
 // Indicator means over participants: (4+2)/2 = 3 · 3 · (3,5+2)/2 = 2,75 · 2,75.
 // Received 3 of 3×3 − 1 absent pair = 8. No evaluator complete.
 const participantesManana = [crearParticipante(1, null, "100000001"), crearParticipante(2, null), crearParticipante(3, null)];
@@ -66,7 +71,7 @@ const filasManana = [
 const ausenciasManana: ParAusente[] = [{ evaluadorId: "m3", participanteId: "P03" }];
 
 // Noche: P01 rated 1,1,1,1 by n1 and n2 → 1 (Básico); P02 rated 2,2,2,2 by both → 2.
-// Group mean 1,5 → Intermedio, 1,00 to Avanzado. Indicator means all 1,5.
+// Group mean 1,5 → 16,7 puntos → shown 17 → Básico, 8 to Intermedio. Indicator means all 1,5.
 // Received 4 of 2×2 → cobertura 1; both evaluators complete.
 const participantesNoche = [crearParticipante(1, null), crearParticipante(2, null)];
 const filasNoche = [
@@ -91,9 +96,9 @@ describe("agregarResumenGrupo: una jornada", () => {
     expect(resumen.vacio).toBe(false);
     expect(resumen.competencia).toEqual({ id: "adaptabilidad", nombre: "Adaptabilidad" });
     const { grupo } = resumen;
-    expect(grupo.puntaje).toBeCloseTo(2.875, 10);
+    expect(grupo.puntaje).toBeCloseTo(pts(2.875), 10);
     expect(grupo.nivel).toBe(3);
-    expect(grupo.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 3.5, faltante: 0.62 });
+    expect(grupo.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 75, faltante: 12 });
     expect(grupo).toMatchObject({
       participantesEvaluados: 2,
       participantesTotal: 3,
@@ -109,9 +114,10 @@ describe("agregarResumenGrupo: una jornada", () => {
 
   it("promedio por indicador y los indicadores más fuertes y más débiles (con empates)", () => {
     const { grupo } = agregarResumenGrupo([entrada("manana")]);
-    expect(grupo.indicadores?.map((i) => i.media)).toEqual([3, 3, 2.75, 2.75]);
+    expect(grupo.indicadores?.map((i) => i.media)).toEqual(enPuntos([3, 3, 2.75, 2.75]));
     expect(grupo.indicadores?.map((i) => i.nivel)).toEqual([3, 3, 3, 3]);
-    expect(grupo.indicadores?.[0].brecha).toMatchObject({ siguiente: 4, faltante: 0.5 });
+    // 3 → 67 puntos: 8 to Experto.
+    expect(grupo.indicadores?.[0].brecha).toMatchObject({ siguiente: 4, faltante: 8 });
     expect(grupo.masFuertes.map((i) => i.numero)).toEqual([1, 2]);
     expect(grupo.masDebiles.map((i) => i.numero)).toEqual([3, 4]);
   });
@@ -121,8 +127,8 @@ describe("agregarResumenGrupo: una jornada", () => {
     expect(resumen.seleccion).toBe("noche");
     expect(resumen.jornadas).toHaveLength(1);
     expect(resumen.jornadas[0]).toMatchObject({ jornada: "noche", numeroEquipo: 1, evaluadoresTotal: 2, evaluadoresCompletos: 2 });
-    expect(resumen.grupo.puntaje).toBe(1.5);
-    expect(resumen.grupo.brecha).toEqual({ nivelActual: 2, siguiente: 3, umbral: 2.5, faltante: 1 });
+    expect(resumen.grupo.puntaje).toBeCloseTo(pts(1.5), 10);
+    expect(resumen.grupo.brecha).toEqual({ nivelActual: 1, siguiente: 2, umbral: 25, faltante: 8 });
     expect(resumen.grupo.cobertura).toBe(1);
     // All indicators equal: each one is both the strongest and the weakest.
     expect(resumen.grupo.masFuertes).toHaveLength(4);
@@ -149,8 +155,8 @@ describe("agregarResumenGrupo: ambas jornadas", () => {
       ["manana", 4, 3],
       ["noche", 1, 2],
     ]);
-    expect(resumen.jornadas[0].puntaje).toBeCloseTo(2.875, 10);
-    expect(resumen.jornadas[1].puntaje).toBe(1.5);
+    expect(resumen.jornadas[0].puntaje).toBeCloseTo(pts(2.875), 10);
+    expect(resumen.jornadas[1].puntaje).toBeCloseTo(pts(1.5), 10);
   });
 
   it("el grupo combinado cuenta P01 de cada jornada por separado, sin mezclarlos", () => {
@@ -158,13 +164,13 @@ describe("agregarResumenGrupo: ambas jornadas", () => {
     // 2 evaluated in the morning (3,75 and 2) + 2 at night (1 and 2).
     expect(grupo.participantesEvaluados).toBe(4);
     expect(grupo.participantesTotal).toBe(5);
-    expect(grupo.puntaje).toBeCloseTo((3.75 + 2 + 1 + 2) / 4, 10);
+    expect(grupo.puntaje).toBeCloseTo(pts((3.75 + 2 + 1 + 2) / 4), 10);
     expect(grupo.nivel).toBe(2);
     expect([...grupo.niveles].sort()).toEqual([1, 2, 2, 4]);
     expect(grupo).toMatchObject({ ausentes: 1, recibidas: 7, esperadas: 12, evaluadoresCompletos: 2, evaluadoresTotal: 5 });
     expect(grupo.cobertura).toBeCloseTo(7 / 12, 10);
     // Indicator 1: (4 + 2 + 1 + 2) / 4 = 2,25; indicator 3: (3,5 + 2 + 1 + 2) / 4 = 2,125.
-    expect(grupo.indicadores?.map((i) => i.media)).toEqual([2.25, 2.25, 2.125, 2.125]);
+    expect(grupo.indicadores?.map((i) => i.media)).toEqual(enPuntos([2.25, 2.25, 2.125, 2.125]));
   });
 
   it("con plantillas distintas no promedia los indicadores juntos: cada jornada conserva los suyos", () => {
@@ -183,14 +189,14 @@ describe("agregarResumenGrupo: ambas jornadas", () => {
     expect(distinto.grupo.indicadores).toBeNull();
     expect(distinto.grupo.masFuertes).toEqual([]);
     // The KPIs still combine.
-    expect(distinto.grupo.puntaje).toBeCloseTo((3.75 + 2 + 1 + 2) / 4, 10);
+    expect(distinto.grupo.puntaje).toBeCloseTo(pts((3.75 + 2 + 1 + 2) / 4), 10);
     expect(distinto.jornadas[1].indicadores.map((i) => i.indicadorId)).toEqual([
       "adaptabilidad-noche-1",
       "adaptabilidad-noche-2",
       "adaptabilidad-noche-3",
       "adaptabilidad-noche-4",
     ]);
-    expect(distinto.jornadas[1].indicadores.map((i) => i.media)).toEqual([1.5, 1.5, 1.5, 1.5]);
+    expect(distinto.jornadas[1].indicadores.map((i) => i.media)).toEqual(enPuntos([1.5, 1.5, 1.5, 1.5]));
   });
 
   it("rechaza entradas vacías, jornadas repetidas o competencias mezcladas", () => {

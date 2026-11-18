@@ -128,7 +128,7 @@ Con el código de administración, en `/admin`, elija la jornada y baje a **Cuen
 4. Si quiere verlo en su bandeja, use **Enviarme una prueba** con su propio correo (no se guarda; el asunto empieza con «[Prueba]»).
 5. Toque **Enviar a {n} participantes** y confirme. Los envíos van de uno en uno, al ritmo que permite Resend.
 
-El correo incluye el nivel general, el puntaje, cuántas evaluaciones recibió y, por indicador, el promedio, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general muestra Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
+El correo incluye el nivel general, el puntaje (de 0 a 100: Básico 0–24, Intermedio 25–49, Avanzado 50–74, Experto 75–100), cuántas evaluaciones recibió y, por indicador, el puntaje, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general muestra Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
 
 ## Dominio de correo
 

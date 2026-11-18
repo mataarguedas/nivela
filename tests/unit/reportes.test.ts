@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { obtenerCompetencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import { crearParticipante, generarParticipantes, type Participante } from "@/config/participantes";
+import { puntosDesdeNiveles as pts } from "@/lib/puntajes";
 import { agregarReporte, type FilaReporte } from "@/lib/reportes";
 
 // agregarReporte against a small hand-computed fixture: 3 evaluators × 3
 // participants on the real Adaptabilidad indicators. P01 is rated by all 3,
-// P02 by 2, P03 by none. Expected values are worked out in the comments.
+// P02 by 2, P03 by none. Expected values are worked out in the comments as
+// means of levels (1–4); the report shows them in points, pts(m) = (m − 1) ÷ 3 × 100.
 
 const competencia = obtenerCompetencia("manana", "adaptabilidad")!;
 
@@ -49,12 +51,12 @@ function evaluacion(evaluadorId: string, participanteId: string, niveles: number
 
 const FILAS: FilaReporte[] = [
   // P01. Ind1 4,4,3 → 3,67 (SD 0,47 alta) · Ind2 4,3,4 → 3,67 · Ind3 4 · Ind4 4
-  // General (3,667 + 3,667 + 4 + 4) / 4 = 3,83 → Experto.
+  // General (3,667 + 3,667 + 4 + 4) / 4 = 3,83 → 94 puntos → Experto.
   ...evaluacion("e1", "P01", [4, 4, 4, 4], { 1: { origen: "ia" }, 2: { observacion: "   " } }),
   ...evaluacion("e2", "P01", [4, 3, 4, 4], { 2: { observacion: "Ajustó su método al nuevo procedimiento." } }),
   ...evaluacion("e3", "P01", [3, 4, 4, 4], { 2: { observacion: "Respondió con rapidez." } }),
   // P02. Ind1 1,3 → 2 (SD 1 media) · Ind2 2,2 → 2 (alta) · Ind3 3,1 → 2 (media)
-  // Ind4 1,4 → 2,5 (SD 1,5 baja). General (2 + 2 + 2 + 2,5) / 4 = 2,125 → Intermedio.
+  // Ind4 1,4 → 2,5 (SD 1,5 baja). General (2 + 2 + 2 + 2,5) / 4 = 2,125 → 37,5 → 38 puntos → Intermedio.
   ...evaluacion("e1", "P02", [1, 2, 3, 1]),
   ...evaluacion("e2", "P02", [3, 2, 1, 4], { 4: { origen: "ia" } }),
   // Ignored: an evaluator outside the team, a participant outside config, an
@@ -74,21 +76,21 @@ describe("agregarReporte", () => {
     expect(reporte.competencia).toEqual({ id: "adaptabilidad", nombre: "Adaptabilidad" });
     expect(reporte.kpis).toMatchObject({ participantesEvaluados: 2, participantesTotal: 3, recibidas: 5, esperadas: 9 });
     expect(reporte.kpis.cobertura).toBeCloseTo(5 / 9, 10);
-    expect(reporte.kpis.puntajePromedio).toBeCloseTo((23 / 6 + 2.125) / 2, 10);
+    expect(reporte.kpis.puntajePromedio).toBeCloseTo(pts((23 / 6 + 2.125) / 2), 10);
     // 2 "ia" levels out of the 20 valid ones; ignored rows don't count.
     expect(reporte.kpis.proporcionIa).toBe(0.1);
   });
 
   it("por participante: medias por indicador, puntaje y nivel general, evaluaciones y % IA", () => {
     expect(p01.evaluaciones).toBe(3);
-    expect(p01.indicadores.map((i) => i.media)).toEqual([11 / 3, 11 / 3, 4, 4]);
-    expect(p01.puntajeGeneral).toBeCloseTo(23 / 6, 10);
+    expect(p01.indicadores.map((i) => i.media)).toEqual([11 / 3, 11 / 3, 4, 4].map(pts));
+    expect(p01.puntajeGeneral).toBeCloseTo(pts(23 / 6), 10);
     expect(p01.nivelGeneral).toBe(4);
     expect(p01.proporcionIa).toBe(1 / 12);
 
     expect(p02.evaluaciones).toBe(2);
-    expect(p02.indicadores.map((i) => i.media)).toEqual([2, 2, 2, 2.5]);
-    expect(p02.puntajeGeneral).toBe(2.125);
+    expect(p02.indicadores.map((i) => i.media)).toEqual([2, 2, 2, 2.5].map(pts));
+    expect(p02.puntajeGeneral).toBeCloseTo(pts(2.125), 10);
     expect(p02.nivelGeneral).toBe(2);
     expect(p02.proporcionIa).toBe(1 / 8);
   });
@@ -157,7 +159,7 @@ describe("agregarReporte", () => {
         medias: p01.indicadores.map((i) => i.media),
       },
       // The admin's carnet reaches the report as the label, not the name.
-      expect.objectContaining({ id: "P02", etiqueta: "100000002", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5] }),
+      expect.objectContaining({ id: "P02", etiqueta: "100000002", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5].map(pts) }),
     ]);
   });
 
@@ -172,13 +174,13 @@ describe("agregarReporte", () => {
   it("puntajes más altos: los empates comparten posición y los empatados en el corte se incluyen", () => {
     const siete = generarParticipantes(7);
     const empates = agregarReporte(competencia, equipo, siete, [
-      ...evaluacion("e1", "P01", [4, 4, 4, 4]), // 4
-      ...evaluacion("e1", "P02", [4, 4, 3, 3]), // 3,5
-      ...evaluacion("e1", "P03", [3, 3, 4, 4]), // 3,5
-      ...evaluacion("e1", "P04", [3, 3, 3, 3]), // 3
-      ...evaluacion("e1", "P05", [3, 3, 2, 2]), // 2,5 (5th place, tied)
-      ...evaluacion("e1", "P06", [2, 2, 3, 3]), // 2,5 (5th place, tied)
-      ...evaluacion("e1", "P07", [1, 1, 1, 1]), // 1, would be 7th
+      ...evaluacion("e1", "P01", [4, 4, 4, 4]), // 100
+      ...evaluacion("e1", "P02", [4, 4, 3, 3]), // 83
+      ...evaluacion("e1", "P03", [3, 3, 4, 4]), // 83
+      ...evaluacion("e1", "P04", [3, 3, 3, 3]), // 67
+      ...evaluacion("e1", "P05", [3, 3, 2, 2]), // 50 (5th place, tied)
+      ...evaluacion("e1", "P06", [2, 2, 3, 3]), // 50 (5th place, tied)
+      ...evaluacion("e1", "P07", [1, 1, 1, 1]), // 0, would be 7th
     ]);
     expect(empates.mejores.map((d) => [d.id, d.posicion])).toEqual([
       ["P01", 1],
@@ -257,7 +259,7 @@ describe("agregarReporte con asistencia (PRD §5.13)", () => {
     expect(reporte.kpis).toMatchObject({ recibidas: 5, esperadas: 6, ausentes: 1 });
     expect(reporte.kpis.cobertura).toBeCloseTo(5 / 6, 10);
     // Scores are unaffected by attendance.
-    expect(p01.puntajeGeneral).toBeCloseTo(23 / 6, 10);
+    expect(p01.puntajeGeneral).toBeCloseTo(pts(23 / 6), 10);
   });
 
   it("matriz de cobertura con Ausente y las esperadas de cada evaluador", () => {
@@ -288,21 +290,21 @@ describe("agregarReporte: brecha al siguiente nivel (PRD §7, §11.1)", () => {
   const reporte = agregarReporte(competencia, equipo, participantes, FILAS);
   const [p01, p02, p03] = reporte.participantes;
 
-  it("puntaje general: Experto no tiene siguiente; Intermedio 2,13 → faltan 0,37 para Avanzado", () => {
-    // P01 23/6 = 3,83 → Experto.
+  it("puntaje general: Experto no tiene siguiente; Intermedio 38 → faltan 12 para Avanzado", () => {
+    // P01 23/6 = 3,83 → 94 puntos → Experto.
     expect(p01.brecha).toEqual({ nivelActual: 4, siguiente: null, umbral: null, faltante: null });
-    // P02 2,125 se muestra 2,13 → 2,5 − 2,13 = 0,37.
-    expect(p02.brecha).toEqual({ nivelActual: 2, siguiente: 3, umbral: 2.5, faltante: 0.37 });
+    // P02 2,125 → 37,5 se muestra 38 → 50 − 38 = 12.
+    expect(p02.brecha).toEqual({ nivelActual: 2, siguiente: 3, umbral: 50, faltante: 12 });
     expect(p03.brecha).toBeNull();
   });
 
   it("por indicador, con la descripción del siguiente nivel tomada de la rúbrica", () => {
     const [ind1, , , ind4] = p02.indicadores;
-    // Ind1 1,3 → 2,00 Intermedio: faltan 0,50 para Avanzado.
-    expect(ind1.brecha).toMatchObject({ nivelActual: 2, siguiente: 3, faltante: 0.5 });
+    // Ind1 1,3 → 2,00 → 33 puntos, Intermedio: faltan 17 para Avanzado.
+    expect(ind1.brecha).toMatchObject({ nivelActual: 2, siguiente: 3, faltante: 17 });
     expect(ind1.descripcionSiguiente).toBe(competencia.indicadores[0].niveles[3]);
-    // Ind4 1,4 → 2,50 Avanzado: faltan 1,00 para Experto.
-    expect(ind4.brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 1 });
+    // Ind4 1,4 → 2,50 → 50 puntos, Avanzado: faltan 25 para Experto.
+    expect(ind4.brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 25 });
     expect(ind4.descripcionSiguiente).toBe(competencia.indicadores[3].niveles[4]);
     // P01 Ind3 = 4: nada que alcanzar.
     expect(p01.indicadores[2]).toMatchObject({ brecha: { siguiente: null }, descripcionSiguiente: null });
@@ -381,8 +383,8 @@ describe("agregarReporte: avance de evaluadores (PRD §11.2)", () => {
       ["n2", "sin-correo", "sin-iniciar", 0, 2],
       ["n1", "activa", "completo", 2, 2],
     ]);
-    // 3,00 Avanzado → faltan 0,50 para Experto, with the night rubric's description.
-    expect(reporte.participantes[0].brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 0.5 });
+    // 3,00 → 67 puntos, Avanzado → faltan 8 para Experto, with the night rubric's description.
+    expect(reporte.participantes[0].brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 8 });
     expect(reporte.participantes[0].indicadores[0].descripcionSiguiente).toBe(competenciaNoche.indicadores[0].niveles[4]);
   });
 

@@ -1,8 +1,26 @@
 // Pure scoring rules from PRD §7. Every score shown in the app or stored in the
 // DB is computed here, so this is the one place the math is tested.
+//
+// Two scales (PRD §7, v1.6): evaluators rate on the 4 levels (1–4), and the
+// stored puntaje of an evaluation is the mean of those levels. Every score in
+// the reports and the results email is in points, 0–100: a mean of levels m
+// is (m − 1) ÷ 3 × 100, so all-Básico is 0 and all-Experto is 100. Points are
+// shown and compared as whole numbers; the level bands are 0–24 Básico,
+// 25–49 Intermedio, 50–74 Avanzado and 75–100 Experto.
 import type { NivelValor } from "@/config/niveles";
 
-export const UMBRALES_NIVEL = { intermedio: 1.5, avanzado: 2.5, experto: 3.5 } as const;
+/** The report scale (points). */
+export const ESCALA_PUNTOS = { min: 0, max: 100 } as const;
+/** The lowest whole number of points of each level above Básico (PRD §7). */
+export const UMBRALES_NIVEL = { intermedio: 25, avanzado: 50, experto: 75 } as const;
+
+/** Each level's band in whole points: Básico 0–24, Intermedio 25–49, Avanzado 50–74, Experto 75–100. */
+export const RANGOS_PUNTOS: Readonly<Record<NivelValor, { min: number; max: number }>> = {
+  1: { min: ESCALA_PUNTOS.min, max: UMBRALES_NIVEL.intermedio - 1 },
+  2: { min: UMBRALES_NIVEL.intermedio, max: UMBRALES_NIVEL.avanzado - 1 },
+  3: { min: UMBRALES_NIVEL.avanzado, max: UMBRALES_NIVEL.experto - 1 },
+  4: { min: UMBRALES_NIVEL.experto, max: ESCALA_PUNTOS.max },
+};
 export const UMBRALES_COINCIDENCIA = { alta: 0.5, media: 1.0 } as const;
 
 // Absorbs float noise such as sqrt(0.25000000000000006) when comparing to a
@@ -24,32 +42,48 @@ export function promedio(valores: readonly number[]): number | null {
   return valores.reduce((suma, v) => suma + v, 0) / valores.length;
 }
 
-/** Rounds to 2 decimals, the precision every score is displayed and stored with. */
+/** Rounds to 2 decimals: the stored puntaje of an evaluation (1–4) and the CSV's AI confidence. */
 export function redondear2(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
 }
 
-/** Puntaje de una evaluación: mean of its indicator levels (1.00–4.00). */
+/**
+ * Rounds points to a whole number, the precision every report score is shown,
+ * compared and leveled with. The tolerance absorbs float noise such as
+ * 24.499999999999996 for a true 24.5.
+ */
+export function redondearPuntos(valor: number): number {
+  return Math.round(valor + TOLERANCIA);
+}
+
+/** A mean of levels (1–4) in points (0–100): (m − 1) ÷ 3 × 100, unrounded. */
+export function puntosDesdeNiveles(media: number): number {
+  return ((media - 1) / 3) * 100;
+}
+
+/** Puntaje de una evaluación: mean of its indicator levels (1.00–4.00). Stored in the DB; reports use points. */
 export function puntajeEvaluacion(niveles: readonly NivelValor[]): number | null {
   return promedio(niveles);
 }
 
-/** Puntaje por indicador: mean of that indicator's level across evaluators. */
+/** Puntaje por indicador, in points: the mean of that indicator's level across evaluators, converted to 0–100. */
 export function puntajeIndicador(niveles: readonly NivelValor[]): number | null {
-  return promedio(niveles);
+  const media = promedio(niveles);
+  return media === null ? null : puntosDesdeNiveles(media);
 }
 
-/** Puntaje general: mean of the indicator means (not of all raw levels). */
+/** Puntaje general, in points: mean of the indicator scores (not of all raw levels). */
 export function puntajeGeneral(mediasIndicadores: readonly number[]): number | null {
   return promedio(mediasIndicadores);
 }
 
 /**
- * Nivel general from a score. The score is rounded to 2 decimals first so the
- * level always agrees with the number the docente sees (e.g. "1,50" → Intermedio).
+ * Nivel general from a score in points. The score is rounded to a whole
+ * number first so the level always agrees with the number the docente sees
+ * (e.g. 24,6 shows as "25" → Intermedio).
  */
 export function nivelGeneral(puntaje: number): NivelValor {
-  const p = redondear2(puntaje);
+  const p = redondearPuntos(puntaje);
   if (p < UMBRALES_NIVEL.intermedio) return 1;
   if (p < UMBRALES_NIVEL.avanzado) return 2;
   if (p < UMBRALES_NIVEL.experto) return 3;
@@ -133,9 +167,9 @@ export type Brecha = {
   nivelActual: NivelValor;
   /** Null at Experto: "Nivel máximo alcanzado". */
   siguiente: NivelValor | null;
-  /** The threshold that opens `siguiente` (1.5 / 2.5 / 3.5). */
+  /** The threshold that opens `siguiente` (25 / 50 / 75 points). */
   umbral: number | null;
-  /** umbral − score, to 2 decimals. */
+  /** umbral − score, in whole points. */
   faltante: number | null;
 };
 
@@ -146,17 +180,17 @@ const UMBRAL_DEL_SIGUIENTE: Record<Exclude<NivelValor, 4>, number> = {
 };
 
 /**
- * The gap from a score (a puntaje general, an indicator mean or the group
- * mean) to the next level. The score is rounded to 2 decimals first, exactly
- * like nivelGeneral(), so the number on screen and the gap always agree:
- * 2,49 → 0,01 to Avanzado; 2,4999 shows as 2,50 → Avanzado, 1,00 to Experto.
+ * The gap from a score in points (a puntaje general, an indicator score or
+ * the group score) to the next level. The score is rounded to a whole number
+ * first, exactly like nivelGeneral(), so the number on screen and the gap
+ * always agree: 49 → 1 to Avanzado; 49,6 shows as 50 → Avanzado, 25 to Experto.
  */
 export function brechaSiguienteNivel(puntaje: number): Brecha {
-  const p = redondear2(puntaje);
+  const p = redondearPuntos(puntaje);
   const nivelActual = nivelGeneral(p);
   if (nivelActual === 4) return { nivelActual, siguiente: null, umbral: null, faltante: null };
   const umbral = UMBRAL_DEL_SIGUIENTE[nivelActual];
-  return { nivelActual, siguiente: (nivelActual + 1) as NivelValor, umbral, faltante: redondear2(umbral - p) };
+  return { nivelActual, siguiente: (nivelActual + 1) as NivelValor, umbral, faltante: umbral - p };
 }
 
 /**
@@ -188,7 +222,7 @@ export function puntajeEntreCompetencias(puntajesGenerales: readonly number[]): 
  * When every value is equal, both lists hold every position.
  */
 export function extremos(valores: readonly (number | null)[]): { maximos: number[]; minimos: number[] } | null {
-  const conDatos = valores.flatMap((v, i) => (v === null ? [] : [{ i, v: redondear2(v) }]));
+  const conDatos = valores.flatMap((v, i) => (v === null ? [] : [{ i, v: redondearPuntos(v) }]));
   if (conDatos.length === 0) return null;
   const maximo = Math.max(...conDatos.map((d) => d.v));
   const minimo = Math.min(...conDatos.map((d) => d.v));

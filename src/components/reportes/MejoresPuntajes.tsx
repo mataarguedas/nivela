@@ -4,7 +4,7 @@ import { IconoChevron } from "@/components/ui/iconos";
 import { obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero } from "@/lib/formato";
+import { formatearPuntos, formatearEntero } from "@/lib/formato";
 import type { Destacado } from "@/lib/reportes";
 
 // "Los 5 puntajes más altos" on the Reporte general: the top places of the
@@ -49,7 +49,7 @@ export function MejoresPuntajes({ mejores, competenciaId, indicadores }: Props) 
                 </p>
               </div>
               <p className="shrink-0 text-right">
-                <span className="block text-h3 font-semibold tabular-nums">{formatearDecimal(d.puntaje)}</span>
+                <span className="block text-h3 font-semibold tabular-nums">{formatearPuntos(d.puntaje)}</span>
                 <span className="block text-caption text-ink-2">{TEXTOS.reportes.puntajeGeneral}</span>
               </p>
             </div>
@@ -59,7 +59,7 @@ export function MejoresPuntajes({ mejores, competenciaId, indicadores }: Props) 
                 return (
                   <div key={indicador.numero}>
                     <dt className="text-ink-2">{TEXTOS_REPORTES.indicadorCorto(indicador.numero)}</dt>
-                    <dd className="tabular-nums text-ink">{media === null ? "—" : formatearDecimal(media)}</dd>
+                    <dd className="tabular-nums text-ink">{media === null ? "—" : formatearPuntos(media)}</dd>
                   </div>
                 );
               })}

@@ -4,6 +4,7 @@ import type { Equipo } from "@/config/equipos";
 import { crearParticipante } from "@/config/participantes";
 import { resultados, TEXTOS_RESULTADOS } from "@/lib/correos/resultados";
 import { ultimosEnvios } from "@/lib/db/envios";
+import { puntosDesdeNiveles as pts } from "@/lib/puntajes";
 import { agregarReporte, type FilaReporte, type ParAusente } from "@/lib/reportes";
 import {
   claveIdempotencia,
@@ -47,8 +48,9 @@ function evaluacion(evaluadorId: string, participanteId: string, niveles: number
 }
 
 // P01: e1 4,4,4,4 and e2 4,4,4,4 → Experto everywhere. P02: e1 2,3,2,1 and
-// e2 3,3,2,2 → 2,5 · 3 · 2 · 1,5 → general 2,25 (Intermedio, 0,25 to
-// Avanzado). P03: no evaluations, marked absent by e2. P04: no evaluations.
+// e2 3,3,2,2 → 2,5 · 3 · 2 · 1,5 → 50 · 67 · 33 · 17 puntos → general 2,25
+// → 42 (Intermedio, 8 to Avanzado). P03: no evaluations, marked absent by e2.
+// P04: no evaluations.
 const participantes = [
   crearParticipante(1, "Ana Lucía Mora Solís", "100000001"),
   crearParticipante(2, "Bruno Chaves", "100000002"),
@@ -73,16 +75,16 @@ describe("datosResultados", () => {
       nombre: "Bruno Chaves",
       competencia: "Adaptabilidad",
       jornada: "Mañana",
-      puntajeGeneral: 2.25,
+      puntajeGeneral: expect.closeTo(pts(2.25), 10),
       nivelGeneral: 2,
-      brecha: { siguiente: 3, faltante: 0.25 },
+      brecha: { siguiente: 3, faltante: 8 },
       evaluaciones: 2,
     });
     expect(datos.indicadores.map((i) => [i.numero, i.media, i.nivel, i.brecha.faltante])).toEqual([
-      [1, 2.5, 3, 1],
-      [2, 3, 3, 0.5],
-      [3, 2, 2, 0.5],
-      [4, 1.5, 2, 1],
+      [1, pts(2.5), 3, 25],
+      [2, pts(3), 3, 8],
+      [3, pts(2), 2, 17],
+      [4, pts(1.5), 1, 8],
     ]);
     expect(datos.indicadores[2].descripcionSiguiente).toBe(competencia.indicadores[2].niveles[3]);
     // Nothing about evaluators, ratings, observations or AI.
@@ -172,13 +174,15 @@ describe("plantilla de resultados", () => {
     expect(correo.texto).toContain("Hola, Bruno Chaves:");
     expect(correo.texto).toContain("Estos son sus resultados en la competencia Adaptabilidad (jornada Mañana).");
     expect(correo.texto).toContain("Nivel general: Intermedio");
-    expect(correo.texto).toContain("Puntaje general: 2,25 de 4,00");
-    expect(correo.texto).toContain("Le faltan 0,25 puntos para Avanzado");
+    expect(correo.texto).toContain("Puntaje general: 42 de 100");
+    expect(correo.texto).toContain("Le faltan 8 puntos para Avanzado");
     expect(correo.texto).toContain("Recibió 2 evaluaciones de sus pares.");
     expect(correo.texto).toContain(`Indicador 1. ${competencia.indicadores[0].titulo}`);
-    expect(correo.texto).toContain("Promedio: 2,50 · Avanzado");
+    expect(correo.texto).toContain("Puntaje: 50 de 100 · Avanzado");
+    expect(correo.texto).toContain("Puntaje: 17 de 100 · Básico");
     expect(correo.texto).toContain(`Para llegar a Avanzado: ${competencia.indicadores[2].niveles[3]}`);
-    expect(correo.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares.");
+    expect(correo.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100");
+    expect(correo.texto).toContain("Básico de 0 a 24, Intermedio de 25 a 49, Avanzado de 50 a 74 y Experto de 75 a 100.");
     expect(correo.html).toContain("Intermedio");
     expect(correo.html).toContain('<html lang="es-CR">');
   });

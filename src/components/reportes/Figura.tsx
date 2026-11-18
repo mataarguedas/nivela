@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { FONDO_NIVEL } from "@/components/ui/coloresNivel";
 import { NIVELES } from "@/config/niveles";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
+import { RANGOS_PUNTOS } from "@/lib/puntajes";
 
 // Server-rendered frame shared by every report block: a titled section on a
 // white tile (sections are separated by the canvas tint, never by borders or
@@ -80,17 +81,26 @@ export function FiguraGrafico({ etiquetadaPor, alto, grafico, leyenda = false, c
   );
 }
 
-export function LeyendaNiveles() {
+/** Level colors. With `puntos`, each level shows its band of points (score cells); otherwise its value 1–4 (level counts). */
+export function LeyendaNiveles({ puntos = false }: { puntos?: boolean }) {
   return (
     <ul aria-hidden="true" className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-caption text-ink-3">
       {NIVELES.map((n) => (
         <li key={n.valor} className="inline-flex items-center gap-1.5">
           <span className={`inline-block size-3 rounded-full ${FONDO_NIVEL[n.valor]}`} />
-          {n.valor} · {n.etiqueta}
+          {puntos
+            ? TEXTOS_REPORTES.bandaNivel(n.etiqueta, RANGOS_PUNTOS[n.valor].min, RANGOS_PUNTOS[n.valor].max)
+            : `${n.valor} · ${n.etiqueta}`}
         </li>
       ))}
     </ul>
   );
+}
+
+/** "Puntajes de 0 a 100: Básico 0–24, …" under a report's KPI tiles (PRD §7). */
+export function EscalaPuntos() {
+  const bandas = NIVELES.map((n) => TEXTOS_REPORTES.bandaNivel(n.etiqueta, RANGOS_PUNTOS[n.valor].min, RANGOS_PUNTOS[n.valor].max));
+  return <p className="text-caption text-ink-2">{TEXTOS_REPORTES.escalaPuntos(bandas.join(" · "))}</p>;
 }
 
 /** Visually hidden table with a chart's values. */

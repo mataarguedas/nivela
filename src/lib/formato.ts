@@ -1,4 +1,5 @@
 // es-CR display helpers. Formatters are created once and reused.
+import { redondearPuntos } from "@/lib/puntajes";
 
 const LOCALE = "es-CR";
 // Dates are shown in Costa Rica time on both server (UTC on Vercel) and client.
@@ -18,6 +19,14 @@ const fecha = new Intl.DateTimeFormat(LOCALE, {
 /** 2.75 → "2,75" */
 export function formatearDecimal(valor: number): string {
   return decimal2.format(valor);
+}
+
+/**
+ * A report score in points (PRD §7): 66.67 → "67". Rounded with the same rule
+ * as nivelGeneral(), so the number shown and its level always agree.
+ */
+export function formatearPuntos(valor: number): string {
+  return entero.format(redondearPuntos(valor));
 }
 
 /** 1000 → "1 000" (es-CR groups with a space). */

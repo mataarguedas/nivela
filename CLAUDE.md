@@ -134,7 +134,7 @@ src/
     envioResultados.ts      # v1.2, server-only: load, preview and send results (paced, recorded)
     db/{index.ts,schema.ts,participantes.ts,cuentas.ts,envios.ts}  # participantes.ts: the admin's list per jornada (emails read apart); cuentas.ts: account statements; envios.ts: envios_resultados
     jornadaActual.ts        # the session's jornada (and contextoEvaluacion: team + evaluador id) for Server Components
-    puntajes.ts             # pure scoring (PRD §7)
+    puntajes.ts             # pure scoring (PRD §7): levels 1–4 in, report scores in points 0–100 out
     reportes.ts             # aggregation for report routes (agregarReporte, agregarResumenGrupo, agregarConsolidado + tableroConsolidado, agregarParticipanteConsolidado)
     borrador.ts             # localStorage drafts (client), try/catch + memory fallback
     validacion.ts           # zod schemas + config cross-checks
@@ -297,7 +297,7 @@ Rules for this module:
 ## Testing expectations
 
 - **Unit (Vitest)**:
-  - `puntajes.ts`: every PRD §7 rule, including the boundaries 1.5 / 2.5 / 3.5 and the SD buckets.
+  - `puntajes.ts`: every PRD §7 rule, including the 1–4 → 0–100 points conversion, the level bands (0–24 / 25–49 / 50–74 / 75–100, boundaries 24/25, 49/50, 74/75) and the SD buckets.
   - `jev.ts` mapping: normal, low-confidence, off-topic, malformed response, timeout.
   - `validacion.ts`: every rejection case in PRD §10.
   - `borrador.ts`: storage failures.
@@ -310,7 +310,7 @@ Rules for this module:
 
 - Server Components fetch data; client components handle interaction only. Keep `"use client"` boundaries small.
 - Every user-facing string lives in the component or in `src/config/textos.ts` for shared strings. Always Spanish, always "usted".
-- Format with `Intl` using `es-CR`: decimals "2,75", percent "78 %", dates `dd/mm/aaaa`.
+- Format with `Intl` using `es-CR`: report scores as whole points "67" (`formatearPuntos`, PRD §7 v1.6), other decimals "2,75", percent "78 %", dates `dd/mm/aaaa`.
 - No new dependencies without a clear reason. Prefer platform APIs.
 - No `any`. Use zod-inferred types at the boundaries.
 - Small, focused commits following the PRD milestones (M1–M7).

@@ -53,7 +53,7 @@ test.describe("como docente", () => {
 
     await expect(principal(page).getByText("Puntaje del grupo", { exact: true })).toBeVisible();
     await expect(principal(page).getByText("Evaluadores completos", { exact: true })).toBeVisible();
-    await expect(principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d,\d{2}\)\. /)).toBeVisible();
+    await expect(principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d{1,3}\)\. /)).toBeVisible();
     for (const titulo of ["Participantes por nivel", "Puntaje promedio por indicador"]) {
       await expect(principal(page).getByRole("heading", { level: 2, name: titulo })).toBeVisible();
     }

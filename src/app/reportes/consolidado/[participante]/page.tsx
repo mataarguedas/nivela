@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { BarrasHorizontales } from "@/components/reportes/BarrasHorizontales";
 import { BotonImprimir } from "@/components/reportes/BotonImprimir";
 import { barrasPuntajePorCompetencia, parrafoParticipante } from "@/components/reportes/datosGraficos";
-import { FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { EscalaPuntos, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
 import { FONDO_NIVEL } from "@/components/ui/coloresNivel";
 import { IconoChevron } from "@/components/ui/iconos";
 import { nombreJornada } from "@/config/jornadas";
 import { obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearLista } from "@/lib/formato";
+import { formatearPuntos, formatearEntero, formatearLista } from "@/lib/formato";
 import type { CompetenciaParticipante, IndicadorParticipante, ReporteParticipanteConsolidado } from "@/lib/reportes";
 import { textoBrecha, textoBrechaCorto } from "@/lib/textoBrecha";
 import { cargarParticipanteConsolidado } from "../../cargarReporte";
@@ -21,7 +21,7 @@ import { exigirDocente } from "../../exigirDocente";
 // competencia of the session's jornada, as a dashboard for the docente: the
 // level by promedio entre competencias and its gap, KPI tiles, a
 // plain-language summary, the puntaje per competencia (server-drawn bars on
-// the 1–4 axis), and one card per competencia with its level, gap,
+// the 0–100 axis), and one card per competencia with its level, gap,
 // evaluations and strongest/weakest indicator, linking to that competencia's
 // Reporte individual. Identified by carnet, never by name; no observations
 // (they stay in each Reporte individual). Docente only (proxy.ts gates
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Value gutter, wide enough for "2,10 · Intermedio".
+// Value gutter, wide enough for "100 · Intermedio".
 const ANCHO_PUNTAJE = "7rem";
 
 type Props = PageProps<"/reportes/consolidado/[participante]">;
@@ -132,12 +132,12 @@ function Contenido({ reporte }: { reporte: ReporteParticipanteConsolidado }) {
       <dl className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-4">
         <Kpi
           etiqueta={t.promedioGrupo}
-          valor={reporte.promedio === null ? "—" : formatearDecimal(reporte.promedio)}
+          valor={reporte.promedio === null ? "—" : formatearPuntos(reporte.promedio)}
           detalle={reporte.nivel === null ? undefined : TEXTOS_REPORTES.nivelDetalle(obtenerNivel(reporte.nivel).etiqueta)}
         />
         <Kpi
           etiqueta={TEXTOS_REPORTES.paraSiguienteNivel}
-          valor={brecha === null || brecha.faltante === null ? "—" : formatearDecimal(brecha.faltante)}
+          valor={brecha === null || brecha.faltante === null ? "—" : formatearPuntos(brecha.faltante)}
           detalle={
             brecha === null
               ? undefined
@@ -149,6 +149,7 @@ function Contenido({ reporte }: { reporte: ReporteParticipanteConsolidado }) {
         <Kpi etiqueta={t.evaluadas} valor={total(reporte.competenciasEvaluadas, reporte.competenciasDisponibles)} />
         <Kpi etiqueta={TEXTOS.reportes.evaluacionesRecibidas} valor={formatearEntero(reporte.evaluaciones)} />
       </dl>
+      <EscalaPuntos />
 
       <SeccionReporte id="en-pocas-palabras" titulo={t.resumenTitulo}>
         <p className="text-body text-ink">{parrafoParticipante(reporte)}</p>
@@ -164,7 +165,7 @@ function Contenido({ reporte }: { reporte: ReporteParticipanteConsolidado }) {
             encabezados={[t.competencia, TEXTOS.reportes.puntajeGeneral, TEXTOS.reportes.nivelGeneral]}
             filas={disponibles.map((c) => [
               c.nombre,
-              c.puntaje === null ? "—" : formatearDecimal(c.puntaje),
+              c.puntaje === null ? "—" : formatearPuntos(c.puntaje),
               c.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(c.nivel).etiqueta,
             ])}
           />
@@ -187,7 +188,7 @@ function Contenido({ reporte }: { reporte: ReporteParticipanteConsolidado }) {
 const lineaIndicadores = (indicadores: readonly IndicadorParticipante[]) =>
   formatearLista(
     indicadores.map((i) =>
-      TEXTOS_REPORTES.consolidado.participante.indicadorValor(i.numero, i.titulo.trim().replace(/\.$/, ""), formatearDecimal(i.media ?? 0)),
+      TEXTOS_REPORTES.consolidado.participante.indicadorValor(i.numero, i.titulo.trim().replace(/\.$/, ""), formatearPuntos(i.media ?? 0)),
     ),
   );
 
@@ -217,7 +218,7 @@ function TarjetaCompetencia({ competencia: c, participanteId }: { competencia: C
       {titulo}
       <p className="mt-2 flex items-center gap-2">
         <span aria-hidden="true" className={`inline-block size-3 shrink-0 rounded-full ${FONDO_NIVEL[c.nivel]}`} />
-        <span className="text-h3 font-semibold tabular-nums">{formatearDecimal(c.puntaje)}</span>
+        <span className="text-h3 font-semibold tabular-nums">{formatearPuntos(c.puntaje)}</span>
         <span className="text-body text-ink">{obtenerNivel(c.nivel).etiqueta}</span>
       </p>
       <dl className="mt-2 flex flex-col gap-1 text-[14px]">
@@ -234,7 +235,7 @@ function TarjetaCompetencia({ competencia: c, participanteId }: { competencia: C
         {todosIguales ? (
           <div>
             <dt className="sr-only">{t.indicadorMasAlto(c.indicadoresFuertes.length)}</dt>
-            <dd className="text-ink">{t.todosIguales(formatearDecimal(c.indicadoresFuertes[0].media ?? 0))}</dd>
+            <dd className="text-ink">{t.todosIguales(formatearPuntos(c.indicadoresFuertes[0].media ?? 0))}</dd>
           </div>
         ) : (
           <>

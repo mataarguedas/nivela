@@ -5,7 +5,7 @@ import { useState } from "react";
 import { IconoChevron } from "@/components/ui/iconos";
 import { obtenerNivel, type NivelValor } from "@/config/niveles";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero } from "@/lib/formato";
+import { formatearPuntos, formatearEntero } from "@/lib/formato";
 import type { Brecha } from "@/lib/puntajes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 
@@ -84,10 +84,10 @@ function Celda({
   return (
     <Link
       href={href}
-      aria-label={`${formatearDecimal(celda.puntaje)} · ${obtenerNivel(celda.nivel).etiqueta}. ${etiqueta}`}
+      aria-label={`${formatearPuntos(celda.puntaje)} · ${obtenerNivel(celda.nivel).etiqueta}. ${etiqueta}`}
       className="inline-flex min-h-11 flex-col items-end justify-center rounded-pill px-2 text-link hover:underline"
     >
-      <span className="font-semibold tabular-nums">{formatearDecimal(celda.puntaje)}</span>
+      <span className="font-semibold tabular-nums">{formatearPuntos(celda.puntaje)}</span>
       <span className="text-caption text-ink-3">{obtenerNivel(celda.nivel).etiqueta}</span>
     </Link>
   );
@@ -178,7 +178,7 @@ export function TablaConsolidada({ competencias, filas, etiquetadaPor }: Props) 
               ))}
               <td className="px-2 text-right tabular-nums">{TEXTOS_REPORTES.deTotal(formatearEntero(fila.evaluadas), total)}</td>
               <td className="px-2 text-right font-semibold tabular-nums">
-                {fila.promedio === null ? "—" : formatearDecimal(fila.promedio)}
+                {fila.promedio === null ? "—" : formatearPuntos(fila.promedio)}
               </td>
               <td className="px-2">{fila.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(fila.nivel).etiqueta}</td>
               <td className="px-2 text-right whitespace-nowrap tabular-nums">

@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias, its CSV and a dashboard (§5.9, §7, §10, §11.4), and the Reporte del participante, one student across every competencia (§11.5). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
+| Version | 1.6: the reports and the results email give every score in points from 0 to 100, with the level bands Básico 0–24, Intermedio 25–49, Avanzado 50–74 and Experto 75–100 (§7, §10, §11, §5.14); evaluators still rate on the 4 levels. 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias, its CSV and a dashboard (§5.9, §7, §10, §11.4), and the Reporte del participante, one student across every competencia (§11.5). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
 | Date | 2026-11-18 |
 | Owner | Emmanuel (engineering) |
 | Status | Approved for build (see §16 for open items) |
@@ -16,7 +16,7 @@
 
 Nivela is a mobile-first web app (installable as a PWA) used during a peer-assessment activity in the courses **AGRH 315 Psicología 2** and **AGRH 613 Seminario Integrado de Recursos Humanos**.
 
-Students are grouped into five teams, one per *competencia*. Each team member rates participants from a **separate course** on that team's competencia. An admin sets how many participants there are, their names and their carnets (§5.10); the reports identify participants by carnet only. Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4).
+Students are grouped into five teams, one per *competencia*. Each team member rates participants from a **separate course** on that team's competencia. An admin sets how many participants there are, their names and their carnets (§5.10); the reports identify participants by carnet only. Each competencia has 4 indicators, and each indicator has 4 behavior levels: Básico (1), Intermedio (2), Avanzado (3), Experto (4). The reports and the results email turn those ratings into points from 0 to 100 (§7).
 
 When an evaluator is unsure which level applies, they can describe what they observed in Spanish. **Jev** (TypeSafe AI's System One decision model) then suggests the most likely level with a calibrated probability. The evaluator always confirms the level.
 
@@ -210,9 +210,9 @@ The code is what stops someone who knows a classmate's email from claiming that 
 - Sends go one at a time, paced to stay under Resend's rate limit (a rate-limit answer waits and retries once). Each carries an `Idempotency-Key` of jornada, competencia, participant and the time of their latest evaluation, so a retried request never sends twice; a deliberate "Reenviar" appends the number of earlier successful sends, so it really sends again. After an `error`, the next send retries that participant without "Reenviar".
 - **Email content** (Spanish, "usted"), subject *"Sus resultados de {competencia} · Nivela"*:
   - Greeting by name; competencia and jornada.
-  - Nivel general (large) and puntaje general; evaluations received.
-  - Per indicator: mean, level, the gap ("Le faltan {x} puntos para {nivel}" or "Nivel máximo alcanzado", §7) and the description of the next level's behavior.
-  - A closing line: the results are the average of the peer evaluations.
+  - Nivel general (large) and puntaje general ("{x} de 100", §7); evaluations received.
+  - Per indicator: puntaje ("{x} de 100"), level, the gap ("Le faltan {x} puntos para {nivel}" or "Nivel máximo alcanzado", §7) and the description of the next level's behavior.
+  - A closing line: the results are the average of the peer evaluations, on a 0–100 scale with the four level bands (§7).
   - **Never included**: evaluator names, individual ratings, AI metadata, other participants. Peer observations are **excluded** (open question, §16).
 - Every send is recorded in `envios_resultados` (status `enviado` or `error`, timestamp; never the address or the body). The Reporte general table shows a "Correo" column: Enviado / Error / Pendiente.
 - Delivery: §13 Email.
@@ -253,22 +253,31 @@ The code is what stops someone who knows a classmate's email from claiming that 
 
 ## 7. Scoring rules
 
-Level values: Básico = 1, Intermedio = 2, Avanzado = 3, Experto = 4.
+Level values: Básico = 1, Intermedio = 2, Avanzado = 3, Experto = 4. Evaluators rate with these levels.
+
+**Points (v1.6).** Every score in the reports, the CSVs' aggregates and the results email is in **points, from 0 to 100**. A mean of levels `m` (1–4) is `(m − 1) ÷ 3 × 100` points: all Básico is 0, all Intermedio 33, all Avanzado 67, all Experto 100, so each level rated alone falls in its own band. Points are shown as whole numbers ("67"), and a score is rounded to a whole number before its level and gap are read, so the shown number and its level always agree.
+
+| Nivel | Points |
+|---|---|
+| Básico | 0–24 |
+| Intermedio | 25–49 |
+| Avanzado | 50–74 |
+| Experto | 75–100 |
 
 | Metric | Definition |
 |---|---|
-| Puntaje de una evaluación | Mean of its 4 indicator levels (1.00–4.00). |
-| Puntaje por indicador (participante) | Mean of that indicator's level across all evaluators who rated the participant. |
-| Puntaje general (participante) | Mean of the 4 indicator means. |
-| Nivel general | Mapped from a score: `< 1.5` Básico · `< 2.5` Intermedio · `< 3.5` Avanzado · `≥ 3.5` Experto. |
+| Puntaje de una evaluación | Mean of its 4 indicator levels (1.00–4.00), stored in `evaluaciones.puntaje`. Not shown in the reports. |
+| Puntaje por indicador (participante) | Mean of that indicator's level across all evaluators who rated the participant, in points. |
+| Puntaje general (participante) | Mean of the 4 indicator scores, in points. |
+| Nivel general | From a score in points, rounded to a whole number: `< 25` Básico · `< 50` Intermedio · `< 75` Avanzado · `≥ 75` Experto. |
 | Acuerdo (participante, indicador) | Range (min–max) and standard deviation across evaluators, shown as "Alta / Media / Baja" coincidencia: SD ≤ 0.5 / ≤ 1.0 / > 1.0. |
 | Cobertura | Evaluations received ÷ expected evaluations. Expected = (number of evaluators × number of active participants) − the evaluator × participant pairs marked absent (§5.13). |
-| Brecha al siguiente nivel | For a score `s` (a puntaje general, an indicator mean or the group mean) rounded to 2 decimals: the next threshold is the first of 1.5 / 2.5 / 3.5 above `s`, and *faltante* = threshold − `s`, to 2 decimals. Uses the same rounding as Nivel general, so the shown score and the gap always agree: 2,49 → "Le faltan 0,01 puntos para Avanzado"; 2,50 → Avanzado, "Le faltan 1,00 puntos para Experto"; ≥ 3,50 → "Nivel máximo alcanzado". |
+| Brecha al siguiente nivel | For a score `s` in points (a puntaje general, an indicator score or the group score) rounded to a whole number: the next threshold is the first of 25 / 50 / 75 above `s`, and *faltante* = threshold − `s`, in whole points. Uses the same rounding as Nivel general, so the shown score and the gap always agree: 49 → "Le falta 1 punto para Avanzado"; 49,6 shows as 50 → Avanzado, "Le faltan 25 puntos para Experto"; ≥ 75 → "Nivel máximo alcanzado". |
 | Puntaje del grupo | Mean of the puntajes generales of the participants with at least 1 evaluation. Its nivel and brecha use the same rules. |
 | Promedio entre competencias (participante) | Mean of the participant's puntajes generales in the competencias where they have at least 1 evaluation (§11.4). Always shown with how many competencias it covers ("{n} de {total}"). Its nivel and brecha use the same rules; the group's figure is the mean of these promedios over the participants that have one. |
 | Avance de un evaluador | Expected = active participants − those this evaluator marked absent. Status: **Sin iniciar** (0 sent) · **En progreso** · **Completo** (sent = expected). |
 
-Numbers are displayed with `Intl.NumberFormat('es-CR')` and 2 decimals (e.g., "2,75"). All scoring lives in one pure, unit-tested module (`src/lib/puntajes.ts`).
+Scores are displayed as whole points with `Intl.NumberFormat('es-CR')` (e.g., "67"); other decimals (the standard deviation) use 2 decimals ("0,82"). All scoring, including the conversion to points, lives in one pure, unit-tested module (`src/lib/puntajes.ts`).
 
 ## 8. Jev integration
 
@@ -361,7 +370,7 @@ evaluaciones
   competencia_id   text not null
   evaluador_id     text not null
   participante_id  text not null
-  puntaje          numeric(3,2) not null         -- mean of 4 levels
+  puntaje          numeric(3,2) not null         -- mean of 4 levels (1–4); reports use points (§7)
   created_at       timestamptz not null default now()
   updated_at       timestamptz not null default now()
   unique (jornada, competencia_id, evaluador_id, participante_id)
@@ -497,7 +506,7 @@ Errors use the same shape as §8.3, in Spanish.
 
 CSV columns: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`. `carnet` is empty for a participant without one. The CSV never includes participant names (v1.4), emails or attendance. The file is named `nivela-{competencia}-{jornada}-{aaaa-mm-dd}.csv`.
 
-Consolidated CSV columns (§11.4): `jornada, participante, carnet`, then for each competencia with a rubric in the jornada (config order) `{id}_puntaje, {id}_nivel, {id}_evaluaciones`, then `competencias_evaluadas, promedio_competencias, nivel_promedio`. One row per active participant; scores to 2 decimals with "." like the raw CSV. Never names, emails or attendance. The file is named `nivela-consolidado-{jornada}-{aaaa-mm-dd}.csv`.
+Consolidated CSV columns (§11.4): `jornada, participante, carnet`, then for each competencia with a rubric in the jornada (config order) `{id}_puntaje, {id}_nivel, {id}_evaluaciones`, then `competencias_evaluadas, promedio_competencias, nivel_promedio`. One row per active participant; scores in whole points (0–100, §7), like the reports. Never names, emails or attendance. The file is named `nivela-consolidado-{jornada}-{aaaa-mm-dd}.csv`.
 
 ## 11. Reports and charts (Recharts)
 
@@ -508,21 +517,22 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 **Participants are identified by carnet (v1.4).** Every report (general, individual, group summary) labels each participant with their carnet, or "Participante NN" when it is blank, and never shows their name. Names stay for the evaluators, the admin and the results email (§5.14).
 
 **Simpler charts (v1.2).** The default view of every report follows these rules:
-- One message per chart. Its title is a plain sentence computed from the data, e.g. *"La mayoría de los participantes está en nivel Avanzado (12 de 20)"* or *"El indicador más alto es «Actúa de manera rápida» (3,25)"*. Ties and empty data get neutral sentences.
-- Horizontal bars only, with every value labelled at the bar end. The level thresholds 1,5 / 2,5 / 3,5 are dashed reference lines, labelled with the level they open.
+- One message per chart. Its title is a plain sentence computed from the data, e.g. *"La mayoría de los participantes está en nivel Avanzado (12 de 20)"* or *"El indicador más alto es «Actúa de manera rápida» (75)"*. Ties and empty data get neutral sentences.
+- Horizontal bars only, on a fixed 0–100 axis, with every value labelled at the bar end. The level thresholds 25 / 50 / 75 are dashed reference lines, labelled with the level they open.
+- Under the KPI tiles, every report states the scale: *"Puntajes de 0 a 100: Básico 0–24 · Intermedio 25–49 · Avanzado 50–74 · Experto 75–100."*
 - Only the 4 level colors; no legend is needed to read a chart; each chart keeps its visually hidden table equivalent.
 - The v1.1 charts (radar, stacked distributions, 100 % bars) move into a collapsed **"Ver gráficos detallados"** section at the end of each report, loaded only when opened. Nothing is removed.
 
 ### 11.1 Reporte individual (per participant)
 - Header: the participant's carnet, **Nivel general** (large), puntaje general, number of evaluations received, and under the level the gap (§7): *"Le faltan {x} puntos para {nivel}"* or *"Nivel máximo alcanzado"*.
-- **Puntaje por indicador**: horizontal bars on a fixed 1–4 axis, labelled "3,25 · Avanzado", with the threshold reference lines.
+- **Puntaje por indicador**: horizontal bars on the fixed 0–100 axis, labelled "75 · Experto", with the threshold reference lines.
 - Per indicator, one plain line instead of a stacked bar: *"{n} de {total} evaluadores eligieron {nivel}"* (the most chosen level; ties listed).
 - Per indicator, the gap and the next level's description from config: *"Para llegar a {nivel}: {descripción}"*.
-- **Coincidencia** chip per indicator (§7).
+- **Coincidencia** chip per indicator (§7), with the indicator's score, the range of levels chosen ("Niveles 2–4") and the standard deviation of those levels.
 - **Observaciones**, grouped by indicator, each with the evaluator's name and level. Visible to the docente only.
 - Share of levels that came from an applied AI suggestion.
 - Attendance: "Ausente" or "Asistencia en conflicto" when it applies (§5.13).
-- **Ver gráficos detallados**: the radar chart (4 axes, scale 1–4) and the stacked bar per indicator (how many evaluators chose each level).
+- **Ver gráficos detallados**: the radar chart (4 axes, scale 0–100) and the stacked bar per indicator (how many evaluators chose each level).
 
 ### 11.2 Reporte general
 - Header actions: **"Resumen del grupo"** (§11.3) and **"Enviar resultados por correo"** (§5.14), both secondary; "Descargar CSV" and "Imprimir o guardar PDF".
@@ -532,7 +542,7 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
   - Per member of the jornada's team for the competencia: name, curso, account status (Sin correo / Pendiente de activar / Activa), last access (dd/mm/aaaa hh:mm), sent *"{x} de {y}"*, absents marked, and a chip **Sin iniciar** / **En progreso** / **Completo** (§7). Incomplete ones first.
   - Caption: *"Solo se cuentan las evaluaciones enviadas; los borradores quedan en el teléfono de cada evaluador."*
   - At 375 px each evaluator is a stacked card instead of a table row.
-- **Los 5 puntajes más altos**: the top 5 places by puntaje general, each showing its puntaje, nivel general, evaluations received and the 4 indicator means, and linking to the individual report. Scores that are equal at 2 decimals share a position (1, 2, 2, 4…), and everyone tied at 5th place is shown.
+- **Los 5 puntajes más altos**: the top 5 places by puntaje general, each showing its puntaje, nivel general, evaluations received and the 4 indicator means, and linking to the individual report. Scores that are equal in whole points share a position (1, 2, 2, 4…), and everyone tied at 5th place is shown.
 - **Participantes por nivel**: 4 horizontal bars (Básico → Experto) counting participants by nivel general, labelled with count and percent.
 - **Puntaje por participante**: horizontal bars sorted descending, colored by nivel general, with the threshold reference lines.
 - **Tabla de participantes**: carnet, the 4 indicator means, puntaje general, nivel general, **"Para el siguiente nivel"** (the gap), number of evaluations, **Asistencia**, and **Correo** (Enviado / Error / Pendiente, §5.14). Sortable, and each row links to the individual report.
@@ -545,7 +555,7 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - A "Jornada" selector with **Mañana** / **Noche** / **Ambas jornadas** (radio group styled like the jornada switch), driving `?jornada=`. The default is the session's jornada. This is the §5.11 exception: read-only, never changes the session.
 - Hero "Resumen del grupo" with *"{competencia} · Jornada: {nombre}"* (or *"Ambas jornadas"*).
 - KPI tiles: puntaje del grupo and its nivel, the group's gap to the next level (§7), participantes evaluados, ausentes, cobertura, evaluadores completos.
-- A one-paragraph summary generated from the data, e.g. *"El grupo alcanzó un nivel Avanzado (2,84). Le faltan 0,66 puntos para Experto. El indicador más fuerte es … y el que más necesita refuerzo es …"*.
+- A one-paragraph summary generated from the data, e.g. *"El grupo alcanzó un nivel Avanzado (61). Le faltan 14 puntos para Experto. El indicador más fuerte es … y el que más necesita refuerzo es …"*.
 - **Participantes por nivel** and **Puntaje promedio por indicador**, using the simple charts above.
 - With **Ambas jornadas**, a Mañana vs Noche comparison table (each KPI and indicator mean in two columns). Jornadas are compared **by competencia, never by team number**: for Adaptabilidad it compares morning Equipo 4 with night Equipo 1, and each column header names its own team from config ("Mañana · Equipo 4", "Noche · Equipo 1"). Evaluator counts come from each jornada's own team size. Participants are keyed by jornada + id (P01 exists in both). Indicator means are compared side by side only when both jornadas rate with the same rubric (same indicator ids); otherwise each jornada's indicators are listed under its own column, and only the KPIs share rows. "Ambas jornadas" is offered only for competencias with a rubric in both jornadas.
 - Same empty state as §11.2; "Volver" goes to the Reporte general; printable.
@@ -555,10 +565,10 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - Hero "Reporte consolidado" with *"Todas las competencias · Jornada: {nombre}"*; actions "Descargar CSV" (primary, §10) and "Imprimir o guardar PDF".
 - KPI tiles: competencias con evaluaciones (*"{n} de {m}"*, m = those with a rubric and a team in the jornada; when m < 5, *"{m} de 5 con plantilla en esta jornada"*), participantes evaluados (in at least one competencia), evaluaciones recibidas / esperadas with cobertura (summed over the competencias), promedio entre competencias of the group (§7) and its nivel, evaluadores completos (summed over the teams).
 - **Tablero** (dashboard, right after the KPI tiles), so the docente reads the group at a glance:
-  - **En pocas palabras**: one paragraph generated from the data, e.g. *"El grupo alcanzó un nivel Intermedio (2,48) como promedio entre competencias. Le faltan 0,02 puntos para Avanzado. La competencia más fuerte es «Orientación a resultados» (2,62) y la que más necesita refuerzo es «Orientación al detalle» (2,19). 6 participantes tienen al menos una competencia en nivel Básico."* Ties list every competencia; equal scores and missing data get neutral sentences.
-  - **Mapa de niveles**: a heatmap table, one row per participant (carnet, linking to §11.5) from the highest promedio entre competencias to the lowest, one column per competencia with a rubric plus "Promedio". Each cell is filled with the level color **and shows the score** (the level name is in its tooltip and for screen readers): Básico and Intermedio are too close in lightness to be told apart by color alone. No data shows "—", an absent participant "Aus.". A level legend sits under it.
+  - **En pocas palabras**: one paragraph generated from the data, e.g. *"El grupo alcanzó un nivel Intermedio (49) como promedio entre competencias. Le falta 1 punto para Avanzado. La competencia más fuerte es «Orientación a resultados» (54) y la que más necesita refuerzo es «Orientación al detalle» (40). 6 participantes tienen al menos una competencia en nivel Básico."* Ties list every competencia; equal scores and missing data get neutral sentences.
+  - **Mapa de niveles**: a heatmap table, one row per participant (carnet, linking to §11.5) from the highest promedio entre competencias to the lowest, one column per competencia with a rubric plus "Promedio". Each cell is filled with the level color **and shows the score** (the level name is in its tooltip and for screen readers): Básico and Intermedio are too close in lightness to be told apart by color alone. No data shows "—", an absent participant "Aus.". A level legend with each level's band of points (Básico 0–24 …) sits under it.
   - **Requieren atención**: the participants with at least one competencia in nivel Básico, lowest promedio first, each naming those competencias with their scores and linking to §11.5. Empty: *"Ningún participante tiene competencias en nivel Básico."*
-- **Puntaje del grupo por competencia**: horizontal bars on the 1–4 axis with the threshold lines (§11 simpler charts), one per competencia with a rubric; the title names the highest one, e.g. *"La competencia con el puntaje más alto es «Adaptabilidad» (3,10)"*.
+- **Puntaje del grupo por competencia**: horizontal bars on the 0–100 axis with the threshold lines (§11 simpler charts), one per competencia with a rubric; the title names the highest one, e.g. *"La competencia con el puntaje más alto es «Adaptabilidad» (70)"*.
 - **Resumen por competencia**: one row per competencia in config order: name (linking to its Reporte general), that jornada's team label ("Equipo {numero}", from config), puntaje del grupo, nivel, "Para el siguiente nivel", participantes evaluados, cobertura, evaluadores completos. A competencia without a rubric or team in the jornada stays listed with *"Sin plantilla en esta jornada"*.
 - **Participantes por nivel (promedio entre competencias)**: the 4-bar chart over each participant's nivel by promedio entre competencias.
 - **Participantes en todas las competencias**: one row per participant (carnet, never the name, linking to §11.5), one column per competencia with a rubric (puntaje general and nivel, linking to that competencia's Reporte individual; "Ausente" or "—" without a puntaje), then "Competencias evaluadas" (*"{n} de {m}"*), "Promedio", "Nivel" and "Para el siguiente nivel". Sortable like §11.2; default promedio descending.
@@ -568,8 +578,8 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 `/reportes/consolidado/[participante]`, docente only. One participant across every competencia of the session's jornada, as a dashboard: what the docente needs to talk to that student, without opening five reports.
 - Header: the carnet (never the name), *"Todas las competencias · Jornada: {nombre} · Reporte del participante"*, the nivel by promedio entre competencias (large) and its gap (§7). Action: "Imprimir o guardar PDF" (primary; there is no CSV).
 - KPI tiles: promedio entre competencias and its nivel, "Para el siguiente nivel", competencias evaluadas (*"{n} de {m}"*), evaluaciones recibidas (summed over the competencias).
-- **En pocas palabras**: e.g. *"El promedio entre competencias es 3,15 (Avanzado), en 5 de 5 competencias. Le faltan 0,35 puntos para Experto. La competencia más fuerte es «Pensamiento crítico y analítico» (3,67) y la que más necesita refuerzo es «Orientación a resultados» (2,58)."* With one competencia evaluated, the comparison is left out.
-- **Puntaje por competencia**: horizontal bars on the 1–4 axis with the threshold lines, one per competencia with a rubric, titled by the highest one.
+- **En pocas palabras**: e.g. *"El promedio entre competencias es 72 (Avanzado), en 5 de 5 competencias. Le faltan 3 puntos para Experto. La competencia más fuerte es «Pensamiento crítico y analítico» (89) y la que más necesita refuerzo es «Orientación a resultados» (53)."* With one competencia evaluated, the comparison is left out.
+- **Puntaje por competencia**: horizontal bars on the 0–100 axis with the threshold lines, one per competencia with a rubric, titled by the highest one.
 - **Detalle por competencia**: one card per competencia in config order: puntaje general and nivel, the gap, evaluations received, the highest and lowest indicator (ties listed; *"Todos los indicadores tienen el mismo promedio (x)"* when equal), and "Ver reporte individual" to that competencia's §11.1. Without a rubric: *"Sin plantilla en esta jornada"*; absent: *"Marcado ausente en esta competencia."*; without evaluations: *"Aún no tiene evaluaciones en esta competencia."*
 - No observations or evaluator names here: they stay in each Reporte individual.
 - Previous / next participant links (carnet labels); "Volver" goes to the Reporte consolidado. A participant who isn't active in the jornada is a 404. Printable.
@@ -989,20 +999,20 @@ Ordered by the night team numbers. A team with no members would leave its compet
 | Navegación | "Volver" · aria-label "Volver a {destino}" |
 | Competencias | badges "Disponible" / "Próximamente" / "No asignada" · "La competencia de su equipo aún no está disponible." |
 | Asistencia | "Marcar ausente" · "¿Marcar a {nombre} como ausente? No podrá enviar su evaluación mientras esté marcada así." · "Marcó a esta persona como ausente." · "Marcar presente" · chip "Ausente" · "{n} de {total} enviadas · {m} ausentes" · "Ya envió una evaluación para esta persona." · "No se pudo guardar la asistencia. Intente de nuevo." · "Asistencia en conflicto" |
-| Brecha | "Le faltan {x} puntos para {nivel}" · "Nivel máximo alcanzado" · "Para llegar a {nivel}: {descripción}" · column "Para el siguiente nivel" |
+| Brecha | "Le faltan {x} puntos para {nivel}" · "Le falta 1 punto para {nivel}" · "Nivel máximo alcanzado" · "Para llegar a {nivel}: {descripción}" · column "Para el siguiente nivel" |
 | Avance | "Avance de evaluadores · Equipo {numero}" · "{n} de {total} evaluadores completaron" · "Sin iniciar" · "En progreso" · "Completo" · "Sin correo" · "Pendiente de activar" · "Activa" · "Solo se cuentan las evaluaciones enviadas; los borradores quedan en el teléfono de cada evaluador." · KPI "Ausentes" · KPI "Evaluadores completos" |
 | Gráficos | "Participantes por nivel" · "Puntaje por indicador" · "{n} de {total} evaluadores eligieron {nivel}" · "Ver gráficos detallados" |
 | Resumen del grupo | "Resumen del grupo" · "Jornada" · "Mañana" · "Noche" · "Ambas jornadas" · "Puntaje promedio por indicador" |
 | Reporte consolidado | "En pocas palabras" · "Mapa de niveles" · "Requieren atención" · "Básico en:" · "Ningún participante tiene competencias en nivel Básico." · "Reporte del participante" · "Volver al Reporte consolidado" · "Detalle por competencia" · "Puntaje por competencia" · "Indicador más alto" · "Indicador más bajo" · "Ver reporte individual" · "Ver todas sus competencias" · "Reporte consolidado" · "Las cinco competencias juntas" · "Todas las competencias" · "Competencias con evaluaciones" · "Promedio entre competencias" · "Puntaje del grupo por competencia" · "Resumen por competencia" · "Participantes en todas las competencias" · "Competencias evaluadas" · "Sin plantilla en esta jornada" · "Aún no hay evaluaciones enviadas en esta jornada." |
 | Admin · participantes | "Nombres y carnés" · "Carné · Participante {nn}" · "Pegar lista de participantes" · "El carné del participante {nn} ya está en la lista." |
 | Admin · cuentas | "Cuentas de evaluadores" · "Equipo {numero} · {competencia}" · "Correo electrónico" · "Restablecer acceso" · "Último ingreso" |
-| Envío de resultados | "Enviar resultados por correo" · "Enviarme una prueba" · "Enviar a {n} participantes" · "Reenviar" · "Enviado el {fecha}" · "Sin correo" · "Sin evaluaciones" · "Ausente" · subject "Sus resultados de {competencia} · Nivela" |
+| Envío de resultados | "Puntaje general: {x} de 100" · "Puntaje: {x} de 100 · {nivel}" · "Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100: Básico de 0 a 24, Intermedio de 25 a 49, Avanzado de 50 a 74 y Experto de 75 a 100." · "Enviar resultados por correo" · "Enviarme una prueba" · "Enviar a {n} participantes" · "Reenviar" · "Enviado el {fecha}" · "Sin correo" · "Sin evaluaciones" · "Ausente" · subject "Sus resultados de {competencia} · Nivela" |
 | Correo de código | "Su código de Nivela es {codigo}. Vence en {minutos} minutos. Si usted no lo solicitó, ignore este mensaje." |
 | Evaluador | "¿Quién está evaluando?" · "Seleccione su nombre" |
 | Lista | "Participantes" · "Pendiente" · "En progreso" · "Completado" · "Enviado" · "Borrar todo" · "{n} de {total} enviadas" |
 | Calificación | "Indicador {n}" · "Observaciones (opcional)" · "Faltan {n} indicadores por calificar" · "Enviar evaluación" |
 | IA | "¿No está seguro del nivel?" · "Describa lo que observó" · "No incluya nombres en la descripción." · "Analizar" · "Analizando…" · "Nivel sugerido: {nivel} · {pct}" · "Aplicar sugerencia" · "Usar este texto como observación" |
 | Envío | "Evaluación enviada" · "No se pudo enviar. Sus respuestas siguen guardadas en este dispositivo." · "Reintentar" |
-| Reportes | "Reporte general" · "Reporte individual" · "Nivel general" · "Puntaje general" · "Evaluaciones recibidas" · "Distribución de niveles por indicador" · "Cobertura de evaluaciones" · "Descargar CSV" · "Imprimir o guardar PDF" |
+| Reportes | "Reporte general" · "Reporte individual" · "Nivel general" · "Puntaje general" · "Puntajes de 0 a 100: Básico 0–24 · Intermedio 25–49 · Avanzado 50–74 · Experto 75–100." · "Evaluaciones recibidas" · "Distribución de niveles por indicador" · "Cobertura de evaluaciones" · "Descargar CSV" · "Imprimir o guardar PDF" |
 | Sesión | "Salir" · "Su sesión expiró. Ingrese nuevamente." |
 | Jornada | "Jornada" · "Mañana" · "Noche" · "Jornada: {nombre}" · "No se pudo cambiar la jornada. Intente de nuevo." · "La jornada cambió en otra pestaña. Recargue la página." |

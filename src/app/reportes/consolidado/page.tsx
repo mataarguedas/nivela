@@ -8,7 +8,7 @@ import {
   barrasPuntajePorCompetencia,
   parrafoConsolidado,
 } from "@/components/reportes/datosGraficos";
-import { FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { EscalaPuntos, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
 import { MapaNiveles } from "@/components/reportes/MapaNiveles";
 import { TablaConsolidada } from "@/components/reportes/TablaConsolidada";
 import { clasesBoton } from "@/components/ui/Boton";
@@ -17,7 +17,7 @@ import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
+import { formatearPuntos, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
 import { proporcion } from "@/lib/puntajes";
 import { tableroConsolidado, type CompetenciaConsolidada, type ParticipanteAtencion, type ReporteConsolidado } from "@/lib/reportes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Value gutters, wide enough for "12 · 60 %" and "2,10 · Intermedio".
+// Value gutters, wide enough for "12 · 60 %" and "100 · Intermedio".
 const ANCHO_CONTEO = "4.5rem";
 const ANCHO_PUNTAJE = "7rem";
 
@@ -125,11 +125,12 @@ function Contenido({ reporte }: { reporte: ReporteConsolidado }) {
         />
         <Kpi
           etiqueta={t.promedioGrupo}
-          valor={kpis.promedioGrupo === null ? "—" : formatearDecimal(kpis.promedioGrupo)}
+          valor={kpis.promedioGrupo === null ? "—" : formatearPuntos(kpis.promedioGrupo)}
           detalle={kpis.nivelGrupo === null ? undefined : TEXTOS_REPORTES.nivelDetalle(obtenerNivel(kpis.nivelGrupo).etiqueta)}
         />
         <Kpi etiqueta={TEXTOS_REPORTES.evaluadoresCompletos} valor={total(kpis.evaluadoresCompletos, kpis.evaluadoresTotal)} />
       </dl>
+      <EscalaPuntos />
 
       <SeccionReporte id="en-pocas-palabras" titulo={t.resumenTitulo}>
         <p className="text-body text-ink">{parrafoConsolidado(reporte, tablero)}</p>
@@ -161,7 +162,7 @@ function Contenido({ reporte }: { reporte: ReporteConsolidado }) {
             encabezados={[t.competencia, TEXTOS_REPORTES.puntajeGrupo, TEXTOS_REPORTES.nivel]}
             filas={disponibles.map(({ competencia: c }) => [
               c.nombre,
-              c.puntaje === null ? "—" : formatearDecimal(c.puntaje),
+              c.puntaje === null ? "—" : formatearPuntos(c.puntaje),
               c.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(c.nivel).etiqueta,
             ])}
           />
@@ -271,7 +272,7 @@ function TablaCompetencias({ competencias, etiquetadaPor }: { competencias: Comp
               {c.disponible ? (
                 <>
                   <td className="px-2 whitespace-nowrap">{c.numeroEquipo === null ? "—" : t.equipoNumero(c.numeroEquipo)}</td>
-                  <td className="px-2 text-right font-semibold tabular-nums">{c.puntaje === null ? "—" : formatearDecimal(c.puntaje)}</td>
+                  <td className="px-2 text-right font-semibold tabular-nums">{c.puntaje === null ? "—" : formatearPuntos(c.puntaje)}</td>
                   <td className="px-2">{c.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(c.nivel).etiqueta}</td>
                   <td className="px-2 text-right whitespace-nowrap tabular-nums">{c.brecha ? textoBrechaCorto(c.brecha) : "—"}</td>
                   <td className="px-2 text-right tabular-nums">{total(c.participantesEvaluados, c.participantesTotal)}</td>
@@ -307,11 +308,11 @@ function ListaAtencion({ atencion }: { atencion: readonly ParticipanteAtencion[]
             <IconoChevron className="shrink-0" />
           </Link>
           {p.promedio !== null && p.nivel !== null && (
-            <p className="text-caption text-ink-3">{t.promedioValor(formatearDecimal(p.promedio), obtenerNivel(p.nivel).etiqueta)}</p>
+            <p className="text-caption text-ink-3">{t.promedioValor(formatearPuntos(p.promedio), obtenerNivel(p.nivel).etiqueta)}</p>
           )}
           <p className="mt-2 text-[14px] text-ink">
             <span className="font-semibold">{t.basicoEn}</span>{" "}
-            {formatearLista(p.competencias.map((c) => `${c.nombre} (${formatearDecimal(c.puntaje)})`))}
+            {formatearLista(p.competencias.map((c) => `${c.nombre} (${formatearPuntos(c.puntaje)})`))}
           </p>
         </li>
       ))}

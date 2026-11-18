@@ -14,6 +14,7 @@ import {
 import {
   BloqueDetallado,
   ClaveIndicadores,
+  EscalaPuntos,
   FiguraGrafico,
   Kpi,
   SeccionReporte,
@@ -27,7 +28,7 @@ import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
+import { formatearDecimal, formatearEntero, formatearPorcentaje, formatearPuntos } from "@/lib/formato";
 import type { Coincidencia } from "@/lib/puntajes";
 import type { ReporteParticipante } from "@/lib/reportes";
 import { textoBrecha } from "@/lib/textoBrecha";
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
 
 const ALTO_RADAR = 300;
 const ALTO_FILA_DISTRIBUCION = 44;
-// Value gutter, wide enough for "2,10 · Intermedio".
+// Value gutter, wide enough for "100 · Intermedio".
 const ANCHO_PUNTAJE = "7rem";
 
 const TONO_COINCIDENCIA: Record<Coincidencia, TonoChip> = { alta: "fuerte", media: "medio", baja: "suave" };
@@ -185,7 +186,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
       <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:gap-4">
         <Kpi
           etiqueta={TEXTOS.reportes.puntajeGeneral}
-          valor={datos.puntajeGeneral === null ? "—" : formatearDecimal(datos.puntajeGeneral)}
+          valor={datos.puntajeGeneral === null ? "—" : formatearPuntos(datos.puntajeGeneral)}
         />
         <Kpi etiqueta={TEXTOS.reportes.evaluacionesRecibidas} valor={formatearEntero(datos.evaluaciones)} />
         <Kpi
@@ -193,6 +194,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
           valor={datos.proporcionIa === null ? "—" : formatearPorcentaje(datos.proporcionIa)}
         />
       </dl>
+      <EscalaPuntos />
 
       <SeccionReporte id="por-indicador" titulo={TEXTOS_REPORTES.puntajePorIndicador} mensaje={porIndicador.titulo}>
         <FiguraGrafico
@@ -211,7 +213,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
             encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.puntaje, TEXTOS_REPORTES.nivel]}
             filas={datos.indicadores.map((i) => [
               nombreIndicador(i),
-              i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
+              i.media === null ? TEXTOS_REPORTES.sinDatos : formatearPuntos(i.media),
               i.brecha === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(i.brecha.nivelActual).etiqueta,
             ])}
           />
@@ -239,7 +241,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
               {i.brecha && i.media !== null ? (
                 <>
                   <p className="mt-0.5 text-caption text-ink-3 tabular-nums">
-                    {formatearDecimal(i.media)} · {obtenerNivel(i.brecha.nivelActual).etiqueta} · {textoBrecha(i.brecha)}
+                    {formatearPuntos(i.media)} · {obtenerNivel(i.brecha.nivelActual).etiqueta} · {textoBrecha(i.brecha)}
                   </p>
                   {i.brecha.siguiente !== null && i.descripcionSiguiente && (
                     <p className="mt-1 text-body text-ink">
@@ -264,7 +266,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
                 <span className="flex flex-wrap items-center gap-2 text-caption text-ink-3 tabular-nums">
                   <Chip tono={TONO_COINCIDENCIA[i.acuerdo.coincidencia]}>{TEXTOS.coincidencia[i.acuerdo.coincidencia]}</Chip>
                   <span>
-                    {formatearDecimal(i.media)} · {TEXTOS_REPORTES.rango(String(i.acuerdo.min), String(i.acuerdo.max))} ·{" "}
+                    {formatearPuntos(i.media)} · {TEXTOS_REPORTES.rango(String(i.acuerdo.min), String(i.acuerdo.max))} ·{" "}
                     {TEXTOS_REPORTES.desviacion(formatearDecimal(i.acuerdo.desviacion))}
                   </span>
                 </span>
@@ -315,7 +317,7 @@ function Contenido({ datos }: { datos: ReporteParticipante }) {
               encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.promedioPorIndicador]}
               filas={datos.indicadores.map((i) => [
                 nombreIndicador(i),
-                i.media === null ? TEXTOS_REPORTES.sinDatos : formatearDecimal(i.media),
+                i.media === null ? TEXTOS_REPORTES.sinDatos : formatearPuntos(i.media),
               ])}
             />
           </FiguraGrafico>

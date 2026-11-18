@@ -9,9 +9,9 @@ import type { Destacado } from "@/lib/reportes";
 const indicadores = [{ numero: 1 }, { numero: 2 }, { numero: 3 }, { numero: 4 }];
 
 const mejores: Destacado[] = [
-  { id: "P04", etiqueta: "Participante 04", puntaje: 3.8333, nivel: 4, posicion: 1, evaluaciones: 8, medias: [3.75, 4, 3.625, 3.958] },
-  { id: "P02", etiqueta: "Participante 02", puntaje: 3.25, nivel: 3, posicion: 2, evaluaciones: 1, medias: [3, 3, 3, 4] },
-  { id: "P09", etiqueta: "Participante 09", puntaje: 3.25, nivel: 3, posicion: 2, evaluaciones: 7, medias: [3, 3, null, 3.5] },
+  { id: "P04", etiqueta: "Participante 04", puntaje: 94.44, nivel: 4, posicion: 1, evaluaciones: 8, medias: [91.67, 100, 87.5, 98.6] },
+  { id: "P02", etiqueta: "Participante 02", puntaje: 72.22, nivel: 3, posicion: 2, evaluaciones: 1, medias: [66.67, 66.67, 66.67, 100] },
+  { id: "P09", etiqueta: "Participante 09", puntaje: 72.22, nivel: 3, posicion: 2, evaluaciones: 7, medias: [66.67, 66.67, null, 83.33] },
 ];
 
 describe("MejoresPuntajes", () => {
@@ -27,10 +27,10 @@ describe("MejoresPuntajes", () => {
     render(<MejoresPuntajes mejores={mejores} competenciaId="adaptabilidad" indicadores={indicadores} />);
     const [primero, segundo, tercero] = screen.getAllByRole("listitem");
     expect(within(primero).getByRole("link", { name: "Participante 04" })).toHaveAttribute("href", "/reportes/adaptabilidad/P04");
-    expect(within(primero).getByText("3,83")).toBeInTheDocument();
+    expect(within(primero).getByText("94")).toBeInTheDocument();
     expect(within(primero).getByText("Experto")).toBeInTheDocument();
     expect(within(primero).getByText("8 evaluaciones")).toBeInTheDocument();
-    expect(within(primero).getByText("3,63")).toBeInTheDocument();
+    expect(within(primero).getByText("88")).toBeInTheDocument();
     expect(within(segundo).getByText("1 evaluación")).toBeInTheDocument();
     // A missing indicator mean shows a dash.
     expect(within(tercero).getByText("—")).toBeInTheDocument();

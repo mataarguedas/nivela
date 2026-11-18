@@ -2,8 +2,8 @@ import Link from "next/link";
 import { FONDO_NIVEL } from "@/components/ui/coloresNivel";
 import { obtenerNivel, type NivelValor } from "@/config/niveles";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal } from "@/lib/formato";
-import { redondear2 } from "@/lib/puntajes";
+import { formatearPuntos } from "@/lib/formato";
+import { redondearPuntos } from "@/lib/puntajes";
 import type { ReporteConsolidado } from "@/lib/reportes";
 import { LeyendaNiveles } from "./Figura";
 
@@ -34,7 +34,7 @@ function Celda({ competencia, puntaje, nivel, ausente }: { competencia: string; 
       </td>
     );
   }
-  const valor = formatearDecimal(puntaje);
+  const valor = formatearPuntos(puntaje);
   const etiqueta = obtenerNivel(nivel).etiqueta;
   return (
     <td
@@ -52,7 +52,7 @@ export function MapaNiveles({ reporte, etiquetadaPor }: { reporte: ReporteConsol
   const columnas = reporte.competencias.flatMap((c, i) => (c.disponible ? [{ competencia: c, indice: i }] : []));
   const filas = [...reporte.participantes].sort((a, b) => {
     if (a.promedio === null || b.promedio === null) return a.promedio === b.promedio ? a.id.localeCompare(b.id) : a.promedio === null ? 1 : -1;
-    return redondear2(b.promedio) - redondear2(a.promedio) || a.id.localeCompare(b.id);
+    return redondearPuntos(b.promedio) - redondearPuntos(a.promedio) || a.id.localeCompare(b.id);
   });
 
   return (
@@ -112,7 +112,7 @@ export function MapaNiveles({ reporte, etiquetadaPor }: { reporte: ReporteConsol
           </tbody>
         </table>
       </div>
-      <LeyendaNiveles />
+      <LeyendaNiveles puntos />
       <p className="mt-2 text-caption text-ink-2">{t.mapaNivelesNota}</p>
     </>
   );

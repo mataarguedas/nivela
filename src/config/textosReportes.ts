@@ -30,6 +30,9 @@ export const TEXTOS_REPORTES = {
   verGraficosDetallados: "Ver gráficos detallados",
   evaluadoresPorNivel: "Evaluadores por nivel en cada indicador",
   valorNivel: (valor: string, nivel: string) => `${valor} · ${nivel}`,
+  /** The report scale (PRD §7); the bands come formatted, e.g. "Básico 0–24". */
+  escalaPuntos: (bandas: string) => `Puntajes de 0 a 100: ${bandas}.`,
+  bandaNivel: (nivel: string, min: number, max: number) => `${nivel} ${min}–${max}`,
   conteoPorcentaje: (n: string, porcentaje: string) => `${n} · ${porcentaje}`,
   titulos: {
     sinNivelGeneral: "Aún no hay participantes con puntaje general.",
@@ -80,7 +83,8 @@ export const TEXTOS_REPORTES = {
     `${marcas} ${marcas === "1" ? "lo marcó" : "lo marcaron"} ausente · ${evaluaciones} ${evaluaciones === "1" ? "evaluación" : "evaluaciones"}`,
   ausentesKpi: "Sin evaluaciones y marcados ausentes",
   // Gap to the next level (PRD §7, §11.1, Appendix C "Brecha"). Values come formatted.
-  brecha: (faltante: string, nivel: string) => `Le faltan ${faltante} puntos para ${nivel}`,
+  brecha: (faltante: string, nivel: string) =>
+    faltante === "1" ? `Le falta 1 punto para ${nivel}` : `Le faltan ${faltante} puntos para ${nivel}`,
   brechaCorta: (faltante: string, nivel: string) => `${faltante} para ${nivel}`,
   nivelMaximo: "Nivel máximo alcanzado",
   paraLlegar: (nivel: string, descripcion: string) => `Para llegar a ${nivel}: ${descripcion}`,
@@ -101,7 +105,8 @@ export const TEXTOS_REPORTES = {
   estado: "Estado",
   sinDatos: "Sin datos",
   /** Values come formatted. */
-  rango: (min: string, max: string) => `Rango ${min}–${max}`,
+  /** The levels chosen (1–4), not points. */
+  rango: (min: string, max: string) => `Niveles ${min}–${max}`,
   desviacion: (valor: string) => `DE ${valor}`,
   sinObservaciones: "Sin observaciones para este indicador.",
   sinEvaluacionesParticipante: "Este participante aún no tiene evaluaciones.",
@@ -177,7 +182,7 @@ export const TEXTOS_REPORTES = {
       debil: (competencia: string) => `la que más necesita refuerzo es ${competencia}`,
       debiles: (competencias: string) => `las que más necesitan refuerzo son ${competencias}`,
       iguales: (valor: string) => `Todas las competencias tienen el mismo puntaje (${valor}).`,
-      /** "«Adaptabilidad» (3,10)" */
+      /** "«Adaptabilidad» (70)" */
       competencia: (nombre: string, valor: string) => `«${nombre}» (${valor})`,
       atencion: (n: number) =>
         n === 0
@@ -209,7 +214,7 @@ export const TEXTOS_REPORTES = {
       ausenteCompetencia: "Marcado ausente en esta competencia.",
       indicadorMasAlto: (n: number) => (n === 1 ? "Indicador más alto" : "Indicadores más altos"),
       indicadorMasBajo: (n: number) => (n === 1 ? "Indicador más bajo" : "Indicadores más bajos"),
-      /** "Ind. 2 «Actúa de manera rápida» (3,50)" */
+      /** "Ind. 2 «Actúa de manera rápida» (83)" */
       indicadorValor: (numero: number, titulo: string, valor: string) => `Ind. ${numero} «${titulo}» (${valor})`,
       todosIguales: (valor: string) => `Todos los indicadores tienen el mismo promedio (${valor})`,
       verIndividual: "Ver reporte individual",

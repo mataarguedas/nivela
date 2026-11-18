@@ -82,9 +82,10 @@ test.describe("como docente", () => {
     await expect(barras(page, "por-nivel").first()).toHaveText(/^Básico\d+ · \d+\u00a0%$/);
     await expect(page.getByRole("table", { name: "Participantes por nivel" })).toBeAttached();
     await expect(page.locator("#puntajes-mensaje")).toHaveText(
-      /^(Los puntajes van de \d,\d{2} a \d,\d{2}|Todos los participantes tienen el mismo puntaje .+)$/,
+      /^(Los puntajes van de \d{1,3} a \d{1,3}|Todos los participantes tienen el mismo puntaje .+)$/,
     );
-    await expect(barras(page, "puntajes").first()).toHaveText(/\d,\d{2} · (Básico|Intermedio|Avanzado|Experto)$/);
+    // The value label alone: the row text also holds the carnet, which ends in digits.
+    await expect(barras(page, "puntajes").first().locator("span.tabular-nums")).toHaveText(/^\d{1,3} · (Básico|Intermedio|Avanzado|Experto)$/);
     // The threshold lines are labelled with the level they open.
     const figuraPuntajes = page.locator('figure[aria-labelledby="puntajes-titulo puntajes-mensaje"]');
     for (const nivel of ["Intermedio", "Avanzado", "Experto"]) {
@@ -145,13 +146,13 @@ test.describe("como docente", () => {
     for (const titulo of ["Puntaje por indicador", "Calificaciones por indicador", "Coincidencia entre evaluadores", "Observaciones"]) {
       await expect(page.getByRole("heading", { level: 2, name: titulo })).toBeVisible();
     }
-    // "Puntaje por indicador": 4 bars on the 1–4 axis labelled "3,25 · Avanzado".
+    // "Puntaje por indicador": 4 bars on the 0–100 axis labelled "75 · Experto".
     await expect(page.locator("#por-indicador-mensaje")).toHaveText(
-      /^(El indicador más alto es «.+» \(\d,\d{2}\)|Los indicadores .+ empatan como los más altos \(\d,\d{2}\)|Todos los indicadores tienen el mismo promedio .+)$/,
+      /^(El indicador más alto es «.+» \(\d{1,3}\)|Los indicadores .+ empatan como los más altos \(\d{1,3}\)|Todos los indicadores tienen el mismo promedio .+)$/,
     );
     await expect(barras(page, "por-indicador")).toHaveCount(4);
     for (const texto of await barras(page, "por-indicador").allTextContents()) {
-      expect(texto).toMatch(/^Indicador \d\. .+\d,\d{2} · (Básico|Intermedio|Avanzado|Experto)$/);
+      expect(texto).toMatch(/^Indicador \d\. .+\D\d{1,3} · (Básico|Intermedio|Avanzado|Experto)$/);
     }
     // One plain line per indicator instead of the stacked bars.
     const lineas = page.getByRole("region", { name: "Calificaciones por indicador" }).getByRole("listitem");
@@ -196,7 +197,7 @@ test.describe("como docente", () => {
   });
 
   test("brecha al siguiente nivel y avance de evaluadores, en cada jornada con su propio equipo", async ({ page }) => {
-    const gap = /^(Le faltan \d+,\d{2} puntos para (Intermedio|Avanzado|Experto)|Nivel máximo alcanzado)$/;
+    const gap = /^(Le faltan \d+ puntos para (Intermedio|Avanzado|Experto)|Le falta 1 punto para (Intermedio|Avanzado|Experto)|Nivel máximo alcanzado)$/;
     for (const jornada of ["manana", "noche"] as JornadaId[]) {
       // The number and the size come from config, never from a constant.
       const equipo = equipoDeCompetencia(jornada, "adaptabilidad")!;
@@ -228,7 +229,7 @@ test.describe("como docente", () => {
       await expect(page.locator("main header").getByText(gap)).toBeVisible();
       const siguiente = page.getByRole("region", { name: "Para el siguiente nivel" });
       await expect(siguiente.getByRole("listitem")).toHaveCount(4);
-      await expect(siguiente.getByText(/Le faltan \d+,\d{2} puntos para|Nivel máximo alcanzado/).first()).toBeVisible();
+      await expect(siguiente.getByText(/Le faltan? \d+ puntos? para|Nivel máximo alcanzado/).first()).toBeVisible();
       await sinDesborde(page);
     }
   });

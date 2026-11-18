@@ -10,14 +10,14 @@ import {
   barrasPuntajePorIndicador,
   parrafoResumenGrupo,
 } from "@/components/reportes/datosGraficos";
-import { FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { EscalaPuntos, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
 import { SelectorJornadaResumen } from "@/components/reportes/SelectorJornadaResumen";
 import { IconoChevron } from "@/components/ui/iconos";
 import { nombreJornada, type SeleccionJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
-import { formatearDecimal, formatearEntero, formatearPorcentaje } from "@/lib/formato";
+import { formatearPuntos, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { proporcion } from "@/lib/puntajes";
 import type { CifrasGrupo, IndicadorGrupo, ResumenGrupo } from "@/lib/reportes";
 import { validarSeleccionResumen } from "@/lib/validacion";
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Value gutters, wide enough for "12 · 60 %" and "2,10 · Intermedio".
+// Value gutters, wide enough for "12 · 60 %" and "100 · Intermedio".
 const ANCHO_CONTEO = "4.5rem";
 const ANCHO_PUNTAJE = "7rem";
 
@@ -121,6 +121,7 @@ function Contenido({ resumen }: { resumen: ResumenGrupo }) {
   return (
     <div className="mt-8 flex flex-col gap-4">
       <KpisGrupo grupo={grupo} />
+      <EscalaPuntos />
 
       <SeccionReporte id="resumen" titulo={TEXTOS_REPORTES.resumenTitulo}>
         <p className="text-body text-ink">{parrafoResumenGrupo(grupo)}</p>
@@ -178,12 +179,12 @@ function KpisGrupo({ grupo }: { grupo: CifrasGrupo }) {
     <dl className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4">
       <Kpi
         etiqueta={TEXTOS_REPORTES.puntajeGrupo}
-        valor={grupo.puntaje === null ? "—" : formatearDecimal(grupo.puntaje)}
+        valor={grupo.puntaje === null ? "—" : formatearPuntos(grupo.puntaje)}
         detalle={grupo.nivel === null ? undefined : TEXTOS_REPORTES.nivelDetalle(obtenerNivel(grupo.nivel).etiqueta)}
       />
       <Kpi
         etiqueta={TEXTOS_REPORTES.paraSiguienteNivel}
-        valor={brecha === null || brecha.faltante === null ? "—" : formatearDecimal(brecha.faltante)}
+        valor={brecha === null || brecha.faltante === null ? "—" : formatearPuntos(brecha.faltante)}
         detalle={
           maximo
             ? TEXTOS_REPORTES.nivelMaximo
@@ -204,7 +205,7 @@ function KpisGrupo({ grupo }: { grupo: CifrasGrupo }) {
   );
 }
 
-/** "Puntaje promedio por indicador": the simple bars on the 1–4 axis with the threshold lines. */
+/** "Puntaje promedio por indicador": the simple bars on the 0–100 axis with the threshold lines. */
 function PorIndicador({ id, titulo, indicadores }: { id: string; titulo: string; indicadores: readonly IndicadorGrupo[] }) {
   const datos = barrasPuntajePorIndicador(indicadores);
   return (
@@ -220,7 +221,7 @@ function PorIndicador({ id, titulo, indicadores }: { id: string; titulo: string;
           encabezados={[TEXTOS_REPORTES.indicador, TEXTOS_REPORTES.puntaje, TEXTOS_REPORTES.nivel]}
           filas={indicadores.map((i) => [
             `${TEXTOS.calificacion.indicador(i.numero)}. ${i.titulo}`,
-            i.media === null ? "—" : formatearDecimal(i.media),
+            i.media === null ? "—" : formatearPuntos(i.media),
             i.nivel === null ? TEXTOS_REPORTES.sinDatos : obtenerNivel(i.nivel).etiqueta,
           ])}
         />

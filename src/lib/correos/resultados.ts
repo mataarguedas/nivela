@@ -1,5 +1,5 @@
 import { obtenerNivel } from "@/config/niveles";
-import { formatearDecimal, formatearEntero } from "@/lib/formato";
+import { formatearEntero, formatearPuntos } from "@/lib/formato";
 import type { DatosResultados } from "@/lib/resultados";
 import { textoBrecha } from "@/lib/textoBrecha";
 import { COLORES_CORREO, documentoCorreo, escaparHtml, parrafo, PIE_TEXTO, type PlantillaCorreo } from "./plantilla";
@@ -22,15 +22,15 @@ export const TEXTOS_RESULTADOS = {
   introduccion: (competencia: string, jornada: string) =>
     `Estos son sus resultados en la competencia ${competencia} (jornada ${jornada}).`,
   nivelGeneral: "Nivel general",
-  puntajeGeneral: (puntaje: string) => `Puntaje general: ${puntaje} de 4,00`,
+  puntajeGeneral: (puntaje: string) => `Puntaje general: ${puntaje} de 100`,
   evaluaciones: (n: number) =>
     n === 1 ? "Recibió 1 evaluación de sus pares." : `Recibió ${formatearEntero(n)} evaluaciones de sus pares.`,
   porIndicador: "Resultados por indicador",
   indicador: (numero: number, titulo: string) => `Indicador ${numero}. ${titulo}`,
-  promedio: (media: string, nivel: string) => `Promedio: ${media} · ${nivel}`,
+  promedio: (media: string, nivel: string) => `Puntaje: ${media} de 100 · ${nivel}`,
   paraLlegar: (nivel: string, descripcion: string) => `Para llegar a ${nivel}: ${descripcion}`,
   cierre:
-    "Estos resultados son el promedio de las evaluaciones que hicieron sus pares. Cada indicador se califica de 1 (Básico) a 4 (Experto).",
+    "Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100: Básico de 0 a 24, Intermedio de 25 a 49, Avanzado de 50 a 74 y Experto de 75 a 100.",
   dudas: "Si tiene dudas sobre sus resultados, consulte con su docente. Este es un mensaje automático; no lo responda.",
 } as const;
 
@@ -38,14 +38,14 @@ export function resultados(datos: DatosResultados, { prueba = false }: { prueba?
   const t = TEXTOS_RESULTADOS;
   const c = COLORES_CORREO;
   const nivel = obtenerNivel(datos.nivelGeneral).etiqueta;
-  const puntaje = t.puntajeGeneral(formatearDecimal(datos.puntajeGeneral));
+  const puntaje = t.puntajeGeneral(formatearPuntos(datos.puntajeGeneral));
   const brecha = textoBrecha(datos.brecha);
 
   const indicadores = datos.indicadores.map((i) => {
     const siguiente = i.brecha.siguiente && i.descripcionSiguiente ? t.paraLlegar(obtenerNivel(i.brecha.siguiente).etiqueta, i.descripcionSiguiente) : null;
     return {
       titulo: t.indicador(i.numero, i.titulo),
-      promedio: t.promedio(formatearDecimal(i.media), obtenerNivel(i.nivel).etiqueta),
+      promedio: t.promedio(formatearPuntos(i.media), obtenerNivel(i.nivel).etiqueta),
       brecha: textoBrecha(i.brecha),
       siguiente,
     };

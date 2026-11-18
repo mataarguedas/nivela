@@ -108,14 +108,14 @@ test.describe("como docente", () => {
 
     // Dashboard (PRD §11.4): a plain-language summary, the level map and who needs attention.
     await expect(
-      principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d,\d{2}\) como promedio entre competencias\./),
+      principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d{1,3}\) como promedio entre competencias\./),
     ).toBeVisible();
     const mapa = principal(page).getByRole("table", { name: /^Mapa de niveles/ });
     await expect(mapa.getByRole("columnheader")).toHaveText(["Participante", ...disponibles("manana").map((c) => c.nombre), "Promedio"]);
     const filas = await mapa.getByRole("row").count();
     expect(filas).toBeGreaterThan(1);
     // Every colored cell also shows its score (color never carries the level alone).
-    await expect(mapa.getByRole("cell").first()).toHaveText(/^(\d,\d{2} · (Básico|Intermedio|Avanzado|Experto)|—|Aus\.Ausente)$/);
+    await expect(mapa.getByRole("cell").first()).toHaveText(/^(\d{1,3} · (Básico|Intermedio|Avanzado|Experto)|—|Aus\.Ausente)$/);
     await expect(principal(page).getByRole("heading", { level: 2, name: "Requieren atención" })).toBeVisible();
     await sinDesborde(page);
 
@@ -128,7 +128,7 @@ test.describe("como docente", () => {
     await page.goto(href!);
 
     await expect(principal(page).getByRole("heading", { level: 1, name: etiqueta })).toBeVisible();
-    await expect(principal(page).getByText(/^El promedio entre competencias es \d,\d{2} \(/)).toBeVisible();
+    await expect(principal(page).getByText(/^El promedio entre competencias es \d{1,3} \(/)).toBeVisible();
     await expect(principal(page).getByText("Competencias evaluadas", { exact: true })).toBeVisible();
     const tarjetas = principal(page).locator(".tarjeta-competencia");
     await expect(tarjetas).toHaveCount(competenciasDeJornada("manana").length);

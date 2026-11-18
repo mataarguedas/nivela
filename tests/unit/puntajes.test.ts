@@ -18,7 +18,10 @@ import {
   puntajeEntreCompetencias,
   puntajeGrupo,
   puntajeIndicador,
+  puntosDesdeNiveles,
+  RANGOS_PUNTOS,
   redondear2,
+  redondearPuntos,
 } from "@/lib/puntajes";
 
 describe("promedio y puntajes", () => {
@@ -35,38 +38,72 @@ describe("promedio y puntajes", () => {
     expect(puntajeEvaluacion([4, 4, 4, 4])).toBe(4);
   });
 
-  it("puntaje por indicador es la media entre evaluadores", () => {
-    expect(puntajeIndicador([2, 3, 4])).toBe(3);
-    expect(puntajeIndicador([1, 2])).toBe(1.5);
+  it("los niveles 1–4 pasan a puntos 0–100: (m − 1) ÷ 3 × 100", () => {
+    expect(puntosDesdeNiveles(1)).toBe(0);
+    expect(puntosDesdeNiveles(2)).toBeCloseTo(100 / 3, 10);
+    expect(puntosDesdeNiveles(2.5)).toBe(50);
+    expect(puntosDesdeNiveles(3)).toBeCloseTo(200 / 3, 10);
+    expect(puntosDesdeNiveles(4)).toBe(100);
+    // Each level, rated alone, falls in its own band.
+    for (const nivel of [1, 2, 3, 4] as const) expect(nivelGeneral(puntosDesdeNiveles(nivel))).toBe(nivel);
   });
 
-  it("puntaje general es la media de las medias por indicador, no de los niveles crudos", () => {
-    // Indicator means 2, 3, 3, 4 → 3, regardless of how many ratings each has.
-    expect(puntajeGeneral([2, 3, 3, 4])).toBe(3);
-    expect(puntajeGeneral([puntajeIndicador([1, 2, 3])!, 4])).toBe(3);
+  it("puntaje por indicador es la media entre evaluadores, en puntos", () => {
+    expect(puntajeIndicador([2, 3, 4])).toBeCloseTo(200 / 3, 10);
+    expect(puntajeIndicador([1, 4])).toBe(50);
+    expect(puntajeIndicador([4, 4])).toBe(100);
+  });
+
+  it("puntaje general es la media de los puntajes por indicador, no de los niveles crudos", () => {
+    // Indicator scores 0, 50, 50, 100 → 50, regardless of how many ratings each has.
+    expect(puntajeGeneral([0, 50, 50, 100])).toBe(50);
+    expect(puntajeGeneral([puntajeIndicador([1, 2, 3])!, puntajeIndicador([4])!])).toBeCloseTo(200 / 3, 10);
   });
 });
 
-describe("nivelGeneral", () => {
+describe("nivelGeneral (0–24 Básico, 25–49 Intermedio, 50–74 Avanzado, 75–100 Experto)", () => {
   it.each([
-    [1, 1],
-    [1.49, 1],
-    [1.5, 2],
-    [2.49, 2],
-    [2.5, 3],
-    [3.49, 3],
-    [3.5, 4],
-    [4, 4],
+    [0, 1],
+    [24, 1],
+    [25, 2],
+    [49, 2],
+    [50, 3],
+    [74, 3],
+    [75, 4],
+    [100, 4],
   ] as const)("%d → nivel %d", (puntaje, nivel) => {
     expect(nivelGeneral(puntaje)).toBe(nivel);
   });
 
-  it("clasifica con el valor redondeado que se muestra", () => {
-    // Displayed as "1,50", so it must read Intermedio, not Básico.
-    expect(nivelGeneral(1.497)).toBe(2);
-    expect(nivelGeneral(1.494)).toBe(1);
+  it("las bandas de puntos cubren 0–100 sin huecos", () => {
+    expect(RANGOS_PUNTOS).toEqual({
+      1: { min: 0, max: 24 },
+      2: { min: 25, max: 49 },
+      3: { min: 50, max: 74 },
+      4: { min: 75, max: 100 },
+    });
+    for (let p = 0; p <= 100; p += 1) {
+      const n = nivelGeneral(p);
+      expect(p).toBeGreaterThanOrEqual(RANGOS_PUNTOS[n].min);
+      expect(p).toBeLessThanOrEqual(RANGOS_PUNTOS[n].max);
+    }
+  });
+
+  it("clasifica con el valor entero que se muestra", () => {
+    // 24,5 is displayed as "25", so it must read Intermedio, not Básico.
+    expect(nivelGeneral(24.5)).toBe(2);
+    expect(nivelGeneral(24.49)).toBe(1);
+    expect(nivelGeneral(74.6)).toBe(4);
     // Float noise from a mean of means must not drop below a boundary.
-    expect(nivelGeneral(2.4999999999999996)).toBe(3);
+    expect(nivelGeneral(49.99999999999999)).toBe(3);
+    expect(nivelGeneral(puntosDesdeNiveles(1.75))).toBe(2);
+    expect(nivelGeneral(puntosDesdeNiveles(3.25))).toBe(4);
+  });
+
+  it("redondearPuntos", () => {
+    expect(redondearPuntos(66.666)).toBe(67);
+    expect(redondearPuntos(33.333)).toBe(33);
+    expect(redondearPuntos(24.499999999999996)).toBe(25);
   });
 
   it("redondear2", () => {
@@ -165,37 +202,38 @@ describe("distribucion y proporcion", () => {
 describe("brechaSiguienteNivel (PRD §7)", () => {
   it.each([
     // [puntaje, nivel actual, siguiente, umbral, faltante]
-    [1, 1, 2, 1.5, 0.5],
-    [1.49, 1, 2, 1.5, 0.01],
-    [1.5, 2, 3, 2.5, 1],
-    [2.49, 2, 3, 2.5, 0.01],
-    [2.5, 3, 4, 3.5, 1],
-    [2.84, 3, 4, 3.5, 0.66],
-    [3.49, 3, 4, 3.5, 0.01],
+    [0, 1, 2, 25, 25],
+    [24, 1, 2, 25, 1],
+    [25, 2, 3, 50, 25],
+    [49, 2, 3, 50, 1],
+    [50, 3, 4, 75, 25],
+    [61, 3, 4, 75, 14],
+    [74, 3, 4, 75, 1],
   ] as const)("%s → nivel %s, faltan %s… para %s", (puntaje, actual, siguiente, umbral, faltante) => {
     expect(brechaSiguienteNivel(puntaje)).toEqual({ nivelActual: actual, siguiente, umbral, faltante });
   });
 
-  it("desde 3,5 no hay siguiente: Nivel máximo alcanzado", () => {
-    for (const puntaje of [3.5, 3.75, 4]) {
+  it("desde 75 no hay siguiente: Nivel máximo alcanzado", () => {
+    for (const puntaje of [75, 83, 100]) {
       expect(brechaSiguienteNivel(puntaje)).toEqual({ nivelActual: 4, siguiente: null, umbral: null, faltante: null });
     }
   });
 
   it("redondea como nivelGeneral: el puntaje mostrado y la brecha siempre coinciden", () => {
-    // 2,4999 se muestra como 2,50: Avanzado, faltan 1,00 para Experto (no 0,0001 para Avanzado).
-    expect(brechaSiguienteNivel(2.4999)).toEqual({ nivelActual: 3, siguiente: 4, umbral: 3.5, faltante: 1 });
-    expect(brechaSiguienteNivel(2.494)).toMatchObject({ nivelActual: 2, faltante: 0.01 });
-    expect(brechaSiguienteNivel(3.4999)).toMatchObject({ nivelActual: 4, siguiente: null });
-    // Float noise: 23/6 = 3,8333…, 11/3 = 3,6666…, 2,5 − 2,49 = 0,010000000000000231.
-    expect(brechaSiguienteNivel(2.125)).toMatchObject({ nivelActual: 2, faltante: 0.37 });
-    expect(brechaSiguienteNivel(7 / 3)).toMatchObject({ nivelActual: 2, faltante: 0.17 });
-    expect(brechaSiguienteNivel(1.1 + 0.2)).toMatchObject({ nivelActual: 1, faltante: 0.2 });
-    for (let centesimas = 100; centesimas < 350; centesimas += 1) {
-      const p = centesimas / 100;
+    // 49,6 se muestra como 50: Avanzado, faltan 25 para Experto (no 0,4 para Avanzado).
+    expect(brechaSiguienteNivel(49.6)).toEqual({ nivelActual: 3, siguiente: 4, umbral: 75, faltante: 25 });
+    expect(brechaSiguienteNivel(49.4)).toMatchObject({ nivelActual: 2, faltante: 1 });
+    expect(brechaSiguienteNivel(74.5)).toMatchObject({ nivelActual: 4, siguiente: null });
+    // Scores from level means: 2,125 → 37,5 → 38; 7/3 → 44,4 → 44.
+    expect(brechaSiguienteNivel(puntosDesdeNiveles(2.125))).toMatchObject({ nivelActual: 2, faltante: 12 });
+    expect(brechaSiguienteNivel(puntosDesdeNiveles(7 / 3))).toMatchObject({ nivelActual: 2, faltante: 6 });
+    // Up to 74,4: from 74,5 the score shows as 75 (Experto, no next level).
+    for (let decimas = 0; decimas < 745; decimas += 1) {
+      const p = decimas / 10;
       const { nivelActual, faltante, umbral } = brechaSiguienteNivel(p);
       expect(nivelActual).toBe(nivelGeneral(p));
-      expect(faltante).toBe(Math.round((umbral! - p) * 100) / 100);
+      expect(faltante).toBe(umbral! - redondearPuntos(p));
+      expect(Number.isInteger(faltante)).toBe(true);
     }
   });
 });
@@ -224,28 +262,12 @@ describe("puntajeGrupo y extremos (PRD §7, §11.3)", () => {
     expect(puntajeEntreCompetencias([3.25])).toBe(3.25);
   });
 
-  it("extremos compara a 2 decimales, ignora los nulos y conserva los empates", () => {
+  it("extremos compara en puntos enteros, ignora los nulos y conserva los empates", () => {
     expect(extremos([])).toBeNull();
     expect(extremos([null, null])).toBeNull();
-    expect(extremos([3.25, null, 2.1, 2.5])).toEqual({ maximos: [0], minimos: [2] });
-    // 2,4999 se muestra como 2,50: empata con 2,5.
-    expect(extremos([2.5, 3, 2.4999, 3])).toEqual({ maximos: [1, 3], minimos: [0, 2] });
-    expect(extremos([2.75, 2.75])).toEqual({ maximos: [0, 1], minimos: [0, 1] });
-  });
-});
-
-describe("puntajeGrupo y extremos (PRD §7, §11.3)", () => {
-  it("el puntaje del grupo es el promedio de los puntajes generales recibidos", () => {
-    expect(puntajeGrupo([])).toBeNull();
-    expect(puntajeGrupo([3.83, 2.125])).toBeCloseTo(2.9775, 10);
-  });
-
-  it("extremos compara a 2 decimales, ignora los nulos y conserva los empates", () => {
-    expect(extremos([])).toBeNull();
-    expect(extremos([null, null])).toBeNull();
-    expect(extremos([3.25, null, 2.1, 2.5])).toEqual({ maximos: [0], minimos: [2] });
-    // 2,4999 is shown as 2,50: a tie with 2,5.
-    expect(extremos([2.5, 3, 2.4999, 3])).toEqual({ maximos: [1, 3], minimos: [0, 2] });
-    expect(extremos([2.75, 2.75])).toEqual({ maximos: [0, 1], minimos: [0, 1] });
+    expect(extremos([75, null, 37, 50])).toEqual({ maximos: [0], minimos: [2] });
+    // 49,6 se muestra como 50: empata con 50.
+    expect(extremos([50, 67, 49.6, 66.7])).toEqual({ maximos: [1, 3], minimos: [0, 2] });
+    expect(extremos([58, 58])).toEqual({ maximos: [0, 1], minimos: [0, 1] });
   });
 });

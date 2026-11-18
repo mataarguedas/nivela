@@ -15,6 +15,7 @@ import {
   proporcion,
   puntajeEvaluacion,
   puntajeGeneral,
+  puntajeEntreCompetencias,
   puntajeGrupo,
   puntajeIndicador,
   redondear2,
@@ -215,6 +216,12 @@ describe("puntajeGrupo y extremos (PRD §7, §11.3)", () => {
   it("el puntaje del grupo es el promedio de los puntajes generales recibidos", () => {
     expect(puntajeGrupo([])).toBeNull();
     expect(puntajeGrupo([3.83, 2.125])).toBeCloseTo(2.9775, 10);
+  });
+
+  it("el promedio entre competencias promedia los puntajes generales recibidos (PRD §7, §11.4)", () => {
+    expect(puntajeEntreCompetencias([])).toBeNull();
+    expect(puntajeEntreCompetencias([3.5, 2])).toBe(2.75);
+    expect(puntajeEntreCompetencias([3.25])).toBe(3.25);
   });
 
   it("extremos compara a 2 decimales, ignora los nulos y conserva los empates", () => {

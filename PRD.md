@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Version | 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
-| Date | 2026-11-17 |
+| Version | 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias and its CSV (§5.9, §7, §10, §11.4). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
+| Date | 2026-11-18 |
 | Owner | Emmanuel (engineering) |
 | Status | Approved for build (see §16 for open items) |
 | UI language | Spanish (Costa Rica), "usted" form, light mode only |
@@ -139,10 +139,10 @@ Rules:
 - It clears every local draft and the selected evaluator, then returns to Inicio.
 
 ### 5.9 Reports (docente only)
-- `/reportes`: competencia picker (the competencias with a rubric in the session's jornada) → **Reporte general**.
+- `/reportes`: **Reporte consolidado** (all five competencias together, §11.4), then the competencia picker (the competencias with a rubric in the session's jornada) → **Reporte general**.
 - From the ranking table, tap a participant → **Reporte individual**.
 - From the Reporte general: **Resumen del grupo** (§11.3) and **"Enviar resultados por correo"** (§5.14).
-- "Descargar CSV" and "Imprimir o guardar PDF" are available in both views. Printing is also available in the group summary.
+- "Descargar CSV" and "Imprimir o guardar PDF" are available in both views and in the Reporte consolidado. Printing is also available in the group summary.
 
 ### 5.10 Participants (admin only)
 - Each jornada has its own list. `/admin` shows the jornada switch (§5.11) and edits the selected jornada's list. Both jornadas number their participants from P01, and the two lists are independent.
@@ -247,6 +247,7 @@ The code is what stops someone who knows a classmate's email from claiming that 
 | FR-25 | Group summary for one jornada or both (§11.3). | P1 |
 | FR-26 | Personal results by email with preview, test send, confirmation and send tracking (§5.14). | P0 |
 | FR-27 | Email delivery through Resend, with a "consola" transport for development and tests (§13 Email). | P0 |
+| FR-28 | Reporte consolidado: all five competencias of the jornada in one report, with its CSV (§11.4). | P1 |
 
 ## 7. Scoring rules
 
@@ -262,6 +263,7 @@ Level values: Básico = 1, Intermedio = 2, Avanzado = 3, Experto = 4.
 | Cobertura | Evaluations received ÷ expected evaluations. Expected = (number of evaluators × number of active participants) − the evaluator × participant pairs marked absent (§5.13). |
 | Brecha al siguiente nivel | For a score `s` (a puntaje general, an indicator mean or the group mean) rounded to 2 decimals: the next threshold is the first of 1.5 / 2.5 / 3.5 above `s`, and *faltante* = threshold − `s`, to 2 decimals. Uses the same rounding as Nivel general, so the shown score and the gap always agree: 2,49 → "Le faltan 0,01 puntos para Avanzado"; 2,50 → Avanzado, "Le faltan 1,00 puntos para Experto"; ≥ 3,50 → "Nivel máximo alcanzado". |
 | Puntaje del grupo | Mean of the puntajes generales of the participants with at least 1 evaluation. Its nivel and brecha use the same rules. |
+| Promedio entre competencias (participante) | Mean of the participant's puntajes generales in the competencias where they have at least 1 evaluation (§11.4). Always shown with how many competencias it covers ("{n} de {total}"). Its nivel and brecha use the same rules; the group's figure is the mean of these promedios over the participants that have one. |
 | Avance de un evaluador | Expected = active participants − those this evaluator marked absent. Status: **Sin iniciar** (0 sent) · **En progreso** · **Completo** (sent = expected). |
 
 Numbers are displayed with `Intl.NumberFormat('es-CR')` and 2 decimals (e.g., "2,75"). All scoring lives in one pure, unit-tested module (`src/lib/puntajes.ts`).
@@ -473,6 +475,7 @@ Every read and write is wrapped in try/catch. If storage is unavailable (Safari 
 | PUT | `/api/asistencia` | evaluador, docente | `{ competenciaId, evaluadorId, participanteId, ausente }` (§5.13). For an evaluador, `evaluadorId` is optional (it defaults to the session's `integranteId`) and any other id is `403`; the docente must name a member of the jornada's team. `409` if marking absent after sending, checked in the same statement that writes the mark. `POST /api/evaluaciones` answers `409` for a participant that evaluator marked absent. |
 | GET | `/api/reportes/[competencia]` | docente | Aggregated report JSON (general + per participant, gaps, evaluator progress, attendance). |
 | GET | `/api/reportes/[competencia]/csv` | docente | CSV download (UTF-8 with BOM so Excel opens accents correctly). |
+| GET | `/api/reportes/consolidado/csv` | docente | The Reporte consolidado of the session's jornada as a CSV (§11.4), one row per participant. The static `consolidado` segment takes precedence over `[competencia]`; no competencia may use that id. |
 | GET | `/api/reportes/[competencia]/grupo?jornada=` | docente | Group summary (§11.3). `jornada` is `manana`, `noche` or `ambas`; invalid or missing → the session's. Read-only. |
 | POST | `/api/reportes/[competencia]/enviar` | docente | `{ participantes: string[], reenviar?: boolean }` (§5.14): recomputes results on the server, sends one email per participant, records each in `envios_resultados`, returns `{ enviados, errores: [{ participanteId, motivo }] }` (`motivo`: `sin-correo`, `sin-evaluaciones`, `ausente`, `ya-enviado`, `no-existe`, or the email error category). `{ prueba, participanteId }` sends that participant's email, marked "[Prueba]", to the address given (not stored or recorded); `502` if the provider fails. |
 | PUT | `/api/admin/participantes` | admin | Save `{ jornada, cantidad, nombres[], carnets[], correos[], confirmar? }` for the session's jornada (§5.10); the three arrays are aligned by position. A repeated carnet is a `400`. `409 { error, ocultos, evaluacionesAfectadas }` when hiding participants with evaluations without `confirmar`. `409 { error, jornadaDistinta: true }` when `jornada` isn't the session's. |
@@ -491,6 +494,8 @@ Every route except `/api/acceso*` and `/api/jev` is scoped to the session's jorn
 Errors use the same shape as §8.3, in Spanish.
 
 CSV columns: `jornada, competencia, evaluador, curso_evaluador, participante, carnet, indicador, nivel, nivel_nombre, origen, ia_nivel_sugerido, ia_confianza, observacion, actualizado`. `carnet` is empty for a participant without one. The CSV never includes participant names (v1.4), emails or attendance. The file is named `nivela-{competencia}-{jornada}-{aaaa-mm-dd}.csv`.
+
+Consolidated CSV columns (§11.4): `jornada, participante, carnet`, then for each competencia with a rubric in the jornada (config order) `{id}_puntaje, {id}_nivel, {id}_evaluaciones`, then `competencias_evaluadas, promedio_competencias, nivel_promedio`. One row per active participant; scores to 2 decimals with "." like the raw CSV. Never names, emails or attendance. The file is named `nivela-consolidado-{jornada}-{aaaa-mm-dd}.csv`.
 
 ## 11. Reports and charts (Recharts)
 
@@ -542,6 +547,16 @@ Both reports cover the session's jornada (§5.11) and name it in their header.
 - **Participantes por nivel** and **Puntaje promedio por indicador**, using the simple charts above.
 - With **Ambas jornadas**, a Mañana vs Noche comparison table (each KPI and indicator mean in two columns). Jornadas are compared **by competencia, never by team number**: for Adaptabilidad it compares morning Equipo 4 with night Equipo 1, and each column header names its own team from config ("Mañana · Equipo 4", "Noche · Equipo 1"). Evaluator counts come from each jornada's own team size. Participants are keyed by jornada + id (P01 exists in both). Indicator means are compared side by side only when both jornadas rate with the same rubric (same indicator ids); otherwise each jornada's indicators are listed under its own column, and only the KPIs share rows. "Ambas jornadas" is offered only for competencias with a rubric in both jornadas.
 - Same empty state as §11.2; "Volver" goes to the Reporte general; printable.
+
+### 11.4 Reporte consolidado
+`/reportes/consolidado`, docente only, linked first on `/reportes`. The five competencias of the session's jornada together, for the professors' general report. Like §11.2 it covers only the session's jornada (§5.11).
+- Hero "Reporte consolidado" with *"Todas las competencias · Jornada: {nombre}"*; actions "Descargar CSV" (primary, §10) and "Imprimir o guardar PDF".
+- KPI tiles: competencias con evaluaciones (*"{n} de {m}"*, m = those with a rubric and a team in the jornada; when m < 5, *"{m} de 5 con plantilla en esta jornada"*), participantes evaluados (in at least one competencia), evaluaciones recibidas / esperadas with cobertura (summed over the competencias), promedio entre competencias of the group (§7) and its nivel, evaluadores completos (summed over the teams).
+- **Puntaje del grupo por competencia**: horizontal bars on the 1–4 axis with the threshold lines (§11 simpler charts), one per competencia with a rubric; the title names the highest one, e.g. *"La competencia con el puntaje más alto es «Adaptabilidad» (3,10)"*.
+- **Resumen por competencia**: one row per competencia in config order: name (linking to its Reporte general), that jornada's team label ("Equipo {numero}", from config), puntaje del grupo, nivel, "Para el siguiente nivel", participantes evaluados, cobertura, evaluadores completos. A competencia without a rubric or team in the jornada stays listed with *"Sin plantilla en esta jornada"*.
+- **Participantes por nivel (promedio entre competencias)**: the 4-bar chart over each participant's nivel by promedio entre competencias.
+- **Participantes en todas las competencias**: one row per participant (carnet, never the name), one column per competencia with a rubric (puntaje general and nivel, linking to that competencia's Reporte individual; "Ausente" or "—" without a puntaje), then "Competencias evaluadas" (*"{n} de {m}"*), "Promedio", "Nivel" and "Para el siguiente nivel". Sortable like §11.2; default promedio descending.
+- Every figure comes from each competencia's own aggregation (§11.2), so it matches that competencia's Reporte general. Empty state: *"Aún no hay evaluaciones enviadas en esta jornada."* "Volver" goes to Reportes; printable.
 
 Reports are rendered from one server aggregation (`src/lib/reportes.ts`) that is unit-tested against fixtures.
 
@@ -672,6 +687,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 17. The docente previews and sends results by email; each participant receives only their own results, with no evaluator names; statuses show in the table.
 18. No email address appears in git, logs, the CSV, reports or `/api/jev` payloads.
 19. The reports and the CSV identify each participant by carnet ("Participante NN" without one) and never show a participant's name; evaluators still see names.
+20. The Reporte consolidado shows the five competencias of the jornada together (the ones without a rubric marked "Sin plantilla en esta jornada"), each competencia's figures match its Reporte general, and its CSV opens in Excel with one row per participant.
 
 ## 16. Open questions
 
@@ -960,6 +976,7 @@ Ordered by the night team numbers. A team with no members would leave its compet
 | Avance | "Avance de evaluadores · Equipo {numero}" · "{n} de {total} evaluadores completaron" · "Sin iniciar" · "En progreso" · "Completo" · "Sin correo" · "Pendiente de activar" · "Activa" · "Solo se cuentan las evaluaciones enviadas; los borradores quedan en el teléfono de cada evaluador." · KPI "Ausentes" · KPI "Evaluadores completos" |
 | Gráficos | "Participantes por nivel" · "Puntaje por indicador" · "{n} de {total} evaluadores eligieron {nivel}" · "Ver gráficos detallados" |
 | Resumen del grupo | "Resumen del grupo" · "Jornada" · "Mañana" · "Noche" · "Ambas jornadas" · "Puntaje promedio por indicador" |
+| Reporte consolidado | "Reporte consolidado" · "Las cinco competencias juntas" · "Todas las competencias" · "Competencias con evaluaciones" · "Promedio entre competencias" · "Puntaje del grupo por competencia" · "Resumen por competencia" · "Participantes en todas las competencias" · "Competencias evaluadas" · "Sin plantilla en esta jornada" · "Aún no hay evaluaciones enviadas en esta jornada." |
 | Admin · participantes | "Nombres y carnés" · "Carné · Participante {nn}" · "Pegar lista de participantes" · "El carné del participante {nn} ya está en la lista." |
 | Admin · cuentas | "Cuentas de evaluadores" · "Equipo {numero} · {competencia}" · "Correo electrónico" · "Restablecer acceso" · "Último ingreso" |
 | Envío de resultados | "Enviar resultados por correo" · "Enviarme una prueba" · "Enviar a {n} participantes" · "Reenviar" · "Enviado el {fecha}" · "Sin correo" · "Sin evaluaciones" · "Ausente" · subject "Sus resultados de {competencia} · Nivela" |

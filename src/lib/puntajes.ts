@@ -171,6 +171,17 @@ export function puntajeGrupo(puntajes: readonly number[]): number | null {
 }
 
 /**
+ * Promedio entre competencias (PRD §7, §11.4): mean of a participant's
+ * puntajes generales in the competencias where they have at least 1
+ * evaluation (pass only those). Its nivel and brecha come from nivelGeneral()
+ * and brechaSiguienteNivel(); the report always shows how many competencias
+ * it covers, since a partial mean is not comparable at face value.
+ */
+export function puntajeEntreCompetencias(puntajesGenerales: readonly number[]): number | null {
+  return promedio(puntajesGenerales);
+}
+
+/**
  * The positions of the highest and lowest values (e.g. the group's strongest
  * and weakest indicator, PRD §11.3), compared at display precision so values
  * shown as equal are a tie. Nulls (no data) are skipped; null if none has data.

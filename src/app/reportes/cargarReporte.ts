@@ -4,10 +4,10 @@ import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { leerUltimosEnvios } from "@/lib/db/envios";
-import { obtenerReporte, obtenerResumenGrupo } from "@/lib/db/reportes";
+import { obtenerReporte, obtenerReporteConsolidado, obtenerResumenGrupo } from "@/lib/db/reportes";
 import { cargarContextoEnvio, type ContextoEnvio } from "@/lib/envioResultados";
 import { registrarError } from "@/lib/registro";
-import type { Reporte, ResumenGrupo } from "@/lib/reportes";
+import type { Reporte, ReporteConsolidado, ResumenGrupo } from "@/lib/reportes";
 import type { UltimoEnvio } from "@/lib/resultados";
 import { validarCompetenciaReporte, type JornadaResumen } from "@/lib/validacion";
 
@@ -42,6 +42,20 @@ export async function cargarResumenGrupo(jornadas: readonly JornadaResumen[], ru
   const inicio = Date.now();
   try {
     return await obtenerResumenGrupo(jornadas);
+  } catch (error) {
+    registrarError(ruta, "GET", inicio, error);
+    return null;
+  }
+}
+
+/**
+ * The Reporte consolidado (PRD §11.4) of the session's jornada. Like
+ * cargarReporte, a DB failure becomes `null` and is logged without PII.
+ */
+export async function cargarConsolidado(jornada: JornadaId, ruta: string): Promise<ReporteConsolidado | null> {
+  const inicio = Date.now();
+  try {
+    return await obtenerReporteConsolidado(jornada);
   } catch (error) {
     registrarError(ruta, "GET", inicio, error);
     return null;

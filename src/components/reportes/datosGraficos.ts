@@ -3,7 +3,14 @@ import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearDecimal, formatearEntero, formatearLista, formatearPorcentaje } from "@/lib/formato";
 import { nivelGeneral, proporcion, redondear2, UMBRALES_NIVEL } from "@/lib/puntajes";
-import type { CifrasGrupo, DistribucionIndicador, IndicadorGrupo, PosicionRanking, ResumenIndicador } from "@/lib/reportes";
+import type {
+  CifrasGrupo,
+  CompetenciaConsolidada,
+  DistribucionIndicador,
+  IndicadorGrupo,
+  PosicionRanking,
+  ResumenIndicador,
+} from "@/lib/reportes";
 import { textoBrecha } from "@/lib/textoBrecha";
 
 // Chart inputs, built on the server from the report so the charts only draw:
@@ -193,6 +200,31 @@ export function barrasPuntajePorParticipante(ranking: readonly PosicionRanking[]
     titulo: tituloPuntajePorParticipante(ranking),
     referencias: [...REFERENCIAS_NIVEL],
     barras: ranking.map((r) => barraPuntaje(r.id, r.etiqueta, r.puntaje)),
+  };
+}
+
+// --- Puntaje del grupo por competencia (Reporte consolidado §11.4)
+
+type PuntajeCompetencia = Pick<CompetenciaConsolidada, "id" | "nombre" | "puntaje">;
+
+export function tituloPuntajePorCompetencia(competencias: readonly PuntajeCompetencia[]): string {
+  const t = TEXTOS_REPORTES.consolidado.titulos;
+  const conPuntaje = competencias.filter((c): c is PuntajeCompetencia & { puntaje: number } => c.puntaje !== null);
+  const mas = maximos(conPuntaje, (c) => c.puntaje);
+  if (!mas) return t.sinPuntajes;
+  const valor = formatearDecimal(mas.valor);
+  if (conPuntaje.length === 1) return t.unaCompetencia(conPuntaje[0].nombre, valor);
+  if (mas.elementos.length === conPuntaje.length) return t.todasIguales(valor);
+  if (mas.elementos.length === 1) return t.masAlta(mas.elementos[0].nombre, valor);
+  return t.empateAltas(formatearLista(mas.elementos.map((c) => `«${c.nombre}»`)), valor);
+}
+
+/** One bar per competencia with a rubric in the jornada, on the 1–4 axis with the threshold lines. */
+export function barrasPuntajePorCompetencia(competencias: readonly PuntajeCompetencia[]): DatosBarras {
+  return {
+    titulo: tituloPuntajePorCompetencia(competencias),
+    referencias: [...REFERENCIAS_NIVEL],
+    barras: competencias.map((c) => barraPuntaje(c.id, c.nombre, c.puntaje)),
   };
 }
 

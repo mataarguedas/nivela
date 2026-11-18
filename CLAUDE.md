@@ -96,6 +96,7 @@ src/
     reportes/[competencia]/[participante]/page.tsx  # Reporte individual
     reportes/[competencia]/grupo/page.tsx           # v1.2: Resumen del grupo (PRD §11.3)
     reportes/[competencia]/enviar/page.tsx          # v1.2: send results by email (PRD §5.14)
+    reportes/consolidado/page.tsx                   # v1.5: Reporte consolidado, all competencias together (PRD §11.4; static segment beats [competencia])
     admin/page.tsx + EditorParticipantes.tsx       # admin: participants (names, emails) and evaluator accounts
     api/acceso/route.ts                             # docente/admin codes
     api/acceso/{correo,activar,contrasena,recuperar}/route.ts  # v1.2: evaluator email login
@@ -110,6 +111,7 @@ src/
     api/evaluaciones/route.ts
     api/reportes/[competencia]/route.ts
     api/reportes/[competencia]/csv/route.ts
+    api/reportes/consolidado/csv/route.ts           # v1.5: consolidated CSV (PRD §10)
   proxy.ts                  # session check + role gating (middleware.ts on Next < 16)
   config/
     jornadas.ts             # manana | noche (PRD §5.11)
@@ -132,14 +134,14 @@ src/
     db/{index.ts,schema.ts,participantes.ts,cuentas.ts,envios.ts}  # participantes.ts: the admin's list per jornada (emails read apart); cuentas.ts: account statements; envios.ts: envios_resultados
     jornadaActual.ts        # the session's jornada (and contextoEvaluacion: team + evaluador id) for Server Components
     puntajes.ts             # pure scoring (PRD §7)
-    reportes.ts             # aggregation for report routes
+    reportes.ts             # aggregation for report routes (agregarReporte, agregarResumenGrupo, agregarConsolidado)
     borrador.ts             # localStorage drafts (client), try/catch + memory fallback
     validacion.ts           # zod schemas + config cross-checks
     formato.ts              # Intl es-CR number/percent/date helpers
   components/
     ui/                     # Boton, Chip, Campo, Dialogo, Toast, Nav, SelectorNivel
     calificacion/           # IndicadorSeccion, PanelSugerencia, BarraEnvio
-    reportes/               # datosGraficos (chart data + title sentences), BarrasHorizontales, GraficosDetallados (RadarIndicadores, DistribucionNiveles), TablaParticipantes, MatrizCobertura
+    reportes/               # datosGraficos (chart data + title sentences), BarrasHorizontales, GraficosDetallados (RadarIndicadores, DistribucionNiveles), TablaParticipantes, TablaConsolidada, MatrizCobertura
 scripts/
   seed.ts
   evaluar-jev.ts

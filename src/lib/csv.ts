@@ -17,7 +17,7 @@ import { esNivelValor, obtenerNivel } from "@/config/niveles";
 import type { Participante } from "@/config/participantes";
 import { formatearFechaHora } from "@/lib/formato";
 import { redondear2 } from "@/lib/puntajes";
-import type { FilaReporte } from "@/lib/reportes";
+import type { FilaReporte, ReporteConsolidado } from "@/lib/reportes";
 
 export const BOM = "﻿";
 
@@ -88,4 +88,58 @@ export function generarCsv(
   });
 
   return BOM + [COLUMNAS_CSV.join(","), ...lineas].join("\r\n") + "\r\n";
+}
+
+// ---------------------------------------------------------------------------
+// Reporte consolidado (PRD §10, §11.4)
+// ---------------------------------------------------------------------------
+//
+// One row per active participant of the jornada, with each available
+// competencia's puntaje general, nivel general and evaluations received side
+// by side, then the promedio entre competencias. Unlike the per-competencia
+// CSV this is the report's aggregate (the same figures the page shows), so it
+// covers active participants only. Scores use "." as the decimal separator,
+// like the rest of the CSV. Never names, emails or attendance.
+
+/** The fixed columns; each available competencia adds `{id}_puntaje`, `{id}_nivel`, `{id}_evaluaciones` after `carnet`. */
+export const COLUMNAS_CSV_CONSOLIDADO = {
+  inicio: ["jornada", "participante", "carnet"],
+  porCompetencia: ["puntaje", "nivel", "evaluaciones"],
+  fin: ["competencias_evaluadas", "promedio_competencias", "nivel_promedio"],
+} as const;
+
+const etiquetaNivelCsv = (nivel: number | null) => (nivel !== null && esNivelValor(nivel) ? obtenerNivel(nivel).etiqueta : null);
+const puntajeCsv = (valor: number | null) => (valor === null ? null : redondear2(valor));
+
+export function generarCsvConsolidado(
+  jornada: JornadaId,
+  reporte: ReporteConsolidado,
+  participantes: readonly Pick<Participante, "id" | "carnet">[],
+): string {
+  const carnets = new Map(participantes.map((p) => [p.id, p.carnet]));
+  const indices = reporte.competencias.flatMap((c, i) => (c.disponible ? [i] : []));
+  const encabezado = [
+    ...COLUMNAS_CSV_CONSOLIDADO.inicio,
+    ...indices.flatMap((i) => COLUMNAS_CSV_CONSOLIDADO.porCompetencia.map((c) => `${reporte.competencias[i].id}_${c}`)),
+    ...COLUMNAS_CSV_CONSOLIDADO.fin,
+  ];
+
+  const lineas = reporte.participantes.map((p) =>
+    [
+      nombreJornada(jornada),
+      p.id,
+      carnets.get(p.id) ?? null,
+      ...indices.flatMap((i) => {
+        const celda = p.celdas[i];
+        return [puntajeCsv(celda?.puntaje ?? null), etiquetaNivelCsv(celda?.nivel ?? null), celda?.evaluaciones ?? 0];
+      }),
+      p.competenciasEvaluadas,
+      puntajeCsv(p.promedio),
+      etiquetaNivelCsv(p.nivel),
+    ]
+      .map(celdaCsv)
+      .join(","),
+  );
+
+  return BOM + [encabezado.map(celdaCsv).join(","), ...lineas].join("\r\n") + "\r\n";
 }

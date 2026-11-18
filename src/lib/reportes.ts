@@ -40,6 +40,7 @@ import {
   estadoAvance,
   evaluacionesEsperadas,
   extremos,
+  puntajeEntreCompetencias,
   puntajeGrupo,
   redondear2,
   type Acuerdo,
@@ -541,5 +542,193 @@ export function agregarResumenGrupo(entradas: readonly EntradaResumen[]): Resume
           ),
     jornadas,
     mismaRubrica,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Reporte consolidado (PRD §11.4)
+// ---------------------------------------------------------------------------
+//
+// All five competencias of one jornada side by side, built on each
+// competencia's Reporte (agregarReporte above), so every figure is the one
+// that competencia's Reporte general shows. Participants are the jornada's
+// list (the same for every competencia), identified by carnet. Competencias
+// without a rubric or a team in the jornada stay in the list, marked as not
+// available, so the report always shows the five in config order.
+
+/** One competencia's row in "Resumen por competencia". */
+export type CompetenciaConsolidada = {
+  id: string;
+  nombre: string;
+  /** It has a rubric and a team in this jornada. */
+  disponible: boolean;
+  /** This jornada's display label for its team; null when not available. */
+  numeroEquipo: number | null;
+  /** Available and with at least one evaluation sent. */
+  conEvaluaciones: boolean;
+  /** Puntaje del grupo (PRD §7) for this competencia; null without evaluated participants. */
+  puntaje: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+  participantesEvaluados: number;
+  participantesTotal: number;
+  recibidas: number;
+  esperadas: number;
+  cobertura: number | null;
+  ausentes: number;
+  evaluadoresCompletos: number;
+  evaluadoresTotal: number;
+};
+
+/** A participant's result in one competencia; null in `celdas` when the competencia isn't available. */
+export type CeldaConsolidada = {
+  puntaje: number | null;
+  nivel: NivelValor | null;
+  evaluaciones: number;
+  asistencia: Asistencia | null;
+};
+
+export type ParticipanteConsolidado = {
+  id: string;
+  /** Carnet, or "Participante NN" (PRD §11, v1.4). */
+  etiqueta: string;
+  /** Aligned with ReporteConsolidado.competencias. */
+  celdas: (CeldaConsolidada | null)[];
+  /** Competencias where this participant has a puntaje general. */
+  competenciasEvaluadas: number;
+  /** Promedio entre competencias (PRD §7); null without any puntaje general. */
+  promedio: number | null;
+  nivel: NivelValor | null;
+  brecha: Brecha | null;
+};
+
+export type ReporteConsolidado = {
+  /** No evaluation sent in any competencia of the jornada. */
+  vacio: boolean;
+  /** Every competencia in config order, available or not. */
+  competencias: CompetenciaConsolidada[];
+  /** The jornada's active participants, in list order. */
+  participantes: ParticipanteConsolidado[];
+  kpis: {
+    competenciasDisponibles: number;
+    competenciasConEvaluaciones: number;
+    competenciasTotal: number;
+    /** Participants with a puntaje general in at least one competencia. */
+    participantesEvaluados: number;
+    participantesTotal: number;
+    recibidas: number;
+    esperadas: number;
+    cobertura: number | null;
+    /** Mean of the participants' promedios entre competencias (puntajeGrupo). */
+    promedioGrupo: number | null;
+    nivelGrupo: NivelValor | null;
+    evaluadoresCompletos: number;
+    evaluadoresTotal: number;
+  };
+};
+
+/** One competencia of the jornada: its Reporte, or null without a rubric or team there. */
+export type EntradaConsolidado = { id: string; nombre: string; reporte: Reporte | null };
+
+export function agregarConsolidado(
+  participantes: readonly Pick<Participante, "id" | "etiquetaReporte">[],
+  entradas: readonly EntradaConsolidado[],
+): ReporteConsolidado {
+  const competencias = entradas.map(({ id, nombre, reporte }): CompetenciaConsolidada => {
+    if (reporte === null) {
+      return {
+        id,
+        nombre,
+        disponible: false,
+        numeroEquipo: null,
+        conEvaluaciones: false,
+        puntaje: null,
+        nivel: null,
+        brecha: null,
+        participantesEvaluados: 0,
+        participantesTotal: 0,
+        recibidas: 0,
+        esperadas: 0,
+        cobertura: null,
+        ausentes: 0,
+        evaluadoresCompletos: 0,
+        evaluadoresTotal: 0,
+      };
+    }
+    const puntaje = puntajeGrupo(reporte.ranking.map((r) => r.puntaje));
+    const { kpis } = reporte;
+    return {
+      id,
+      nombre,
+      disponible: true,
+      numeroEquipo: reporte.avance.numeroEquipo,
+      conEvaluaciones: !reporte.vacio,
+      puntaje,
+      nivel: puntaje === null ? null : nivelGeneral(puntaje),
+      brecha: puntaje === null ? null : brechaSiguienteNivel(puntaje),
+      participantesEvaluados: kpis.participantesEvaluados,
+      participantesTotal: kpis.participantesTotal,
+      recibidas: kpis.recibidas,
+      esperadas: kpis.esperadas,
+      cobertura: kpis.cobertura,
+      ausentes: kpis.ausentes,
+      evaluadoresCompletos: kpis.evaluadoresCompletos,
+      evaluadoresTotal: kpis.evaluadoresTotal,
+    };
+  });
+
+  // participante id → its row in each competencia's report (null when not available).
+  const porCompetencia = entradas.map(({ reporte }) =>
+    reporte === null ? null : new Map(reporte.participantes.map((p) => [p.id, p])),
+  );
+
+  const filas = participantes.map((participante): ParticipanteConsolidado => {
+    const celdas = porCompetencia.map((mapa): CeldaConsolidada | null => {
+      if (mapa === null) return null;
+      const propio = mapa.get(participante.id);
+      return {
+        puntaje: propio?.puntajeGeneral ?? null,
+        nivel: propio?.nivelGeneral ?? null,
+        evaluaciones: propio?.evaluaciones ?? 0,
+        asistencia: propio?.asistencia ?? null,
+      };
+    });
+    const puntajes = celdas.flatMap((c) => (c?.puntaje == null ? [] : [c.puntaje]));
+    const media = puntajeEntreCompetencias(puntajes);
+    return {
+      id: participante.id,
+      etiqueta: participante.etiquetaReporte,
+      celdas,
+      competenciasEvaluadas: puntajes.length,
+      promedio: media,
+      nivel: media === null ? null : nivelGeneral(media),
+      brecha: media === null ? null : brechaSiguienteNivel(media),
+    };
+  });
+
+  const disponibles = competencias.filter((c) => c.disponible);
+  const suma = (f: (c: CompetenciaConsolidada) => number) => disponibles.reduce((total, c) => total + f(c), 0);
+  const recibidas = suma((c) => c.recibidas);
+  const esperadas = suma((c) => c.esperadas);
+  const promedioGrupo = puntajeGrupo(filas.flatMap((f) => (f.promedio === null ? [] : [f.promedio])));
+
+  return {
+    vacio: competencias.every((c) => !c.conEvaluaciones),
+    competencias,
+    participantes: filas,
+    kpis: {
+      competenciasDisponibles: disponibles.length,
+      competenciasConEvaluaciones: competencias.filter((c) => c.conEvaluaciones).length,
+      competenciasTotal: competencias.length,
+      participantesEvaluados: filas.filter((f) => f.promedio !== null).length,
+      participantesTotal: participantes.length,
+      recibidas,
+      esperadas,
+      cobertura: proporcion(recibidas, esperadas),
+      promedioGrupo,
+      nivelGrupo: promedioGrupo === null ? null : nivelGeneral(promedioGrupo),
+      evaluadoresCompletos: suma((c) => c.evaluadoresCompletos),
+      evaluadoresTotal: suma((c) => c.evaluadoresTotal),
+    },
   };
 }

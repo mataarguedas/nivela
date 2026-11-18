@@ -1,10 +1,20 @@
 import "server-only";
 import { and, asc, eq } from "drizzle-orm";
-import type { Competencia } from "@/config/competencias";
-import type { Equipo } from "@/config/equipos";
+import { competenciasDeJornada, type Competencia } from "@/config/competencias";
+import { equipoDeCompetencia, type Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
+import type { Participante } from "@/config/participantes";
 import { estadoCuenta } from "@/lib/cuentas";
-import { agregarReporte, agregarResumenGrupo, type FilaReporte, type InfoCuenta, type Reporte, type ResumenGrupo } from "@/lib/reportes";
+import {
+  agregarConsolidado,
+  agregarReporte,
+  agregarResumenGrupo,
+  type FilaReporte,
+  type InfoCuenta,
+  type Reporte,
+  type ReporteConsolidado,
+  type ResumenGrupo,
+} from "@/lib/reportes";
 import type { JornadaResumen } from "@/lib/validacion";
 import { leerAusenciasReporte } from "./asistencia";
 import { cuentasPorIds } from "./cuentas";
@@ -39,13 +49,44 @@ export async function leerFilasReporte(jornada: JornadaId, competenciaId: string
 
 /** Everything both reports need for one competencia of the jornada, over its active participants. */
 export async function obtenerReporte(jornada: JornadaId, competencia: Competencia, equipo: Equipo): Promise<Reporte> {
-  const [participantes, filas, ausencias, cuentas] = await Promise.all([
-    obtenerParticipantes(jornada),
+  return reporteSobre(jornada, competencia, equipo, obtenerParticipantes(jornada));
+}
+
+/** `participantes` may be pending, so a single report reads it alongside its rows. */
+async function reporteSobre(
+  jornada: JornadaId,
+  competencia: Competencia,
+  equipo: Equipo,
+  participantes: readonly Participante[] | Promise<readonly Participante[]>,
+): Promise<Reporte> {
+  const [lista, filas, ausencias, cuentas] = await Promise.all([
+    participantes,
     leerFilasReporte(jornada, competencia.id),
     leerAusenciasReporte(jornada, competencia.id),
     leerCuentasEquipo(equipo),
   ]);
-  return agregarReporte(competencia, equipo, participantes, filas, ausencias, cuentas);
+  return agregarReporte(competencia, equipo, lista, filas, ausencias, cuentas);
+}
+
+/**
+ * The Reporte consolidado (PRD §11.4): every competencia of the session's
+ * jornada, each over its own rubric and team, all over the jornada's one
+ * participant list (read once). A competencia without a rubric or a team in
+ * the jornada is listed as not available. Read-only.
+ */
+export async function obtenerReporteConsolidado(jornada: JornadaId): Promise<ReporteConsolidado> {
+  const participantes = await obtenerParticipantes(jornada);
+  const entradas = await Promise.all(
+    competenciasDeJornada(jornada).map(async (competencia) => {
+      const equipo = competencia.habilitada ? equipoDeCompetencia(jornada, competencia.id) : undefined;
+      return {
+        id: competencia.id,
+        nombre: competencia.nombre,
+        reporte: equipo ? await reporteSobre(jornada, competencia, equipo, participantes) : null,
+      };
+    }),
+  );
+  return agregarConsolidado(participantes, entradas);
 }
 
 /**

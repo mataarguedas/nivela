@@ -139,9 +139,26 @@ test("el admin define 5 participantes con nombre, carné y grupo; quien evalúa 
   );
   expect(desbordeLista).toBeLessThanOrEqual(0);
 
+  // The group picker shows one group; the choice survives a reload and "Volver".
+  const mostrar = pagina.getByLabel("Mostrar");
+  await expect(mostrar).toHaveValue("todos");
+  await expect(mostrar.locator("option")).toHaveText(["Todos los grupos", "Grupo 1 (2)", "Grupo 2 (2)", "Sin grupo (1)"]);
+  await mostrar.selectOption({ label: "Grupo 2 (2)" });
+  await expect(pagina.getByRole("main").getByRole("heading", { level: 2 })).toHaveText(["Grupo 2"]);
+  await expect(filas).toHaveText([/Ana Pérez Solano/, /Carla Mora/]);
+  await pagina.reload();
+  await expect(pagina.getByLabel("Mostrar")).toHaveValue("2");
+  await expect(filas).toHaveCount(2);
+
   await pagina.getByRole("link", { name: /Carla Mora/ }).click();
   await expect(pagina.getByRole("heading", { level: 1, name: "Carla Mora" })).toBeVisible();
   await expect(pagina.getByText("Participante 03 · Grupo 2", { exact: true })).toBeVisible();
+  await pagina.getByRole("link", { name: "Volver a Participantes", exact: true }).first().click();
+  await expect(pagina.getByLabel("Mostrar")).toHaveValue("2");
+  await expect(filas).toHaveCount(2);
+  await pagina.getByLabel("Mostrar").selectOption("todos");
+  await expect(filas).toHaveCount(5);
+  await expect(pagina.getByRole("main").getByRole("heading", { level: 2 })).toHaveText(["Grupo 1", "Grupo 2", "Sin grupo"]);
 
   // A hidden participant is gone from the rating routes.
   await pagina.goto("/adaptabilidad/P06");

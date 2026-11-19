@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Boton } from "@/components/ui/Boton";
 import { Chip, TONO_POR_ESTADO } from "@/components/ui/Chip";
 import { Dialogo } from "@/components/ui/Dialogo";
@@ -72,6 +72,49 @@ function secciones(grupos: readonly (number | null)[]): Seccion[] {
   return resultado;
 }
 
+// The group picker (PRD §5.4, v1.8): "Todos los grupos" or one group. The
+// choice is a per-tab convenience in sessionStorage, so it survives opening a
+// participant, "Volver" and a reload; it lives outside the drafts' "nivela:v1:"
+// prefix, so borrador.ts never sees it. Read through useSyncExternalStore: the
+// server and the first client render both show every group.
+const TODOS = "todos";
+const SIN_GRUPO = "sin";
+const oyentesFiltro = new Set<() => void>();
+const filtroEnMemoria = new Map<string, string>();
+
+function claveFiltro(competenciaId: string): string {
+  return `nivela-grupo:${competenciaId}`;
+}
+
+function leerFiltro(competenciaId: string): string {
+  const clave = claveFiltro(competenciaId);
+  try {
+    return window.sessionStorage.getItem(clave) ?? filtroEnMemoria.get(clave) ?? TODOS;
+  } catch {
+    return filtroEnMemoria.get(clave) ?? TODOS;
+  }
+}
+
+function guardarFiltro(competenciaId: string, valor: string) {
+  const clave = claveFiltro(competenciaId);
+  filtroEnMemoria.set(clave, valor);
+  try {
+    window.sessionStorage.setItem(clave, valor);
+  } catch {
+    // Storage blocked: the in-memory copy still works on this page.
+  }
+  oyentesFiltro.forEach((avisar) => avisar());
+}
+
+function suscribirFiltro(avisar: () => void) {
+  oyentesFiltro.add(avisar);
+  return () => oyentesFiltro.delete(avisar);
+}
+
+function valorGrupo(grupo: number | null): string {
+  return grupo === null ? SIN_GRUPO : String(grupo);
+}
+
 /** "3 de 5 enviadas" for a group; absent participants leave its total, as in the summary. */
 function avance(estados: readonly Estado[]): string {
   const ausentes = estados.filter((e) => e === "ausente").length;
@@ -111,6 +154,15 @@ export function ListaParticipantes({
   const total = participantes.length - cantidadAusentes;
   const grupos = secciones(participantes.map((p) => p.grupo));
   const conGrupos = participantes.some((p) => p.grupo !== null);
+  const idFiltro = useId();
+  const guardado = useSyncExternalStore(
+    suscribirFiltro,
+    () => leerFiltro(competenciaId),
+    () => TODOS,
+  );
+  // A stored group that no longer exists (the admin changed the list) shows every group.
+  const filtro = grupos.some((s) => valorGrupo(s.grupo) === guardado) ? guardado : TODOS;
+  const visibles = conGrupos && filtro !== TODOS ? grupos.filter((s) => valorGrupo(s.grupo) === filtro) : grupos;
 
   function confirmarBorrado() {
     saliendo.current = true;
@@ -141,9 +193,30 @@ export function ListaParticipantes({
         </div>
       </header>
 
+      {conGrupos && (
+        <div className="mb-6 flex flex-col gap-1 px-1 sm:flex-row sm:items-center sm:gap-3">
+          <label htmlFor={idFiltro} className="text-[14px] text-ink-2">
+            {TEXTOS.lista.filtroGrupo}
+          </label>
+          <select
+            id={idFiltro}
+            value={filtro}
+            onChange={(e) => guardarFiltro(competenciaId, e.target.value)}
+            className="min-h-11 w-full rounded-tile border border-control bg-surface px-3 text-body text-ink focus:border-link sm:w-auto"
+          >
+            <option value={TODOS}>{TEXTOS.lista.todosLosGrupos}</option>
+            {grupos.map(({ grupo, indices }) => (
+              <option key={valorGrupo(grupo)} value={valorGrupo(grupo)}>
+                {TEXTOS.lista.opcionGrupo(grupo === null ? TEXTOS.lista.sinGrupo : etiquetaGrupo(grupo), indices.length)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Split by COFI group (PRD §5.4, v1.8): a heading and its own progress per group. */}
       <div className="flex flex-col gap-8" aria-busy={!listo || undefined}>
-        {grupos.map(({ grupo, indices }) => {
+        {visibles.map(({ grupo, indices }) => {
           const titulo = conGrupos ? (grupo === null ? TEXTOS.lista.sinGrupo : etiquetaGrupo(grupo)) : null;
           const idTitulo = `grupo-${grupo ?? "sin"}`;
           const lista = (

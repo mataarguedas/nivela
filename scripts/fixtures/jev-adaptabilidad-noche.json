@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Adaptabilidad, jornada noche (PRD §8.5), según la rúbrica de «Plantilla sistematizada Adaptabilidad.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente y de correr contra Jev.",
+  "competenciaId": "adaptabilidad",
+  "jornada": "noche",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "adaptabilidad-noche-1",
+      "nivelEsperado": 1,
+      "texto": "Cuando le cambiaron el formato del informe a mitad de la actividad, se negó al principio y siguió con el anterior; solo lo ajustó después de que le repitieron varias veces qué debía cambiar."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "adaptabilidad-noche-1",
+      "nivelEsperado": 2,
+      "texto": "Notó que el nuevo formato exigía otro orden y lo comentó, pero preguntó varias veces cómo aplicarlo y necesitó que le explicaran los pasos para hacer los ajustes."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "adaptabilidad-noche-1",
+      "nivelEsperado": 3,
+      "texto": "Al cambiar el formato del informe, modificó su forma de trabajar enseguida y terminó sus tareas siguiendo las nuevas condiciones, sin pedir ayuda."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "adaptabilidad-noche-1",
+      "nivelEsperado": 4,
+      "texto": "Previó que el cambio de formato afectaría los anexos, adaptó su trabajo por su cuenta antes de que se lo pidieran y sugirió una forma más simple de presentar los datos para todo el grupo."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "adaptabilidad-noche-2",
+      "nivelEsperado": 1,
+      "texto": "Cuando surgió una tarea urgente, siguió con lo que tenía planeado y no se dio cuenta de que lo nuevo debía atenderse primero."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "adaptabilidad-noche-2",
+      "nivelEsperado": 2,
+      "texto": "Reconoció que la solicitud urgente cambiaba las prioridades, pero preguntó a un compañero cómo reorganizar sus actividades antes de moverse."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "adaptabilidad-noche-2",
+      "nivelEsperado": 3,
+      "texto": "Ante la tarea imprevista, reorganizó sus pendientes por su cuenta y atendió la urgencia a tiempo sin descuidar el resto."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "adaptabilidad-noche-2",
+      "nivelEsperado": 4,
+      "texto": "Analizó lo que el equipo necesitaba en ese momento, redefinió el orden de todas las tareas con un criterio claro y propuso dos alternativas para resolver el imprevisto sin retrasar la entrega."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "adaptabilidad-noche-3",
+      "nivelEsperado": 1,
+      "texto": "Cuando no estaba claro cuánto tiempo quedaba ni qué datos llegarían, dejó de trabajar y esperó a que le dijeran cómo continuar en cada paso."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "adaptabilidad-noche-3",
+      "nivelEsperado": 2,
+      "texto": "Siguió avanzando en parte de sus actividades con la información incompleta, aunque pidió acompañamiento constante para saber qué hacer mientras tanto."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "adaptabilidad-noche-3",
+      "nivelEsperado": 3,
+      "texto": "Aunque las condiciones eran inciertas, mantuvo el orden de sus actividades y su comportamiento fue el mismo de siempre hasta terminar."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "adaptabilidad-noche-3",
+      "nivelEsperado": 4,
+      "texto": "Con varios cambios al mismo tiempo, se mantuvo constante, anticipó lo que podía fallar y tomó decisiones con seguridad sin detenerse."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "adaptabilidad-noche-4",
+      "nivelEsperado": 1,
+      "texto": "Bajo la presión del tiempo se bloqueó, repetía lo mismo y la facilitadora tuvo que intervenir para que respondiera a lo que se le pedía."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "adaptabilidad-noche-4",
+      "nivelEsperado": 2,
+      "texto": "Dijo que el tiempo corto la ponía nerviosa y ajustó su manera de trabajar cuando la facilitadora le indicó qué priorizar."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "adaptabilidad-noche-4",
+      "nivelEsperado": 3,
+      "texto": "Con el tiempo encima, ajustó por sí misma su forma de trabajar y realizó los cambios necesarios para mantener la calidad de su parte."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "adaptabilidad-noche-4",
+      "nivelEsperado": 4,
+      "texto": "Manejó la presión con calma, ajustó su manera de trabajar y se adelantó a los cambios necesarios para que las actividades siguieran siendo efectivas."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "adaptabilidad-noche-1",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "adaptabilidad-noche-2",
+      "texto": "Llegó con una camisa azul y se sentó cerca de la ventana."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "adaptabilidad-noche-3",
+      "texto": "Comentó que el fin de semana viajará a la playa con su familia."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "adaptabilidad-noche-4",
+      "texto": "Preguntó a qué hora termina la clase porque tiene que tomar el bus."
+    }
+  ]
+}

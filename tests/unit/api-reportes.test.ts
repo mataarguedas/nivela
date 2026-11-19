@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { crearParticipante } from "@/config/participantes";
 import type { FilaReporte } from "@/lib/reportes";
+import { sinRubrica } from "./sinRubrica";
 
 // /api/reportes/[competencia] and its /csv with the db layer and the session
 // mocked. The aggregation itself is covered in reportes.test.ts.
@@ -76,7 +77,7 @@ describe.each([
   });
 
   it("404 para una competencia sin rúbrica en la jornada de la sesión", async () => {
-    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     sesion.getSesion.mockResolvedValue({ ...DOCENTE, jornada: "noche" });
     const respuesta = await pedir("pensamiento-critico");
     expect(respuesta.status).toBe(404);

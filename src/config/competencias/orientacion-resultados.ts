@@ -2,9 +2,10 @@ import type { DefinicionCompetencia } from "./index";
 
 // Morning team's template (Equipo 5, "Plantilla Sistematizada Orientación a
 // resultados.xlsx", PRD Appendix A.5) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev. No night rubric
-// yet: the night team (Equipo 5) hasn't sent its template, so the competencia
-// shows "Próximamente" at night.
+// there. Keep it verbatim: it is also the rubric sent to Jev.
+// The night rubric is the night team's own template (Equipo 5,
+// plantillas_noche/"Herramienta 4 Orientación a resultados.xlsx", PRD Appendix A.10),
+// with its own indicator ids ("…-noche-N").
 export const orientacionResultados: DefinicionCompetencia = {
   id: "orientacion-resultados",
   nombre: "Orientación a resultados",
@@ -56,6 +57,57 @@ export const orientacionResultados: DefinicionCompetencia = {
             2: "Identifica riesgos y propone acciones para responder ante situaciones conocidas, con orientación.",
             3: "Selecciona alternativas, considerando los posibles riesgos y criterios de calidad.",
             4: "Ejecuta acciones para mantener la calidad de los resultados.",
+          },
+        },
+      ],
+    },
+    noche: {
+      definicion:
+        "Es la capacidad de establecer objetivos alineados con las metas organizacionales, priorizar actividades, administrar eficientemente los recursos y ejecutar acciones que permitan alcanzar los resultados esperados dentro de los plazos establecidos, dando seguimiento al desempeño y realizando ajustes cuando sea necesario para mantener la calidad del trabajo.\nEs la capacidad de dirigir los esfuerzos hacia el cumplimiento eficiente de resultados medibles, alineados con los objetivos organizacionales, aprovechando adecuadamente los recursos y dando seguimiento al logro de las metas.",
+      fuente: "Office of Personnel Management [OPM], s. f.; California Department of Human Resources [CalHR], 2023",
+      indicadores: [
+        {
+          id: "orientacion-resultados-noche-1",
+          numero: 1,
+          titulo: "Establece acciones y metas claras.",
+          niveles: {
+            1: "Cumple las metas indicadas para realizar sus tareas.",
+            2: "Controla sus tareas según las metas establecidas.",
+            3: "Coordina sus metas cuando cambian las prioridades.",
+            4: "Desarrolla metas claras para mejorar la organización de su trabajo.",
+          },
+        },
+        {
+          id: "orientacion-resultados-noche-2",
+          numero: 2,
+          titulo: "Administra eficientemente los recursos disponibles asignados.",
+          niveles: {
+            1: "Identifica los recursos disponibles para realizar sus tareas.",
+            2: "Gestiona de forma eficiente los recursos asignados.",
+            3: "Optimiza de manera certera los recursos disponibles a las tareas asignadas.",
+            4: "Perfecciona el uso de los recursos disponibles para superar el resultado.",
+          },
+        },
+        {
+          id: "orientacion-resultados-noche-3",
+          numero: 3,
+          titulo: "Verifica la calidad de su progreso de sus tareas.",
+          niveles: {
+            1: "Reconoce errores básicos en sus tareas.",
+            2: "Verifica el avance y la calidad de sus tareas.",
+            3: "Corrige errores para mejorar la calidad de su trabajo.",
+            4: "Implementa mejoras para prevenir errores en sus tareas.",
+          },
+        },
+        {
+          id: "orientacion-resultados-noche-4",
+          numero: 4,
+          titulo: "Prioriza las metas establecidas.",
+          niveles: {
+            1: "Sigue el orden de prioridades para realizar sus tareas.",
+            2: "Organiza sus tareas según las metas establecidas.",
+            3: "Ajusta sus prioridades para cumplir las metas a tiempo.",
+            4: "Promueve cambios en las prioridades para asegurar el cumplimiento de las metas.",
           },
         },
       ],

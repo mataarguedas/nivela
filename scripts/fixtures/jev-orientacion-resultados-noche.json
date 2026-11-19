@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Orientación a resultados, jornada noche (PRD §8.5), según la rúbrica de «Herramienta 4 Orientación a resultados.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente y de correr contra Jev.",
+  "competenciaId": "orientacion-resultados",
+  "jornada": "noche",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "orientacion-resultados-noche-1",
+      "nivelEsperado": 1,
+      "texto": "Cumplió las metas que le indicaron para hacer su parte del trabajo."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "orientacion-resultados-noche-1",
+      "nivelEsperado": 2,
+      "texto": "Fue controlando sus tareas según las metas que el grupo había establecido."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "orientacion-resultados-noche-1",
+      "nivelEsperado": 3,
+      "texto": "Cuando cambiaron las prioridades, coordinó sus metas para ajustarlas a lo nuevo."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "orientacion-resultados-noche-1",
+      "nivelEsperado": 4,
+      "texto": "Desarrolló metas claras y medibles que le permitieron organizar mejor todo su trabajo."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "orientacion-resultados-noche-2",
+      "nivelEsperado": 1,
+      "texto": "Identificó qué materiales y herramientas tenía disponibles para hacer sus tareas."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "orientacion-resultados-noche-2",
+      "nivelEsperado": 2,
+      "texto": "Usó de forma eficiente los materiales asignados, sin desperdiciarlos."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "orientacion-resultados-noche-2",
+      "nivelEsperado": 3,
+      "texto": "Asignó con precisión cada recurso disponible a la tarea donde más servía."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "orientacion-resultados-noche-2",
+      "nivelEsperado": 4,
+      "texto": "Perfeccionó el uso de los recursos y logró un resultado mayor del que se esperaba con lo mismo."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "orientacion-resultados-noche-3",
+      "nivelEsperado": 1,
+      "texto": "Reconoció errores básicos en sus tareas cuando los vio."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "orientacion-resultados-noche-3",
+      "nivelEsperado": 2,
+      "texto": "Revisó periódicamente su avance y la calidad de lo que llevaba hecho."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "orientacion-resultados-noche-3",
+      "nivelEsperado": 3,
+      "texto": "Corrigió los errores que encontró para mejorar la calidad de su trabajo."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "orientacion-resultados-noche-3",
+      "nivelEsperado": 4,
+      "texto": "Implementó mejoras en su forma de trabajar para que los errores no volvieran a ocurrir."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "orientacion-resultados-noche-4",
+      "nivelEsperado": 1,
+      "texto": "Siguió el orden de prioridades que le dieron para realizar sus tareas."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "orientacion-resultados-noche-4",
+      "nivelEsperado": 2,
+      "texto": "Organizó sus tareas de acuerdo con las metas establecidas."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "orientacion-resultados-noche-4",
+      "nivelEsperado": 3,
+      "texto": "Ajustó sus prioridades por su cuenta para cumplir las metas a tiempo."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "orientacion-resultados-noche-4",
+      "nivelEsperado": 4,
+      "texto": "Propuso cambiar el orden de prioridades del grupo para asegurar que se cumplieran todas las metas."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "orientacion-resultados-noche-1",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "orientacion-resultados-noche-2",
+      "texto": "Llegó con una camisa azul y se sentó cerca de la ventana."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "orientacion-resultados-noche-3",
+      "texto": "Comentó que el fin de semana viajará a la playa con su familia."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "orientacion-resultados-noche-4",
+      "texto": "Preguntó a qué hora termina la clase porque tiene que tomar el bus."
+    }
+  ]
+}

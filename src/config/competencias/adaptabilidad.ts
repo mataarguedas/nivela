@@ -57,14 +57,68 @@ const RUBRICA_MANANA: Rubrica = {
   ],
 };
 
+// The night team's own template (plantillas_noche/"Plantilla sistematizada
+// Adaptabilidad.xlsx", PRD Appendix A.6), with only the minimal corrections
+// listed there. Until v1.7 the night team rated with the morning template
+// (ids adaptabilidad-1…4), so this rubric has its own ids: rows already
+// stored are never relabelled (see competencias/index.ts).
+const RUBRICA_NOCHE: Rubrica = {
+  definicion:
+    "“La adaptabilidad implica ajustar el enfoque de trabajo ante condiciones cambiantes, mantener la efectividad en situaciones difíciles y modificar las prioridades según las necesidades del entorno, gestionando la incertidumbre y comunicando oportunamente los ajustes necesarios”.\n“La adaptabilidad es la capacidad de ajustar los pensamientos, las emociones y los comportamientos ante situaciones nuevas o cambiantes, respondiendo de manera flexible a las demandas del entorno”.",
+  fuente: "Canadian Centre on Substance Use and Addiction, 2021; Waldeck, D. P., 2021",
+  indicadores: [
+    {
+      id: "adaptabilidad-noche-1",
+      numero: 1,
+      titulo: "Ajusta su actuación ante condiciones nuevas o cambiantes.",
+      niveles: {
+        1: "Presenta resistencia ante nuevas condiciones y requiere instrucciones constantes para modificar su actuación.",
+        2: "Reconoce la necesidad de cambiar su actuación, pero necesita orientación para implementar los ajustes.",
+        3: "Modifica oportunamente su forma de actuar y cumple sus tareas de acuerdo con las nuevas condiciones.",
+        4: "Anticipa las exigencias de los cambios, ajusta su actuación autónomamente y propone mejoras en los procedimientos.",
+      },
+    },
+    {
+      id: "adaptabilidad-noche-2",
+      numero: 2,
+      titulo: "Modifica prioridades ante imprevistos y necesidades del entorno.",
+      niveles: {
+        1: "Tiene dificultades para identificar qué tareas requieren atención inmediata y mantiene sus prioridades iniciales.",
+        2: "Identifica las prioridades que deben modificarse, pero necesita apoyo para reorganizar sus actividades.",
+        3: "Reorganiza sus tareas de manera autónoma y atiende oportunamente las situaciones inesperadas.",
+        4: "Evalúa las necesidades del entorno, establece nuevas prioridades estratégicamente y desarrolla alternativas para resolver situaciones imprevistas.",
+      },
+    },
+    {
+      id: "adaptabilidad-noche-3",
+      numero: 3,
+      titulo: "Gestiona los cambios y la incertidumbre.",
+      niveles: {
+        1: "Pierde la continuidad de sus actividades ante situaciones inciertas y requiere orientación continua para retomarlas.",
+        2: "Continúa parcialmente con el desarrollo de sus actividades, aunque necesita acompañamiento para desenvolverse ante situaciones inciertas.",
+        3: "Conserva la conducta y la organización de sus actividades, incluso cuando las condiciones son inciertas.",
+        4: "Demuestra constancia ante cambios simultáneos, prevé posibles dificultades y actúa con seguridad en escenarios inciertos.",
+      },
+    },
+    {
+      id: "adaptabilidad-noche-4",
+      numero: 4,
+      titulo: "Responde a la presión de manera flexible y comunica oportunamente los ajustes necesarios.",
+      niveles: {
+        1: "Evidencia dificultades para ajustar su comportamiento ante situaciones de presión y requiere intervención para responder a las exigencias del entorno.",
+        2: "Reconoce las situaciones que le generan presión y ajusta su respuesta cuando recibe indicaciones.",
+        3: "Ajusta autónomamente sus comportamientos ante situaciones de presión y realiza los cambios necesarios para mantener su desempeño.",
+        4: "Gestiona eficazmente la presión, ajusta sus comportamientos y anticipa los cambios necesarios para mantener la efectividad de sus actividades.",
+      },
+    },
+  ],
+};
+
 export const adaptabilidad: DefinicionCompetencia = {
   id: "adaptabilidad",
   nombre: "Adaptabilidad",
   rubricas: {
     manana: RUBRICA_MANANA,
-    // The night team (Equipo 1) rates with the morning template until it sends
-    // its own (PRD §16). Its evaluations already use these indicator ids, so a
-    // night rubric of its own needs new ids (see competencias/index.ts).
-    noche: RUBRICA_MANANA,
+    noche: RUBRICA_NOCHE,
   },
 };

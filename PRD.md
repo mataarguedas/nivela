@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Version | 1.6: the reports and the results email give every score in points from 0 to 100, with the level bands Básico 0–24, Intermedio 25–49, Avanzado 50–74 and Experto 75–100 (§7, §10, §11, §5.14); evaluators still rate on the 4 levels. 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias, its CSV and a dashboard (§5.9, §7, §10, §11.4), and the Reporte del participante, one student across every competencia (§11.5). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
+| Version | 1.7: the five night teams sent their templates (`plantillas_noche/`), so every competencia now has a night rubric and opens at night too (Appendix A.6–A.10, Appendix B); night Adaptabilidad rates with its own template instead of the morning one, under new indicator ids (§9.1). 1.6: the reports and the results email give every score in points from 0 to 100, with the level bands Básico 0–24, Intermedio 25–49, Avanzado 50–74 and Experto 75–100 (§7, §10, §11, §5.14); evaluators still rate on the 4 levels. 1.5: Reporte consolidado, all five competencias of the jornada together, with the promedio entre competencias, its CSV and a dashboard (§5.9, §7, §10, §11.4), and the Reporte del participante, one student across every competencia (§11.5). 1.4: participants have a carnet (§5.10, §9.2); the reports and the CSV identify participants by carnet, never by name (§10, §11, §13). 1.3: rubrics are per jornada + competencia (§9.1, Appendix A); the four morning templates enable every competencia in the morning, while at night only Adaptabilidad has a rubric until the night teams send theirs. 1.2: evaluator accounts with email login (§5.1, §5.12), attendance (§5.13), personal results by email (§5.14), gap to the next level (§7), evaluator progress (§11.2), simpler charts (§11), group summary (§11.3), back button (§12), night roster and per-jornada team numbering (Appendix B), and the Adaptabilidad rubric from the team template plantilla.xlsx (Appendix A). 1.1 added the night cohort (§5.11). |
 | Date | 2026-11-18 |
 | Owner | Emmanuel (engineering) |
 | Status | Approved for build (see §16 for open items) |
@@ -28,7 +28,7 @@ The activity runs in two **jornadas** (cohorts): the morning students (*Mañana*
 
 Team numbers are per jornada: the morning Adaptabilidad team is Equipo 4 and the night one is Equipo 1 (Appendix B). A team is always identified by jornada + competencia.
 
-Each jornada's team writes the **rubric** (the template with the definition, indicators and levels) for its competencia, so a rubric belongs to jornada + competencia (§9.1, Appendix A). A competencia opens in a jornada only when that jornada has a rubric for it. In the **morning** all five competencias have one. At **night** only *Adaptabilidad* does (it uses the morning template); the other four appear as disabled ("Próximamente") until the night teams send their templates. Rubrics are data, so adding one needs no code changes.
+Each jornada's team writes the **rubric** (the template with the definition, indicators and levels) for its competencia, so a rubric belongs to jornada + competencia (§9.1, Appendix A). A competencia opens in a jornada only when that jornada has a rubric for it. Since v1.7 all five competencias have one in **both** jornadas: the morning templates (A.1–A.5) and the night templates (A.6–A.10). Rubrics are data, so adding one needs no code changes.
 
 ## 2. Context and users
 
@@ -86,7 +86,7 @@ Rules:
 
 ### 5.2 Choose competencia (Inicio)
 - Hero: app name, tagline, "Comenzar".
-- A list of the 5 competencias. A competencia is selectable when the session's jornada has a rubric for it (Appendix A) and a team with members: all 5 in the morning, only *Adaptabilidad* at night for now. The others show the badge "Próximamente", are not focusable as links, and have `aria-disabled="true"`.
+- A list of the 5 competencias. A competencia is selectable when the session's jornada has a rubric for it (Appendix A) and a team with members: since v1.7, all 5 in both jornadas. The others show the badge "Próximamente", are not focusable as links, and have `aria-disabled="true"`.
 - For an evaluador, only **their own team's** competencia is selectable, if it is enabled. Another enabled competencia renders disabled the same way, with the badge "No asignada". If their own competencia isn't enabled yet, a notice under the list reads *"La competencia de su equipo aún no está disponible."*
 
 ### 5.3 Identify evaluator
@@ -353,7 +353,7 @@ Response 200:
 ### 9.1 Static config (`src/config/`)
 - `niveles.ts`: the 4 levels (value, key, label).
 - `competencias/*.ts`: one file per competencia: `id`, `nombre` and `rubricas`, one **rubric** per jornada whose team sent its template: `definicion` (paragraphs separated by `\n`), `fuente`, `indicadores[]`. Each indicator has `id`, `numero`, `titulo`, and `niveles` (1–4 → description). Appendix A lists every rubric.
-  - **A rubric belongs to jornada + competencia.** A competencia is enabled in a jornada exactly when it has a rubric there; every lookup takes the session's jornada (`obtenerCompetenciaHabilitada(jornada, id)`). Two jornadas may share one rubric (night Adaptabilidad uses the morning template).
+  - **A rubric belongs to jornada + competencia.** A competencia is enabled in a jornada exactly when it has a rubric there; every lookup takes the session's jornada (`obtenerCompetenciaHabilitada(jornada, id)`). Two jornadas may share one rubric object; since v1.7 none do (night Adaptabilidad used the morning template until then).
   - Indicator ids are stored in the DB, so an id never changes its text: a new rubric for a jornada gets new ids (e.g. `pensamiento-critico-noche-1`), and rows already stored are never relabelled.
 - `jornadas.ts`: the 2 jornadas (`manana` "Mañana", `noche` "Noche"). Ids are stored in the DB.
 - `equipos.ts`: 5 teams per jornada: `id`, `numero`, `jornada`, `competenciaId`, `integrantes[]` with `{ id, nombre, curso }`. Names only (Appendix B): emails live in the DB (`cuentas`), never here. Integrante ids are unique across jornadas.
@@ -691,11 +691,12 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 | M10 | Attendance; gap to the next level and evaluator progress; simpler charts; group summary. (PROMPTS.md 15–18) |
 | M11 | Personal results by email; v1.2 QA, privacy audit and deploy. (PROMPTS.md 19–20) |
 | M12 | v1.3: rubrics per jornada + competencia; the four morning templates (Appendix A.2–A.5) and their Jev golden sets. |
+| M13 | v1.7: the five night templates (Appendix A.6–A.10) and their Jev golden sets; every competencia opens at night. |
 
 ## 15. Acceptance criteria (demo)
 
 1. On an iPhone (Safari) and an Android phone (Chrome and Firefox), an evaluator can do the whole flow without zooming or horizontal scrolling: sign in with their email and password → pick Adaptabilidad → rate a participant on 4 indicators → send. This works for a morning Equipo 4 member and a night Equipo 1 member alike, each seeing only their jornada's participants.
-2. In the morning all 5 competencias open for the docente (and each evaluador opens their own team's). At night only Adaptabilidad opens; the other 4 are visible but cannot be opened until their night rubrics exist.
+2. In both jornadas all 5 competencias open for the docente (and each evaluador opens their own team's), each with that jornada's rubric (Appendix A).
 3. Refreshing mid-rating loses nothing. "Borrar todo" clears local drafts and does not delete sent evaluations.
 4. "Enviar evaluación" is disabled until all 4 indicators have a level.
 5. Analyzing a Spanish description returns a suggested level with a percentage. Nothing is applied until the evaluator taps "Aplicar sugerencia". Low-confidence and off-topic states render as specified. A Jev outage never blocks manual rating.
@@ -732,7 +733,7 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
 12. **Notice to students**: tell evaluators that their email is used to sign in, and participants that their results will arrive by email.
 13. **Template reviewer comment**: `plantilla.xlsx` has an open comment on Indicador 1 · Intermedio, *"Se repite el mismo verbo en el nivel 2 y 3. Debe ajustar."* The current levels 2 and 3 use different verbs ("Responde", "Afronta"), so it may be stale. Confirm with the team; if they change the wording, update Appendix A and `adaptabilidad.ts` together.
 14. **Evaluator name spellings**: the template lists "Jimena Salgado Campos", "Wenslyn Gracía Pérez" and "Sebastian Chaves Cespedes"; the roster (Appendix B) has "Jimena Salgado", "Wesnlyn García Pérez" and "Sebastian Chaves". Confirm the correct spellings; display names can change in `equipos.ts` without changing the integrante ids.
-15. **Night rubrics**: the night teams of Pensamiento crítico (Equipo 3), Autorregulación emocional (Equipo 2), Orientación al detalle (Equipo 4) and Orientación a resultados (Equipo 5) haven't sent their templates; until they do, those competencias show "Próximamente" at night. Confirm whether the night Adaptabilidad team (Equipo 1) keeps the morning template or sends its own. Each new rubric goes into Appendix A and its config file with new indicator ids, plus a golden-set fixture.
+15. ~~**Night rubrics**~~ Resolved in v1.7: the five night teams sent their templates (`plantillas_noche/`, Appendix A.6–A.10), including the night Adaptabilidad team (Equipo 1), which now rates with its own template. Night evaluations sent with the morning Adaptabilidad template before v1.7 (ids `adaptabilidad-1`…`4`) stay stored but no longer match the night rubric, so the night reports leave their ratings out; they would need to be sent again with the new rubric.
 16. **Wording in the v1.3 templates** that isn't a plain typo, left as written for the teams to confirm (Appendix A):
     - Autorregulación emocional · Indicador 1 · Experto: *"…en acciones constructivas que favorecen y se adapten."* (the verbs don't agree and "favorecen" has no object).
     - Autorregulación emocional · Indicador 3 · Experto: *"Modifica situaciones críticas e inesperadas en oportunidades… y promoviendo soluciones asertivas."* ("Modifica… en" and "y promoviendo").
@@ -742,6 +743,15 @@ Use DESIGN.md as the visual source of truth, with these adaptations:
     - Orientación a resultados: the sources *"Cursos 2CN, s.f"* and *"UCC; Educación en USA"* are incomplete citations.
 17. **Template evaluator names** differ from the roster (Appendix B), e.g. "Felipe López Durán", "Adriana Pérez Solano", "Dorian Campos Madrigal", "Angelica Ramírez Molina", "Monserrat Cespedes". Display names can change in `equipos.ts` without changing the integrante ids.
 
+18. **Night templates (v1.7)**, wording left as written for the teams to confirm (Appendix A.6–A.10):
+    - Adaptabilidad · Noche, Indicador 4 speaks of *"comunica oportunamente los ajustes necesarios"*, but no level describes communicating.
+    - Pensamiento crítico · Noche: the levels describe the team's activity (an airplane built with plastic blocks: *"el modelo"*, *"sus piezas"*, *"la mesa adicional"*), so they only fit that exercise; Jev is sent the same text (§8.2).
+    - Orientación al detalle · Noche, Indicador 2: *"…con precisión, minuciosidad e identificando errores"* (the series isn't parallel).
+    - Orientación a resultados · Noche, Indicador 3: *"Verifica la calidad de su progreso de sus tareas."*; Indicador 2 · Avanzado: *"Optimiza … los recursos disponibles a las tareas asignadas"*.
+    - Autorregulación emocional · Noche: the workbook's "Ficha de Observación" sheet has different level descriptions (and the title "Expresa su desacuerdo sin agredir"); the app uses the "Plantilla sistematizada" sheet. Its own *Nota técnica* (*"No infiera emociones ni valore conocimientos técnicos…"*) differs from the shared one the app shows (§5.5).
+19. **Night template evaluator names** differ from the roster (Appendix B): Adaptabilidad lists "Brenda Alfaro", who isn't in night Equipo 1 (the roster has Emmanuel Reyes), plus "Ana Sevilla" and "Celeste Vega"; Pensamiento crítico lists "Diana Hidalgo Castro", "Josue Rodriguez Saborio" and "Mariana Víquez Benavete"; Orientación al detalle lists "Aguilera Salazar María Anyne", "Badilla Castro Reichel Brittany", "Campos Ramírez Yerelín Sofía" and "Ugalde Alpízar Kristel Fabiana". Confirm the team membership and spellings; display names can change in `equipos.ts` without changing the integrante ids.
+20. **Golden sets for the night rubrics**: `scripts/fixtures/jev-*-noche.json` were written by hand for v1.7 and haven't been run against live Jev or reviewed by the docente yet (§8.5).
+
 ---
 
 ## Appendix A — Rubrics (go into `src/config/competencias/*.ts`)
@@ -750,19 +760,19 @@ Each jornada's team writes the systematized template ("Plantilla sistematizada")
 
 | Competencia | Mañana | Noche |
 |---|---|---|
-| Pensamiento crítico y analítico | A.2 (Equipo 1) | Pending (Equipo 3) |
-| Autorregulación emocional | A.3 (Equipo 2) | Pending (Equipo 2) |
-| Orientación al detalle | A.4 (Equipo 3) | Pending (Equipo 4) |
-| Adaptabilidad | A.1 (Equipo 4) | A.1, the morning template, until the night team (Equipo 1) sends its own |
-| Orientación a resultados | A.5 (Equipo 5) | Pending (Equipo 5) |
+| Pensamiento crítico y analítico | A.2 (Equipo 1) | A.7 (Equipo 3) |
+| Autorregulación emocional | A.3 (Equipo 2) | A.8 (Equipo 2) |
+| Orientación al detalle | A.4 (Equipo 3) | A.9 (Equipo 4) |
+| Adaptabilidad | A.1 (Equipo 4) | A.6 (Equipo 1) |
+| Orientación a resultados | A.5 (Equipo 5) | A.10 (Equipo 5) |
 
 Corrections policy, the same for every template: only plain typos are fixed (accents, spelling, agreement, capital letters, a missing final period, double or trailing spaces, tabs, doubled periods), the "Nivel Básico:" style prefixes are dropped (the app shows the level name itself), and in-text citations move to **Fuente**. Everything else is kept verbatim, because the text is both what evaluators read and the rubric sent to Jev (§8.2). Wording that reads wrong but isn't a plain typo is left as written and listed in §16 for the team to confirm.
 
 Every template ends with the same *Nota técnica*, shown on the rating screen (§5.5). Notes about how a team used AI to review its template are not copied into the app.
 
-### A.1 Adaptabilidad · Mañana, Noche
+### A.1 Adaptabilidad · Mañana
 
-Source: `plantilla.xlsx` (the same file as `plantillas_dia/Plantilla sistematizada ADAPTABILIDAD.xlsx`), sheet "Plantilla sistematizada", the morning Adaptabilidad team's template, dated 12/10/2026. It replaced the v1.0/v1.1 rubric: the indicators were reordered and every level description was rewritten. Indicator ids are positional (`adaptabilidad-1` = Indicador 1); the change was made before any real evaluation existed. The night team rates with it too until it sends its own (§16).
+Source: `plantilla.xlsx` (the same file as `plantillas_dia/Plantilla sistematizada ADAPTABILIDAD.xlsx`), sheet "Plantilla sistematizada", the morning Adaptabilidad team's template, dated 12/10/2026. It replaced the v1.0/v1.1 rubric: the indicators were reordered and every level description was rewritten. Indicator ids are positional (`adaptabilidad-1` = Indicador 1); the change was made before any real evaluation existed. The night team rated with it until v1.7, when it sent its own (A.6).
 
 **Definición:** La adaptabilidad es la capacidad de modificar el propio comportamiento y responder de manera rápida y adecuada ante diferentes situaciones, personas y exigencias del entorno laboral, ajustándose a los cambios en los procedimientos, las tareas y las prioridades, y buscando soluciones eficaces ante los imprevistos.
 
@@ -952,6 +962,195 @@ Corrections applied to the template text (nothing else was changed):
 - Final period added to Indicador 1 · Intermedio; the "..." between the two sentences of the definition replaced by a period; double and trailing spaces removed; the "Nivel Básico:" style prefixes dropped.
 - The in-text citations "(Aicad Business School; 2023; Cursos 2CN, s.f)" and "(UCC; Educación en USA)" moved to **Fuente**; they are incomplete (§16).
 
+### A.6 Adaptabilidad · Noche
+
+Source: `plantillas_noche/Plantilla sistematizada Adaptabilidad.xlsx`, sheet "Plantilla sistematizada", the night Adaptabilidad team's own template (Equipo 1; the date cell reads "99/99/999"). It replaces the morning template the night team used until v1.7 (A.1). Indicator ids `adaptabilidad-noche-1`…`4`: night evaluations stored before v1.7 keep the ids `adaptabilidad-1`…`4` of A.1 and are never relabelled.
+
+**Definición:** “La adaptabilidad implica ajustar el enfoque de trabajo ante condiciones cambiantes, mantener la efectividad en situaciones difíciles y modificar las prioridades según las necesidades del entorno, gestionando la incertidumbre y comunicando oportunamente los ajustes necesarios”.
+
+“La adaptabilidad es la capacidad de ajustar los pensamientos, las emociones y los comportamientos ante situaciones nuevas o cambiantes, respondiendo de manera flexible a las demandas del entorno”.
+
+**Fuente:** Canadian Centre on Substance Use and Addiction, 2021; Waldeck, D. P., 2021
+
+**Indicador 1. Ajusta su actuación ante condiciones nuevas o cambiantes.**
+- Básico: Presenta resistencia ante nuevas condiciones y requiere instrucciones constantes para modificar su actuación.
+- Intermedio: Reconoce la necesidad de cambiar su actuación, pero necesita orientación para implementar los ajustes.
+- Avanzado: Modifica oportunamente su forma de actuar y cumple sus tareas de acuerdo con las nuevas condiciones.
+- Experto: Anticipa las exigencias de los cambios, ajusta su actuación autónomamente y propone mejoras en los procedimientos.
+
+**Indicador 2. Modifica prioridades ante imprevistos y necesidades del entorno.**
+- Básico: Tiene dificultades para identificar qué tareas requieren atención inmediata y mantiene sus prioridades iniciales.
+- Intermedio: Identifica las prioridades que deben modificarse, pero necesita apoyo para reorganizar sus actividades.
+- Avanzado: Reorganiza sus tareas de manera autónoma y atiende oportunamente las situaciones inesperadas.
+- Experto: Evalúa las necesidades del entorno, establece nuevas prioridades estratégicamente y desarrolla alternativas para resolver situaciones imprevistas.
+
+**Indicador 3. Gestiona los cambios y la incertidumbre.**
+- Básico: Pierde la continuidad de sus actividades ante situaciones inciertas y requiere orientación continua para retomarlas.
+- Intermedio: Continúa parcialmente con el desarrollo de sus actividades, aunque necesita acompañamiento para desenvolverse ante situaciones inciertas.
+- Avanzado: Conserva la conducta y la organización de sus actividades, incluso cuando las condiciones son inciertas.
+- Experto: Demuestra constancia ante cambios simultáneos, prevé posibles dificultades y actúa con seguridad en escenarios inciertos.
+
+**Indicador 4. Responde a la presión de manera flexible y comunica oportunamente los ajustes necesarios.**
+- Básico: Evidencia dificultades para ajustar su comportamiento ante situaciones de presión y requiere intervención para responder a las exigencias del entorno.
+- Intermedio: Reconoce las situaciones que le generan presión y ajusta su respuesta cuando recibe indicaciones.
+- Avanzado: Ajusta autónomamente sus comportamientos ante situaciones de presión y realiza los cambios necesarios para mantener su desempeño.
+- Experto: Gestiona eficazmente la presión, ajusta sus comportamientos y anticipa los cambios necesarios para mantener la efectividad de sus actividades.
+Corrections applied to the template text (nothing else was changed):
+- Quotation marks: the two quoted definitions, written with straight quotes and a leading space (`" La adaptabilidad…necesarios"`, `"La adaptabilidad…entorno."`), became typographic quotes with the period outside each one.
+- Final period added to Indicador 4 · Avanzado and Indicador 4 · Experto; the missing space after "Nivel Avanzado:" and the indicator numbers ("2.Modifica") dropped with the prefixes; double and trailing spaces removed; the "Nivel Básico:" style prefixes dropped.
+- The in-text citations "(Canadian Centre on Substance Use and Addiction, 2021)" and "(Waldeck, 2021)" moved to **Fuente**, with the initials from the template's reference list. The template's 0–25 / 26–50 / 51–75 / 76–100 "Valor" column is not copied: the app's points and level bands are §7's.
+
+### A.7 Pensamiento crítico y analítico · Noche
+
+Source: `plantillas_noche/Plantilla_sistematizada Pensamiento Crítico y Analítico.xlsx`, sheet "Plantilla sistematizada", the night Pensamiento crítico y analítico team's template (Equipo 3, dated 23/11/2026). Its levels describe the team's activity ("Construyamos un avión con bloques plásticos", sheet "Hoja de evaluación", which carries the same text). Indicator ids `pensamiento-critico-noche-1`…`4`.
+
+**Definición:** El pensamiento crítico y analítico es la capacidad de una persona para analizar y cuestionar la información, identificar problemas, reconocer errores y evaluar diferentes alternativas, utilizando la lógica y el razonamiento para comprender una situación y encontrar soluciones antes de tomar una decisión.
+
+**Fuente:** Halpern, D. F. y Dunn, D. S., 2021; Universidad Técnica Nacional, 2023
+
+**Indicador 1. Analiza y cuestiona la información disponible.**
+- Básico: Observa el modelo de forma general y empieza a construir sin revisar sus piezas.
+- Intermedio: Identifica las partes del avión y nota algunas diferencias con sus piezas.
+- Avanzado: Compara sus piezas con el modelo y reconoce qué partes puede reproducir.
+- Experto: Contrasta el modelo parte por parte e identifica piezas faltantes o diferentes antes de construir.
+
+**Indicador 2. Identifica problemas y reconoce errores.**
+- Básico: Reconoce solo errores evidentes, como piezas que se caen o partes faltantes.
+- Intermedio: Detecta errores de forma, color o posición al comparar con el modelo.
+- Avanzado: Detecta errores de proporción o estabilidad y reconoce su causa.
+- Experto: Anticipa problemas de forma o estabilidad y reconoce su efecto en el resultado.
+
+**Indicador 3. Evalúa diferentes alternativas de solución.**
+- Básico: Ante una dificultad, aplica una sola forma de resolverla.
+- Intermedio: Prueba distintas formas de armar, sin compararlas.
+- Avanzado: Compara formas de armado según parecido, estabilidad y tiempo.
+- Experto: Prioriza alternativas con criterios claros y elige la más efectiva.
+
+**Indicador 4. Propone la solución más adecuada antes de tomar una decisión final.**
+- Básico: No define qué piezas cambiar o elige sin una razón clara.
+- Intermedio: Identifica piezas para cambiar, pero decide con un análisis limitado.
+- Avanzado: Elige 1 o 2 piezas y explica cómo mejoran su avión.
+- Experto: Justifica cada pieza elegida y define su uso antes de ir a la mesa adicional.
+Corrections applied to the template text (nothing else was changed):
+- Accent: "Evalua" → "Evalúa" (Indicador 3 title; the "Hoja de evaluación" sheet already had it).
+- The "COMPETENCIA ASIGNADA / Pensamiento crítico y analítico" heading in the definition cell and the "Nivel Básico:" style prefixes dropped; double and trailing spaces removed.
+- The template's reference list (Halpern y Dunn, 2021; Universidad Técnica Nacional, 2023) became **Fuente**; the definition itself has no in-text citation. The "Registro" instructions are not copied.
+
+### A.8 Autorregulación emocional · Noche
+
+Source: `plantillas_noche/Plantilla_sistematizada Autoregulación emocional.xlsx`, sheet "Plantilla sistematizada", the night Autorregulación emocional team's template (Equipo 2). Indicator ids `autorregulacion-emocional-noche-1`…`4`. The workbook's "Ficha de Observación" sheet has different level descriptions; the "Plantilla sistematizada" sheet is the rubric, like every other template (§16).
+
+**Definición:** Capacidad de manejar las emociones de forma adecuada, comprendiendo la relación entre lo que se siente, se piensa y se hace, y utilizando recursos para afrontar situaciones difíciles.
+
+Capacidad de gestionar las emociones perturbadoras, evitar respuestas impulsivas y mantener un comportamiento eficaz bajo estrés.
+
+**Fuente:** Guzmán Coyago, E. y Moreno, E. M., 2025; Goleman, D., 2024
+
+**Indicador 1. Autorregula sus emociones.**
+- Básico: Reacciona emocionalmente sin lograr controlar sus respuestas.
+- Intermedio: Reconoce sus emociones e intenta controlarlas, aunque de manera inconsistente.
+- Avanzado: Controla sus emociones de forma consciente y mantiene una respuesta adecuada ante situaciones difíciles.
+- Experto: Anticipa sus reacciones y mantiene un equilibrio emocional constante ante situaciones complejas.
+
+**Indicador 2. Expresa su desacuerdo.**
+- Básico: Confronta de manera impulsiva o poco respetuosa al expresar desacuerdos.
+- Intermedio: Reconoce su desacuerdo con respeto, aunque puede perder el control bajo presión.
+- Avanzado: Expresa sus diferencias con respeto, escucha y sostiene un diálogo constructivo de forma autónoma.
+- Experto: Promueve el diálogo constructivo y expresa sus diferencias de forma asertiva, favoreciendo la resolución de conflictos.
+
+**Indicador 3. Gestiona emociones perturbadoras bajo estrés.**
+- Básico: Se deja dominar por el estrés, afectando su comportamiento y capacidad de respuesta.
+- Intermedio: Identifica el estrés e intenta gestionarlo, aunque presenta dificultades para mantener el control.
+- Avanzado: Gestiona el estrés de manera efectiva, manteniendo la concentración y el comportamiento adecuado.
+- Experto: Domina sus respuestas emocionales ante situaciones de alta presión, adaptándose sin perder el enfoque.
+
+**Indicador 4. Recupera el control después de una tensión.**
+- Básico: Permanece alterado o frustrado, afectando su desempeño después de una situación tensa.
+- Intermedio: Retoma gradualmente el control, aunque necesita tiempo o apoyo para recuperar la estabilidad.
+- Avanzado: Recupera la compostura y retoma la actividad de manera autónoma y constructiva.
+- Experto: Restablece rápidamente su equilibrio, reorienta su conducta y continúa sin trasladar la tensión a otras situaciones.
+Corrections applied to the template text (nothing else was changed):
+- Each definition started with its citation ("Guzmán Coyago y Moreno (2025): capacidad de…", "Goleman (2024): capacidad de…"); the citations moved to **Fuente** and "Capacidad" takes a capital letter.
+- Spacing: "Nivel Básico:Reacciona" (Indicador 1 · Básico) lost its prefix like the rest; final period added to Indicador 4 · Básico; the "Nivel Básico:" style prefixes dropped.
+- Not copied: the "COMPETENCIA ASIGNADA" heading, the "Perfil de salida" and "Origen de los indicadores" notes, the note about reviewing the levels with AI, and the template's own *Nota técnica* with its 0–100 scoring instructions (the app shows the shared Nota técnica, §5.5, and §7's points).
+
+### A.9 Orientación al detalle · Noche
+
+Source: `plantillas_noche/Herramienta 4 - Plantilla Sistematizada Orientación al Detalle.xlsx`, sheet "Plantilla sistematizada", the night Orientación al detalle team's template (Equipo 4). Indicator ids `orientacion-detalle-noche-1`…`4`.
+
+**Definición:** “Es la habilidad para asegurar que el trabajo y la información, propios o ajenos, sean completos y precisos, además de prepararse cuidadosamente para reuniones y hacer seguimiento a otros, para asegurar que se hayan cumplido los acuerdos y compromisos”.
+
+Es la capacidad de ejecutar tareas con precisión y minuciosidad, identificando errores, verificando la exactitud de los datos y comprobando que la información y los procedimientos cumplan con los requisitos establecidos. Implica mantener la atención durante el desarrollo de las actividades y dar seguimiento a los compromisos para garantizar la calidad de los resultados.
+
+**Fuente:** Biblioteca de Competencias, s. f.; adaptado de Compensar, s. f., y Dirección del Trabajo, s. f.
+
+**Indicador 1. Asegura que la información esté completa y precisa.**
+- Básico: Completa la información solicitada en los documentos correspondientes.
+- Intermedio: Revisa que los documentos contengan todos los datos requeridos.
+- Avanzado: Comprueba que los datos coincidan con los documentos de respaldo.
+- Experto: Verifica la integridad y exactitud de la información en los documentos antes de su entrega.
+
+**Indicador 2. Ejecuta tareas con precisión, minuciosidad e identificando errores.**
+- Básico: Sigue instrucciones y presta atención a los detalles durante la ejecución de las tareas.
+- Intermedio: Demuestra criterios de precisión y reconoce errores comunes en las tareas realizadas.
+- Avanzado: Comprueba minuciosamente los resultados e identifica errores u omisiones.
+- Experto: Garantiza la precisión en las tareas de distinta complejidad y detecta detalles poco evidentes.
+
+**Indicador 3. Verifica la exactitud de los datos.**
+- Básico: Identifica errores evidentes en la información.
+- Intermedio: Comprueba la información con diferentes fuentes disponibles.
+- Avanzado: Reconoce errores muy complejos o poco evidentes en la información.
+- Experto: Detecta inconsistencias de manera oportuna y propone solución al problema, evitando su recurrencia.
+
+**Indicador 4. Garantiza la calidad de los resultados.**
+- Básico: Omite comprobar si su trabajo cumple con las instrucciones establecidas.
+- Intermedio: Revisa parcialmente algunos requisitos, pero omite verificar otros.
+- Avanzado: Verifica que su trabajo cumpla con las instrucciones y los requisitos establecidos.
+- Experto: Asegura el cumplimiento de todos los requisitos y la corrección de incumplimientos antes de finalizar.
+Corrections applied to the template text (nothing else was changed):
+- Spelling: "minusiosidad" → "minuciosidad" (Indicador 2 title). Accent: "este completa" → "esté completa" (Indicador 1 title).
+- Quotation marks: the quoted Definición 1 ends `compromisos.”`; the period moved outside the quote, as in A.4. The "Orientación al Detalle", "Definición 1:" and "Definición 2:" labels dropped.
+- The indicator prefixes ("Indicador 1:") and the "Nivel Básico:" style prefixes dropped; double and trailing spaces removed.
+- The citations "(Biblioteca de Competencias, s. f.)" and "Adaptado de las definiciones de atención al detalle de Compensar (s. f.) y la Dirección del Trabajo (s. f.)." moved to **Fuente**.
+
+### A.10 Orientación a resultados · Noche
+
+Source: `plantillas_noche/Herramienta 4 Orientación a resultados.xlsx`, sheet "Plantilla sistematizada", the night Orientación a resultados team's template (Equipo 5; the date cell reads 12/10/2026). Indicator ids `orientacion-resultados-noche-1`…`4`.
+
+**Definición:** Es la capacidad de establecer objetivos alineados con las metas organizacionales, priorizar actividades, administrar eficientemente los recursos y ejecutar acciones que permitan alcanzar los resultados esperados dentro de los plazos establecidos, dando seguimiento al desempeño y realizando ajustes cuando sea necesario para mantener la calidad del trabajo.
+
+Es la capacidad de dirigir los esfuerzos hacia el cumplimiento eficiente de resultados medibles, alineados con los objetivos organizacionales, aprovechando adecuadamente los recursos y dando seguimiento al logro de las metas.
+
+**Fuente:** Office of Personnel Management [OPM], s. f.; California Department of Human Resources [CalHR], 2023
+
+**Indicador 1. Establece acciones y metas claras.**
+- Básico: Cumple las metas indicadas para realizar sus tareas.
+- Intermedio: Controla sus tareas según las metas establecidas.
+- Avanzado: Coordina sus metas cuando cambian las prioridades.
+- Experto: Desarrolla metas claras para mejorar la organización de su trabajo.
+
+**Indicador 2. Administra eficientemente los recursos disponibles asignados.**
+- Básico: Identifica los recursos disponibles para realizar sus tareas.
+- Intermedio: Gestiona de forma eficiente los recursos asignados.
+- Avanzado: Optimiza de manera certera los recursos disponibles a las tareas asignadas.
+- Experto: Perfecciona el uso de los recursos disponibles para superar el resultado.
+
+**Indicador 3. Verifica la calidad de su progreso de sus tareas.**
+- Básico: Reconoce errores básicos en sus tareas.
+- Intermedio: Verifica el avance y la calidad de sus tareas.
+- Avanzado: Corrige errores para mejorar la calidad de su trabajo.
+- Experto: Implementa mejoras para prevenir errores en sus tareas.
+
+**Indicador 4. Prioriza las metas establecidas.**
+- Básico: Sigue el orden de prioridades para realizar sus tareas.
+- Intermedio: Organiza sus tareas según las metas establecidas.
+- Avanzado: Ajusta sus prioridades para cumplir las metas a tiempo.
+- Experto: Promueve cambios en las prioridades para asegurar el cumplimiento de las metas.
+Corrections applied to the template text (nothing else was changed):
+- Agreement: "superar el resultados" → "superar el resultado" (Indicador 2 · Experto).
+- Final period added to the Indicador 3 and Indicador 4 titles; the "Orientación a resultados:" and "Definición 2:" labels and the "Nivel Básico:" style prefixes dropped; double, trailing and line-break spaces removed.
+- The citations "(Office of Personnel Management [OPM], s. f.)" and "(California Department of Human Resources [CalHR], 2023)" moved to **Fuente**. The template's 0–25 … 76–100 points per level are not copied (§7).
+
 ## Appendix B — Teams (names only, goes into `src/config/equipos.ts`)
 
 **Team numbers are per jornada.** The two cohorts numbered their teams differently, so the same competencia has a different team number in each jornada:
@@ -978,15 +1177,15 @@ A team is identified by jornada + competencia; its number is only a display labe
 
 ### Noche
 
-Ordered by the night team numbers. A team with no members would leave its competencia as "Próximamente" at night, and so does a competencia without a night rubric (Appendix A): for now every night competencia except Adaptabilidad.
+Ordered by the night team numbers. A team with no members would leave its competencia as "Próximamente" at night, and so would a competencia without a night rubric (Appendix A); since v1.7 every night competencia has both.
 
 | Equipo | Competencia | Habilitada | AGRH 315 Psicología 2 | AGRH 613 Seminario |
 |---|---|---|---|---|
 | **1** | **Adaptabilidad** | **Sí** | Gabriela Salgado, Emmanuel Reyes, Reylin Centeno | Goldine Foster Mclean, Anna Sevilla López, Ricardo Méndez Ubeda, María Celeste Vega Zamora |
-| 2 | Autorregulación emocional | No | Raquel Vargas, Keilyn Solis, Delma Saldaña | Andy Molina Castro, Karyme Varela Cantillano, Nailea Matarrita Quirós, Camila Fallas Cerón |
-| 3 | Pensamiento crítico y analítico | No | Cristopher Martínez Rentería, Josué Rodríguez Saborío, Yubeidi Mendez Ubeda | Emilly González Azofeifa, Valery Quesada Oviedo, Diana Hidalgo, Mariana Viquez Benavente |
-| 4 | Orientación al detalle | No | Melany Aguirre, Brittany Badilla | Sofía Campos Ramirez, Kristel Ugalde, Sandra Gómez Reyes, Arlyne Aguilera Salazar |
-| 5 | Orientación a resultados | No | Mariela Salas, Ximena Badilla Vargas | Yuleissy Vargas Corrales, Kevin Chavarría, Aldair Hernández Rodríguez, Tiffany Alfaro, Byron Castro Retana |
+| 2 | Autorregulación emocional | Sí | Raquel Vargas, Keilyn Solis, Delma Saldaña | Andy Molina Castro, Karyme Varela Cantillano, Nailea Matarrita Quirós, Camila Fallas Cerón |
+| 3 | Pensamiento crítico y analítico | Sí | Cristopher Martínez Rentería, Josué Rodríguez Saborío, Yubeidi Mendez Ubeda | Emilly González Azofeifa, Valery Quesada Oviedo, Diana Hidalgo, Mariana Viquez Benavente |
+| 4 | Orientación al detalle | Sí | Melany Aguirre, Brittany Badilla | Sofía Campos Ramirez, Kristel Ugalde, Sandra Gómez Reyes, Arlyne Aguilera Salazar |
+| 5 | Orientación a resultados | Sí | Mariela Salas, Ximena Badilla Vargas | Yuleissy Vargas Corrales, Kevin Chavarría, Aldair Hernández Rodríguez, Tiffany Alfaro, Byron Castro Retana |
 
 ## Appendix C — Copy deck (key strings)
 

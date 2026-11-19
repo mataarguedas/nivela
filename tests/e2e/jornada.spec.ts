@@ -6,8 +6,8 @@ import { iniciarSesion } from "./sesion";
 
 // Jornadas (PRD §5.11): a night evaluator's account opens only the night
 // cohort, and docente and admin switch jornada in the app. Nothing here writes to the
-// DB. The night roster may still be empty (PRD §16), in which case every
-// competencia is "Próximamente" at night; the specs read config to know.
+// DB. Which competencias open at night comes from config (since v1.7 all of
+// them have a night rubric); the specs read config to know.
 
 const equipoNoche = EQUIPOS.find((e) => e.jornada === "noche" && e.competenciaId === "adaptabilidad");
 const equipoManana = EQUIPOS.find((e) => e.jornada === "manana" && e.competenciaId === "adaptabilidad")!;

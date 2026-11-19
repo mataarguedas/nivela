@@ -77,7 +77,8 @@ test.describe("como docente", () => {
       `Mañana · Equipo ${manana.numero}`,
       `Noche · Equipo ${noche.numero}`,
     ]);
-    // 8 KPI rows + the 4 shared indicators (both jornadas use the same rubric), plus the header.
+    // 8 KPI rows + 4 indicator rows by position (since v1.7 each jornada has its own
+    // Adaptabilidad rubric, so each cell names its own indicator), plus the header.
     await expect(tabla.getByRole("row")).toHaveCount(13);
     // Each column counts its own team's evaluators.
     const completos = tabla.getByRole("row", { name: /^Evaluadores completos/ }).getByRole("cell");
@@ -99,12 +100,10 @@ test.describe("como docente", () => {
     await expect(subtitulo(page, "Adaptabilidad · Jornada: Noche")).toBeVisible();
     await expect(selector(page).getByRole("radio", { name: "Noche" })).toHaveAttribute("aria-checked", "true");
 
-    // A competencia with a morning rubric only doesn't offer "Ambas jornadas".
+    // Since v1.7 every competencia has a rubric in both jornadas, so each offers "Ambas jornadas".
     await page.goto("/reportes/pensamiento-critico/grupo?jornada=ambas");
-    await expect(principal(page).getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
-    await page.goto("/reportes/pensamiento-critico/grupo?jornada=manana");
-    await expect(subtitulo(page, "Pensamiento crítico y analítico · Jornada: Mañana")).toBeVisible();
-    await expect(selector(page).getByRole("radio")).toHaveText(["Mañana"]);
+    await expect(subtitulo(page, "Pensamiento crítico y analítico · Ambas jornadas")).toBeVisible();
+    await expect(selector(page).getByRole("radio")).toHaveText(["Mañana", "Noche", "Ambas jornadas"]);
   });
 });
 

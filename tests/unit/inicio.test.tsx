@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ContenidoInicio } from "@/app/ContenidoInicio";
 import { competenciasDeJornada, DEFINICIONES_COMPETENCIA } from "@/config/competencias";
 import { competenciaDisponible } from "@/config/equipos";
+import { sinRubrica } from "./sinRubrica";
 
 // Inicio's content per jornada (the page reads the jornada from the session
 // behind Suspense and renders this). Which competencias open depends on the
-// jornada's rubrics (PRD Appendix A): all 5 in the morning, only
-// Adaptabilidad at night until the night teams send their templates.
+// jornada's rubrics (PRD Appendix A): since v1.7 all 5 in both jornadas. The
+// "no rubric yet" cases take a night rubric away with sinRubrica().
+
+const SIN_NOCHE = ["pensamiento-critico", "autorregulacion-emocional", "orientacion-detalle", "orientacion-resultados"];
 
 describe("Inicio", () => {
   it("muestra el hero con Nivela, el lema, la jornada y un único botón primario Comenzar", () => {
@@ -26,8 +29,8 @@ describe("Inicio", () => {
     expect(within(lista).getAllByRole("listitem")).toHaveLength(DEFINICIONES_COMPETENCIA.length);
   });
 
-  it("de mañana todas enlazan al paso del evaluador con el chip Disponible", () => {
-    render(<ContenidoInicio jornada="manana" />);
+  it.each(["manana", "noche"] as const)("%s: todas enlazan al paso del evaluador con el chip Disponible", (jornada) => {
+    render(<ContenidoInicio jornada={jornada} />);
     for (const { id, nombre } of DEFINICIONES_COMPETENCIA) {
       const enlace = screen.getByRole("link", { name: new RegExp(nombre) });
       expect(enlace).toHaveAttribute("href", `/${id}/evaluador`);
@@ -38,6 +41,7 @@ describe("Inicio", () => {
   it.each(["manana", "noche"] as const)(
     "%s: las no disponibles muestran Próximamente, tienen aria-disabled y no son enfocables",
     (jornada) => {
+      for (const id of SIN_NOCHE) sinRubrica("noche", id);
       render(<ContenidoInicio jornada={jornada} />);
       const noDisponibles = competenciasDeJornada(jornada).filter((c) => !competenciaDisponible(jornada, c.id));
       expect(noDisponibles).toHaveLength(jornada === "noche" ? 4 : 0);
@@ -53,7 +57,8 @@ describe("Inicio", () => {
     },
   );
 
-  it("de noche solo hay una disponible, así que Comenzar va directo a ella", () => {
+  it("con una sola disponible, Comenzar va directo a ella", () => {
+    for (const id of SIN_NOCHE) sinRubrica("noche", id);
     render(<ContenidoInicio jornada="noche" />);
     expect(screen.getByText("Jornada: Noche")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Comenzar" })).toHaveAttribute("href", "/adaptabilidad/evaluador");
@@ -88,6 +93,7 @@ describe("Inicio", () => {
   });
 
   it("de noche, si la competencia propia aún no tiene rúbrica, lo avisa", () => {
+    for (const id of SIN_NOCHE) sinRubrica("noche", id);
     render(<ContenidoInicio jornada="noche" asignada="pensamiento-critico" />);
     for (const competencia of competenciasDeJornada("noche")) {
       const fila = screen.getByRole("link", { name: new RegExp(competencia.nombre) });

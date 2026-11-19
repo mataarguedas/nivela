@@ -49,30 +49,32 @@ test("de mañana se abren las 5 competencias", async ({ page }) => {
   }
 });
 
-test("de noche, las competencias sin rúbrica se ven pero no se pueden abrir", async ({ page }) => {
+test("de noche también se abren las 5, cada una con la rúbrica de la noche", async ({ page }) => {
   expect((await page.request.post("/api/jornada", { data: { jornada: "noche" } })).status()).toBe(200);
   await page.goto("/");
   await esperarHidratacion(page);
+  // Since v1.7 every competencia has a night rubric (PRD Appendix A.6–A.10).
   // Only the list's rows: the Next dev-tools overlay has aria-disabled buttons too.
-  const deshabilitadas = page.locator("#competencias [aria-disabled='true']");
-  const sinRubrica = competenciasDeJornada("noche").filter((c) => !c.habilitada);
-  await expect(deshabilitadas).toHaveCount(sinRubrica.length);
-  for (const fila of await deshabilitadas.all()) {
-    await expect(fila).toContainText("Próximamente");
-    await expect(fila).not.toHaveAttribute("href");
+  const lista = page.locator("#competencias");
+  await expect(lista.locator("[aria-disabled='true']")).toHaveCount(0);
+  for (const { id, nombre } of DEFINICIONES_COMPETENCIA) {
+    await expect(lista.getByRole("link", { name: new RegExp(nombre) })).toHaveAttribute("href", `/${id}/evaluador`);
   }
 
-  // Playwright refuses to click aria-disabled elements; force the tap anyway.
-  await deshabilitadas.filter({ hasText: "Pensamiento crítico y analítico" }).click({ force: true });
-  await expect(page).toHaveURL(/\/$/);
+  // The night team rates with its own template, never the morning one.
+  const competencia = competenciasDeJornada("noche").find((c) => c.id === "pensamiento-critico")!;
+  expect(competencia.indicadores[0].titulo).toBe("Analiza y cuestiona la información disponible.");
+  const equipo = equipoDeCompetencia("noche", competencia.id)!;
+  await page.goto(`/${competencia.id}/evaluador`);
+  await esperarHidratacion(page);
+  await page.getByRole("button", { name: equipo.integrantes[0].nombre }).click();
+  await expect(page).toHaveURL(new RegExp(`/${competencia.id}$`));
+  await page.goto(`/${competencia.id}/P01`);
+  const indicador = page.getByRole("radiogroup", { name: /^Indicador 1\. Analiza y cuestiona la información disponible\./ });
+  await expect(indicador).toBeVisible();
+  await expect(indicador.getByText(/Contrasta el modelo parte por parte/)).toBeVisible();
+  await expect(page.getByText("Identifica aspectos relevantes de la información presentada.")).toHaveCount(0);
 
-  // Its routes exist (it has a morning rubric), so the not-found page streams
-  // in behind Suspense and the status can be 200 (see app/[competencia]/layout.tsx).
-  for (const ruta of ["/pensamiento-critico", "/pensamiento-critico/evaluador", "/pensamiento-critico/P01"]) {
-    await page.goto(ruta);
-    await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" }), ruta).toBeVisible();
-    await expect(page.getByRole("radiogroup")).toHaveCount(0);
-  }
   // An unknown competencia is a real 404 from the layout, in any jornada.
   for (const ruta of ["/no-existe", "/no-existe/evaluador"]) {
     const respuesta = await page.goto(ruta);

@@ -47,7 +47,7 @@ const CONFLICTO_DESDE_FINAL = 2;
 type BancoObservaciones = Record<number, Record<number, string[]>>;
 
 // Hand-written observations per indicator number and level, matching the
-// Adaptabilidad rubric in PRD Appendix A.1 (plantilla.xlsx). No names, only
+// morning Adaptabilidad rubric in PRD Appendix A.1 (plantilla.xlsx). No names, only
 // observable behavior, as the rating screen asks. The other rubrics take
 // theirs from their Jev golden set (bancoObservaciones).
 const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {
@@ -147,7 +147,10 @@ function generador(semilla: number) {
  * keyed by indicator number and expected level.
  */
 function bancoObservaciones(competencia: Competencia, jornada: string): BancoObservaciones {
-  const banco: BancoObservaciones = structuredClone(competencia.id === "adaptabilidad" ? OBSERVACIONES_ADAPTABILIDAD : {});
+  // The built-in bank matches the morning Adaptabilidad rubric only; the night
+  // team has its own rubric since v1.7 (Appendix A.6).
+  const propio = competencia.id === "adaptabilidad" && jornada === "manana";
+  const banco: BancoObservaciones = structuredClone(propio ? OBSERVACIONES_ADAPTABILIDAD : {});
   for (const archivo of readdirSync(CARPETA_FIXTURES).filter((a) => /^jev-.+\.json$/.test(a))) {
     const fixtures = JSON.parse(readFileSync(join(CARPETA_FIXTURES, archivo), "utf8")) as FixturesJev;
     if (fixtures.competenciaId !== competencia.id || (fixtures.jornada ?? "manana") !== jornada) continue;

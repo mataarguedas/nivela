@@ -9,6 +9,7 @@ import {
   validarSeleccionResumen,
   validarSolicitudJev,
 } from "@/lib/validacion";
+import { sinRubrica } from "./sinRubrica";
 
 // POST /api/evaluaciones validation: every rejection case in PRD §10. Also
 // the POST /api/jev body (PRD §8.3) and the admin's participant list.
@@ -98,10 +99,21 @@ describe("validarEvaluacion: rechazos (PRD §10)", () => {
   );
 
   it("competencia inexistente o sin rúbrica en la jornada de la sesión", () => {
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     expect(error(cuerpo({ competenciaId: "no-existe" }))).toBe(MENSAJES_VALIDACION.competencia);
-    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
     const deNoche = cuerpo({ competenciaId: "pensamiento-critico", evaluadorId: "diana-hidalgo" }, calificacionesDe("pensamiento-critico"));
     expect(evaluar(deNoche, PARTICIPANTES, "noche")).toEqual({ ok: false, error: MENSAJES_VALIDACION.competencia });
+  });
+
+  it("de noche se califica con la rúbrica de la noche (v1.7): los ids de la mañana ya no valen", () => {
+    const noche = (sufijo: string) =>
+      cuerpo(
+        { evaluadorId: "gabriela-salgado" },
+        [1, 2, 3, 4].map((n) => ({ indicadorId: `adaptabilidad${sufijo}-${n}`, nivel: n, origen: "manual" as const })),
+      );
+    expect(evaluar(noche("-noche"), PARTICIPANTES, "noche").ok).toBe(true);
+    expect(evaluar(noche(""), PARTICIPANTES, "noche")).toEqual({ ok: false, error: MENSAJES_VALIDACION.indicadores });
+    expect(evaluar(noche("-noche"), PARTICIPANTES, "manana").ok).toBe(false);
   });
 
   it("cada rúbrica exige sus propios indicadores", () => {
@@ -189,6 +201,7 @@ describe("validarConsultaEnviadas", () => {
   });
 
   it("rechaza parámetros faltantes, competencia sin rúbrica en la jornada o evaluador ajeno", () => {
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     expect(consulta("competencia=adaptabilidad")).toEqual({ ok: false, error: MENSAJES_VALIDACION.consulta });
     expect(consulta("competencia=pensamiento-critico&evaluador=felipe-lopez").ok).toBe(true);
     expect(consulta("competencia=pensamiento-critico&evaluador=diana-hidalgo", "noche")).toEqual({
@@ -241,12 +254,12 @@ describe("validarSolicitudJev (POST /api/jev)", () => {
   });
 
   it("usa la rúbrica de la jornada de la sesión", () => {
+    sinRubrica("noche", "orientacion-resultados"); // no real night-less rubric since v1.7
     const solicitud = { competenciaId: "orientacion-resultados", indicadorId: "orientacion-resultados-2", texto: TEXTO };
     const manana = validarSolicitudJev(solicitud, "manana");
     expect(manana.ok && manana.datos.indicador.titulo).toBe(
       "Distribuye el tiempo disponible y supera obstáculos de manera persistente.",
     );
-    // No night rubric yet (PRD Appendix A): the competencia is disabled there.
     expect(validarSolicitudJev(solicitud, "noche")).toEqual({ ok: false, error: MENSAJES_VALIDACION.competencia });
   });
 
@@ -349,7 +362,7 @@ describe("validarSeleccionResumen (?jornada= del Resumen del grupo, PRD §11.3)"
   });
 
   it("«ambas» no se ofrece si una jornada no tiene plantilla: vuelve a la jornada de la sesión", () => {
-    // Pensamiento crítico has a morning rubric only (PRD Appendix A).
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     expect(seleccion("pensamiento-critico", "ambas", "manana")).toEqual({
       seleccion: "manana",
       opciones: ["manana"],
@@ -358,6 +371,7 @@ describe("validarSeleccionResumen (?jornada= del Resumen del grupo, PRD §11.3)"
   });
 
   it("404 solo si la competencia no está en la jornada pedida ni en la de la sesión", () => {
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     expect(seleccion("pensamiento-critico", undefined, "noche")).toBeNull();
     expect(seleccion("pensamiento-critico", "noche", "noche")).toBeNull();
     // An explicit jornada that has it is still a valid read-only view.

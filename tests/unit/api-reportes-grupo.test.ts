@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JornadaResumen } from "@/lib/validacion";
+import { sinRubrica } from "./sinRubrica";
 
 // GET /api/reportes/[competencia]/grupo (PRD §10, §11.3) with the db layer
 // and the session mocked: the docente-only role check, and the single
@@ -79,7 +80,7 @@ describe("GET /api/reportes/[competencia]/grupo", () => {
   });
 
   it("404 para una competencia sin plantilla en la jornada pedida ni en la de la sesión", async () => {
-    // Pensamiento crítico has a morning rubric only; the session is at night.
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     const respuesta = await pedir("pensamiento-critico", "?jornada=ambas");
     expect(respuesta.status).toBe(404);
     await expect(respuesta.json()).resolves.toEqual({ error: "La competencia no existe o no está habilitada." });

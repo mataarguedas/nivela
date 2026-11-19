@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Autorregulación emocional, jornada noche (PRD §8.5), según la rúbrica de «Plantilla_sistematizada Autoregulación emocional.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente y de correr contra Jev.",
+  "competenciaId": "autorregulacion-emocional",
+  "jornada": "noche",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "autorregulacion-emocional-noche-1",
+      "nivelEsperado": 1,
+      "texto": "Cuando le señalaron un error levantó la voz y respondió de forma brusca, sin poder controlarse."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "autorregulacion-emocional-noche-1",
+      "nivelEsperado": 2,
+      "texto": "Dijo que se sentía molesta e intentó calmarse respirando, pero en algunos momentos volvió a responder con impaciencia."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "autorregulacion-emocional-noche-1",
+      "nivelEsperado": 3,
+      "texto": "Al recibir la crítica controló su molestia de forma consciente y respondió con un tono adecuado."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "autorregulacion-emocional-noche-1",
+      "nivelEsperado": 4,
+      "texto": "Anticipó que el comentario la iba a incomodar y se mantuvo equilibrada durante toda la situación difícil."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "autorregulacion-emocional-noche-2",
+      "nivelEsperado": 1,
+      "texto": "Cuando no estuvo de acuerdo con la propuesta, interrumpió y respondió con un comentario poco respetuoso."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "autorregulacion-emocional-noche-2",
+      "nivelEsperado": 2,
+      "texto": "Expresó su desacuerdo con respeto, pero cuando el tiempo apretó perdió la paciencia y alzó la voz."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "autorregulacion-emocional-noche-2",
+      "nivelEsperado": 3,
+      "texto": "Explicó sus diferencias con respeto, escuchó la posición de su compañero y mantuvo un diálogo constructivo por su cuenta."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "autorregulacion-emocional-noche-2",
+      "nivelEsperado": 4,
+      "texto": "Planteó su desacuerdo de forma asertiva, invitó a los demás a dialogar y ayudó a que el grupo llegara a un acuerdo."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "autorregulacion-emocional-noche-3",
+      "nivelEsperado": 1,
+      "texto": "Con el tiempo encima se mostró muy alterada, dejó de contestar y su participación se vio afectada."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "autorregulacion-emocional-noche-3",
+      "nivelEsperado": 2,
+      "texto": "Reconoció que estaba estresada e intentó manejarlo, pero le costó mantener el control durante la actividad."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "autorregulacion-emocional-noche-3",
+      "nivelEsperado": 3,
+      "texto": "Manejó el estrés del cierre con efectividad, mantuvo la concentración y se comportó de forma adecuada."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "autorregulacion-emocional-noche-3",
+      "nivelEsperado": 4,
+      "texto": "Bajo mucha presión dominó sus reacciones, se adaptó a los cambios y nunca perdió el enfoque de la tarea."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "autorregulacion-emocional-noche-4",
+      "nivelEsperado": 1,
+      "texto": "Después de la discusión siguió frustrada y su trabajo se vio afectado el resto de la actividad."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "autorregulacion-emocional-noche-4",
+      "nivelEsperado": 2,
+      "texto": "Tras la situación tensa fue retomando el control poco a poco, aunque necesitó tiempo y que una compañera la apoyara."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "autorregulacion-emocional-noche-4",
+      "nivelEsperado": 3,
+      "texto": "Luego del momento tenso recuperó la compostura y volvió a la actividad por sí misma, de forma constructiva."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "autorregulacion-emocional-noche-4",
+      "nivelEsperado": 4,
+      "texto": "Se repuso rápidamente de la tensión, reorientó su conducta y continuó sin trasladar el malestar a la siguiente tarea."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "autorregulacion-emocional-noche-1",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "autorregulacion-emocional-noche-2",
+      "texto": "Llegó con una camisa azul y se sentó cerca de la ventana."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "autorregulacion-emocional-noche-3",
+      "texto": "Comentó que el fin de semana viajará a la playa con su familia."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "autorregulacion-emocional-noche-4",
+      "texto": "Preguntó a qué hora termina la clase porque tiene que tomar el bus."
+    }
+  ]
+}

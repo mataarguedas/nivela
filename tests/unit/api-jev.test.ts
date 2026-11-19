@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MENSAJES_VALIDACION } from "@/lib/validacion";
+import { sinRubrica } from "./sinRubrica";
 
 // POST /api/jev with the session, the usage counter and the Jev client
 // mocked. The counter's SQL is covered against Postgres in uso-jev-db.test.ts
@@ -107,6 +108,7 @@ describe("POST /api/jev", () => {
   });
 
   it("usa la rúbrica de la jornada de la sesión; sin rúbrica en ella, 400", async () => {
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     const cuerpo = { competenciaId: "pensamiento-critico", indicadorId: "pensamiento-critico-2", texto: TEXTO };
     sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID, jornada: "manana" });
     expect((await analizar(cuerpo)).status).toBe(200);
@@ -114,7 +116,7 @@ describe("POST /api/jev", () => {
     expect(competencia.id).toBe("pensamiento-critico");
     expect(indicador.titulo).toBe("Analiza la información para establecer posibles causas dividiendo un problema en partes.");
 
-    // No night rubric yet (PRD Appendix A).
+    // Without its night rubric (sinRubrica above), 400.
     jev.sugerirNivel.mockClear();
     sesion.getSesion.mockResolvedValue({ rol: "docente", sid: SID, jornada: "noche" });
     const respuesta = await analizar(cuerpo);

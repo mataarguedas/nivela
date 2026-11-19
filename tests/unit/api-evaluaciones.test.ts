@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generarParticipantes } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { MENSAJES_VALIDACION } from "@/lib/validacion";
+import { sinRubrica } from "./sinRubrica";
 
 // /api/evaluaciones with the db layer and the session mocked. The upsert's SQL
 // behaviour is covered against a real Postgres in evaluaciones-db.test.ts.
@@ -190,7 +191,7 @@ describe("GET /api/evaluaciones", () => {
   });
 
   it("400 para una competencia sin rúbrica en la jornada de la sesión", async () => {
-    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     sesion.getSesion.mockResolvedValue({ rol: "docente", sid: "0123456789abcdef0123", jornada: "noche" });
     const respuesta = await consultar("competencia=pensamiento-critico&evaluador=diana-hidalgo");
     expect(respuesta.status).toBe(400);

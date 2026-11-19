@@ -43,8 +43,8 @@ function duplicados(ids: readonly string[]): string[] {
   return ids.filter((id, i) => ids.indexOf(id) !== i);
 }
 
-// Distinct rubric objects: a jornada may share another's (night Adaptabilidad
-// uses the morning template), and then its indicators are the same ones.
+// Distinct rubric objects: a jornada may share another's rubric object, and
+// then its indicators are the same ones (none do since v1.7).
 const rubricas = [...new Set(DEFINICIONES_COMPETENCIA.flatMap((d) => Object.values(d.rubricas)))] as Rubrica[];
 const indicadores = rubricas.flatMap((r) => r.indicadores);
 const integrantes = EQUIPOS.flatMap((e) => e.integrantes);
@@ -84,11 +84,22 @@ describe("competencias", () => {
     for (const c of DEFINICIONES_COMPETENCIA) expect(reservados).not.toContain(c.id);
   });
 
-  it("son las 5 del PRD: de mañana todas tienen rúbrica; de noche solo Adaptabilidad", () => {
+  it("son las 5 del PRD y todas tienen rúbrica en ambas jornadas (v1.7)", () => {
     expect(DEFINICIONES_COMPETENCIA).toHaveLength(5);
     const habilitadas = (jornada: JornadaId) => competenciasDeJornada(jornada).filter((c) => c.habilitada).map((c) => c.id);
     expect(habilitadas("manana")).toEqual(DEFINICIONES_COMPETENCIA.map((c) => c.id));
-    expect(habilitadas("noche")).toEqual(["adaptabilidad"]);
+    expect(habilitadas("noche")).toEqual(DEFINICIONES_COMPETENCIA.map((c) => c.id));
+  });
+
+  it("cada jornada califica con su propia plantilla: las rúbricas de noche usan ids «…-noche-N»", () => {
+    for (const d of DEFINICIONES_COMPETENCIA) {
+      const { manana, noche } = d.rubricas;
+      expect(noche).toBeDefined();
+      expect(noche).not.toBe(manana);
+      expect(noche!.indicadores.map((i) => i.id)).toEqual(noche!.indicadores.map((i) => `${d.id}-noche-${i.numero}`));
+    }
+    // Night evaluations sent before v1.7 used the morning Adaptabilidad ids; they keep their text.
+    expect(obtenerCompetenciaHabilitada("manana", "adaptabilidad")?.indicadores[0].id).toBe("adaptabilidad-1");
   });
 
   it("los ids de indicador llevan el id de su competencia y nunca se repiten entre rúbricas", () => {
@@ -144,8 +155,9 @@ describe("competencias", () => {
     expect(obtenerCompetenciaHabilitada("manana", "adaptabilidad")?.id).toBe("adaptabilidad");
     expect(obtenerCompetenciaHabilitada("noche", "adaptabilidad")?.id).toBe("adaptabilidad");
     expect(obtenerCompetenciaHabilitada("manana", "orientacion-detalle")?.indicadores).toHaveLength(4);
-    expect(obtenerCompetencia("noche", "orientacion-detalle")?.habilitada).toBe(false);
-    expect(obtenerCompetenciaHabilitada("noche", "orientacion-detalle")).toBeUndefined();
+    expect(obtenerCompetenciaHabilitada("noche", "orientacion-detalle")?.indicadores[0].titulo).toBe(
+      "Asegura que la información esté completa y precisa.",
+    );
     expect(obtenerCompetenciaHabilitada("manana", "no-existe")).toBeUndefined();
     expect(obtenerDefinicionCompetencia("orientacion-detalle")?.nombre).toBe("Orientación al detalle");
   });

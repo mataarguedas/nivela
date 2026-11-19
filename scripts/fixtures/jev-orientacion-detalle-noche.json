@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Orientación al detalle, jornada noche (PRD §8.5), según la rúbrica de «Herramienta 4 - Plantilla Sistematizada Orientación al Detalle.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente y de correr contra Jev.",
+  "competenciaId": "orientacion-detalle",
+  "jornada": "noche",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "orientacion-detalle-noche-1",
+      "nivelEsperado": 1,
+      "texto": "Llenó los campos que le pidieron en el formulario de pago."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "orientacion-detalle-noche-1",
+      "nivelEsperado": 2,
+      "texto": "Revisó que el formulario tuviera todos los datos requeridos antes de pasarlo."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "orientacion-detalle-noche-1",
+      "nivelEsperado": 3,
+      "texto": "Comparó los datos del formulario con las facturas de respaldo y confirmó que coincidieran."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "orientacion-detalle-noche-1",
+      "nivelEsperado": 4,
+      "texto": "Antes de entregar, verificó que toda la información de los documentos estuviera íntegra y exacta, campo por campo."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "orientacion-detalle-noche-2",
+      "nivelEsperado": 1,
+      "texto": "Siguió las instrucciones del ejercicio y prestó atención a los detalles mientras lo hacía."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "orientacion-detalle-noche-2",
+      "nivelEsperado": 2,
+      "texto": "Aplicó criterios de precisión y reconoció los errores comunes en los cálculos que hizo."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "orientacion-detalle-noche-2",
+      "nivelEsperado": 3,
+      "texto": "Revisó minuciosamente sus resultados y encontró un monto omitido y un error de digitación."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "orientacion-detalle-noche-2",
+      "nivelEsperado": 4,
+      "texto": "Mantuvo la precisión tanto en las tareas sencillas como en las complejas y detectó un detalle que nadie más había notado."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "orientacion-detalle-noche-3",
+      "nivelEsperado": 1,
+      "texto": "Encontró los errores evidentes en la tabla, como un total mal sumado."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "orientacion-detalle-noche-3",
+      "nivelEsperado": 2,
+      "texto": "Comprobó las cifras de la tabla contra el estado de cuenta y el registro auxiliar."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "orientacion-detalle-noche-3",
+      "nivelEsperado": 3,
+      "texto": "Reconoció un error poco evidente: una fecha invertida que cambiaba el período del reporte."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "orientacion-detalle-noche-3",
+      "nivelEsperado": 4,
+      "texto": "Detectó a tiempo una inconsistencia entre los reportes, propuso cómo corregirla y sugirió un control para que no se repitiera."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "orientacion-detalle-noche-4",
+      "nivelEsperado": 1,
+      "texto": "Entregó su trabajo sin comprobar si cumplía con las instrucciones dadas."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "orientacion-detalle-noche-4",
+      "nivelEsperado": 2,
+      "texto": "Revisó algunos de los requisitos, pero dejó otros sin verificar antes de entregar."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "orientacion-detalle-noche-4",
+      "nivelEsperado": 3,
+      "texto": "Verificó que su trabajo cumpliera con las instrucciones y todos los requisitos establecidos."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "orientacion-detalle-noche-4",
+      "nivelEsperado": 4,
+      "texto": "Se aseguró de cumplir todos los requisitos y corrigió los incumplimientos que encontró antes de dar por terminado el trabajo."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "orientacion-detalle-noche-1",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "orientacion-detalle-noche-2",
+      "texto": "Llegó con una camisa azul y se sentó cerca de la ventana."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "orientacion-detalle-noche-3",
+      "texto": "Comentó que el fin de semana viajará a la playa con su familia."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "orientacion-detalle-noche-4",
+      "texto": "Preguntó a qué hora termina la clase porque tiene que tomar el bus."
+    }
+  ]
+}

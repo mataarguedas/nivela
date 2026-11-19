@@ -2,9 +2,10 @@ import type { DefinicionCompetencia } from "./index";
 
 // Morning team's template (Equipo 1, "Herramienta 4_Plantilla sistematizada.xlsx",
 // PRD Appendix A.2) with only the minimal corrections listed there. Keep it
-// verbatim: it is also the rubric sent to Jev. No night rubric yet: the night
-// team (Equipo 3) hasn't sent its template, so the competencia shows
-// "Próximamente" at night.
+// verbatim: it is also the rubric sent to Jev.
+// The night rubric is the night team's own template (Equipo 3,
+// plantillas_noche/"Plantilla_sistematizada Pensamiento Crítico y Analítico.xlsx", PRD Appendix A.7),
+// with its own indicator ids ("…-noche-N").
 export const pensamientoCritico: DefinicionCompetencia = {
   id: "pensamiento-critico",
   nombre: "Pensamiento crítico y analítico",
@@ -56,6 +57,57 @@ export const pensamientoCritico: DefinicionCompetencia = {
             2: "Relaciona la información e identifica inconsistencias para formular una decisión.",
             3: "Analiza críticamente y conecta diferentes elementos de la situación para fundamentar su decisión.",
             4: "Examina rigurosamente y con sentido crítico la información, cuestiona supuestos, identifica relaciones no evidentes y toma decisiones sólidas fundamentadas en evidencia.",
+          },
+        },
+      ],
+    },
+    noche: {
+      definicion:
+        "El pensamiento crítico y analítico es la capacidad de una persona para analizar y cuestionar la información, identificar problemas, reconocer errores y evaluar diferentes alternativas, utilizando la lógica y el razonamiento para comprender una situación y encontrar soluciones antes de tomar una decisión.",
+      fuente: "Halpern, D. F. y Dunn, D. S., 2021; Universidad Técnica Nacional, 2023",
+      indicadores: [
+        {
+          id: "pensamiento-critico-noche-1",
+          numero: 1,
+          titulo: "Analiza y cuestiona la información disponible.",
+          niveles: {
+            1: "Observa el modelo de forma general y empieza a construir sin revisar sus piezas.",
+            2: "Identifica las partes del avión y nota algunas diferencias con sus piezas.",
+            3: "Compara sus piezas con el modelo y reconoce qué partes puede reproducir.",
+            4: "Contrasta el modelo parte por parte e identifica piezas faltantes o diferentes antes de construir.",
+          },
+        },
+        {
+          id: "pensamiento-critico-noche-2",
+          numero: 2,
+          titulo: "Identifica problemas y reconoce errores.",
+          niveles: {
+            1: "Reconoce solo errores evidentes, como piezas que se caen o partes faltantes.",
+            2: "Detecta errores de forma, color o posición al comparar con el modelo.",
+            3: "Detecta errores de proporción o estabilidad y reconoce su causa.",
+            4: "Anticipa problemas de forma o estabilidad y reconoce su efecto en el resultado.",
+          },
+        },
+        {
+          id: "pensamiento-critico-noche-3",
+          numero: 3,
+          titulo: "Evalúa diferentes alternativas de solución.",
+          niveles: {
+            1: "Ante una dificultad, aplica una sola forma de resolverla.",
+            2: "Prueba distintas formas de armar, sin compararlas.",
+            3: "Compara formas de armado según parecido, estabilidad y tiempo.",
+            4: "Prioriza alternativas con criterios claros y elige la más efectiva.",
+          },
+        },
+        {
+          id: "pensamiento-critico-noche-4",
+          numero: 4,
+          titulo: "Propone la solución más adecuada antes de tomar una decisión final.",
+          niveles: {
+            1: "No define qué piezas cambiar o elige sin una razón clara.",
+            2: "Identifica piezas para cambiar, pero decide con un análisis limitado.",
+            3: "Elige 1 o 2 piezas y explica cómo mejoran su avión.",
+            4: "Justifica cada pieza elegida y define su uso antes de ir a la mesa adicional.",
           },
         },
       ],

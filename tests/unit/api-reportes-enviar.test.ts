@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sinRubrica } from "./sinRubrica";
 
 // POST /api/reportes/[competencia]/enviar (PRD §10, §5.14) with the send
 // layer mocked: docente only, the session's jornada only (never one from the
@@ -70,7 +71,7 @@ describe("POST /api/reportes/[competencia]/enviar", () => {
   });
 
   it("404 para una competencia sin plantilla en la jornada de la sesión", async () => {
-    // Pensamiento crítico has a morning rubric only; the session is at night.
+    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
     const respuesta = await pedir({ participantes: ["P01"] }, "pensamiento-critico");
     expect(respuesta.status).toBe(404);
     expect(envio.cargarContextoEnvio).not.toHaveBeenCalled();

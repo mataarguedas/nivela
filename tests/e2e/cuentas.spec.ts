@@ -5,6 +5,7 @@ import {
   contrasenaDePrueba,
   correoDePrueba,
   CUENTA_OTRO_EQUIPO,
+  competenciaDeIntegrante,
   cuentasDelProyecto,
   evaluadorAdaptabilidad,
 } from "./cuentas";
@@ -86,8 +87,9 @@ test("primera activación: código por correo, contraseña nueva, salir y volver
 
   await crearContrasena(page, await leerCodigo(page, correo, desde), nueva);
   await expect(page).toHaveURL(/\/$/);
-  // Their team's competencia isn't enabled yet.
-  await expect(page.getByText("La competencia de su equipo aún no está disponible.")).toBeVisible();
+  // Since v1.7 their team's competencia has a night rubric: it opens straight to their list.
+  const propia = competenciaDeIntegrante(activar);
+  await expect(page.locator("#competencias").locator(`a[href="/${propia}"]`)).toBeVisible();
 
   await nav(page).getByRole("button", { name: "Salir" }).click();
   await expect(page).toHaveURL(/\/acceso$/);

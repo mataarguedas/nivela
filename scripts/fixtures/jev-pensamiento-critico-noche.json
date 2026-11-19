@@ -1,0 +1,125 @@
+{
+  "descripcion": "Golden set de Jev para Pensamiento crítico y analítico, jornada noche (PRD §8.5), según la rúbrica de «Plantilla_sistematizada Pensamiento Crítico y Analítico.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente y de correr contra Jev.",
+  "competenciaId": "pensamiento-critico",
+  "jornada": "noche",
+  "casos": [
+    {
+      "id": "i1-basico",
+      "indicadorId": "pensamiento-critico-noche-1",
+      "nivelEsperado": 1,
+      "texto": "Miró el avión del modelo de forma rápida y empezó a unir bloques de inmediato, sin revisar qué piezas tenía."
+    },
+    {
+      "id": "i1-intermedio",
+      "indicadorId": "pensamiento-critico-noche-1",
+      "nivelEsperado": 2,
+      "texto": "Señaló las alas, el cuerpo y la cola del avión del modelo y comentó que algunas de sus piezas eran de otro tamaño."
+    },
+    {
+      "id": "i1-avanzado",
+      "indicadorId": "pensamiento-critico-noche-1",
+      "nivelEsperado": 3,
+      "texto": "Puso sus piezas junto al modelo, las comparó y explicó qué partes del avión podía armar igual con lo que tenía."
+    },
+    {
+      "id": "i1-experto",
+      "indicadorId": "pensamiento-critico-noche-1",
+      "nivelEsperado": 4,
+      "texto": "Revisó el modelo sección por sección, contrastó cada parte con sus bloques y anotó qué piezas le faltaban o eran distintas antes de empezar a construir."
+    },
+    {
+      "id": "i2-basico",
+      "indicadorId": "pensamiento-critico-noche-2",
+      "nivelEsperado": 1,
+      "texto": "Solo se dio cuenta de que algo estaba mal cuando un ala se cayó o cuando vio que faltaba la cola."
+    },
+    {
+      "id": "i2-intermedio",
+      "indicadorId": "pensamiento-critico-noche-2",
+      "nivelEsperado": 2,
+      "texto": "Al comparar con el modelo, notó que un ala estaba en otra posición y que había usado un color diferente."
+    },
+    {
+      "id": "i2-avanzado",
+      "indicadorId": "pensamiento-critico-noche-2",
+      "nivelEsperado": 3,
+      "texto": "Detectó que las alas eran desproporcionadas y que el avión se inclinaba, y explicó que se debía a la pieza que usó como base."
+    },
+    {
+      "id": "i2-experto",
+      "indicadorId": "pensamiento-critico-noche-2",
+      "nivelEsperado": 4,
+      "texto": "Antes de terminar, previó que el ala larga haría que el avión perdiera estabilidad y explicó cómo eso afectaría el resultado final."
+    },
+    {
+      "id": "i3-basico",
+      "indicadorId": "pensamiento-critico-noche-3",
+      "nivelEsperado": 1,
+      "texto": "Cuando una pieza no encajó, siguió intentando de la misma manera todo el tiempo."
+    },
+    {
+      "id": "i3-intermedio",
+      "indicadorId": "pensamiento-critico-noche-3",
+      "nivelEsperado": 2,
+      "texto": "Probó varias formas de armar la cola, pero no se detuvo a comparar cuál quedaba mejor."
+    },
+    {
+      "id": "i3-avanzado",
+      "indicadorId": "pensamiento-critico-noche-3",
+      "nivelEsperado": 3,
+      "texto": "Comparó dos formas de armar las alas según cuánto se parecían al modelo, qué tan estables quedaban y cuánto tiempo le tomaban."
+    },
+    {
+      "id": "i3-experto",
+      "indicadorId": "pensamiento-critico-noche-3",
+      "nivelEsperado": 4,
+      "texto": "Ordenó las alternativas con criterios claros de parecido y estabilidad, explicó por qué descartaba las demás y eligió la más efectiva."
+    },
+    {
+      "id": "i4-basico",
+      "indicadorId": "pensamiento-critico-noche-4",
+      "nivelEsperado": 1,
+      "texto": "Fue a buscar piezas sin saber cuáles cambiar y tomó varias sin dar ninguna razón."
+    },
+    {
+      "id": "i4-intermedio",
+      "indicadorId": "pensamiento-critico-noche-4",
+      "nivelEsperado": 2,
+      "texto": "Dijo qué piezas quería cambiar, pero eligió las nuevas sin analizar mucho cómo ayudarían."
+    },
+    {
+      "id": "i4-avanzado",
+      "indicadorId": "pensamiento-critico-noche-4",
+      "nivelEsperado": 3,
+      "texto": "Escogió dos piezas y explicó que con ellas el avión quedaría más estable y parecido al modelo."
+    },
+    {
+      "id": "i4-experto",
+      "indicadorId": "pensamiento-critico-noche-4",
+      "nivelEsperado": 4,
+      "texto": "Antes de ir a la mesa adicional, justificó cada pieza que iba a pedir y explicó exactamente dónde y para qué usaría cada una."
+    }
+  ],
+  "fueraDeTema": [
+    {
+      "id": "fuera-1",
+      "indicadorId": "pensamiento-critico-noche-1",
+      "texto": "Durante el receso habló del partido de fútbol de anoche y de la serie que está viendo."
+    },
+    {
+      "id": "fuera-2",
+      "indicadorId": "pensamiento-critico-noche-2",
+      "texto": "Llegó con una camisa azul y se sentó cerca de la ventana."
+    },
+    {
+      "id": "fuera-3",
+      "indicadorId": "pensamiento-critico-noche-3",
+      "texto": "Comentó que el fin de semana viajará a la playa con su familia."
+    },
+    {
+      "id": "fuera-4",
+      "indicadorId": "pensamiento-critico-noche-4",
+      "texto": "Preguntó a qué hora termina la clase porque tiene que tomar el bus."
+    }
+  ]
+}

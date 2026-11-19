@@ -11,7 +11,7 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
 5. **Names in config; emails and carnets only in the DB; never phone numbers.** Evaluator names live in config. Participant names and carnets are entered by the admin and stored in the `participantes` table (PRD §5.10). **Reports and the CSV identify participants by carnet (`etiquetaReporte`), never by name** (PRD §11, v1.4); evaluators, the admin and the results email use the name (`etiqueta`). Carnets follow the email rules below (DB only, never committed, logged or sent to Jev), except that reports and the CSV show them. Since v1.2, evaluator emails live only in `cuentas` and participant emails only in `participantes.correo` (PRD §5.12, §5.14). Emails are never in config, never committed (the import file and the roster screenshots stay in the gitignored `privado/`), never sent to Jev, never logged, and never shown in reports or the CSV. Names are never sent to Jev or logged either. Never write a real student email into code, tests, docs or prompts; tests use `@ejemplo.test`.
 6. **Jev suggests, the human decides.** A suggestion is never applied without a tap on "Aplicar sugerencia". A Jev failure must never block manual rating or submission.
 7. **Competencias, indicators and teams are data** in `src/config/`; participants are runtime data in the DB. No competencia-specific logic in components. Enabling a competencia means editing config only.
-   - **A rubric belongs to jornada + competencia** (PRD §9.1, Appendix A): each jornada's team writes its own template. A competencia is enabled in a jornada exactly when its config has a rubric for that jornada. Always resolve it with the session's jornada: `obtenerCompetenciaHabilitada(jornada, id)` / `competenciasDeJornada(jornada)`; `obtenerDefinicionCompetencia(id)` is for names only. A new rubric gets new indicator ids (they are stored in the DB), its Appendix A section and a golden-set fixture.
+   - **A rubric belongs to jornada + competencia** (PRD §9.1, Appendix A): each jornada's team writes its own template. A competencia is enabled in a jornada exactly when its config has a rubric for that jornada. Since v1.7 all five have one in both jornadas (night rubrics use `…-noche-N` indicator ids). Always resolve it with the session's jornada: `obtenerCompetenciaHabilitada(jornada, id)` / `competenciasDeJornada(jornada)`; `obtenerDefinicionCompetencia(id)` is for names only. A new rubric gets new indicator ids (they are stored in the DB), its Appendix A section and a golden-set fixture.
    - **A team is identified by jornada + competencia.** Its number is a per-jornada display label and its size varies: Adaptabilidad is Equipo 4 (8 members) in the morning and Equipo 1 (7 members) at night. Never look a team up by number, and never hard-code a team number or size in code, tests, seed data or copy. Use `equipoDeCompetencia(jornada, competenciaId)` and read `numero` and `integrantes` from it.
 8. **Design**: DESIGN.md tokens only.
    - Pill buttons (980 px radius).
@@ -148,7 +148,7 @@ scripts/
   evaluar-jev.ts
   importar-cuentas.ts       # v1.2
   cuentas-prueba.ts         # v1.2, dev/e2e: fake accounts (cuentasPrueba.ts); entornoDesarrollo.ts guards dev-only writes
-  fixtures/jev-{competencia}.json   # one golden set per rubric (its `jornada`, default manana)
+  fixtures/jev-{competencia}[-noche].json   # one golden set per rubric (its `jornada`, default manana)
 privado/                    # gitignored: roster screenshots and the evaluator email CSV (PII)
 public/
   sw.js

@@ -2,9 +2,10 @@ import type { DefinicionCompetencia } from "./index";
 
 // Morning team's template (Equipo 3, "Plantilla Sistematizada Orientación al
 // Detalle.xlsx", PRD Appendix A.4) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev. No night rubric
-// yet: the night team (Equipo 4) hasn't sent its template, so the competencia
-// shows "Próximamente" at night.
+// there. Keep it verbatim: it is also the rubric sent to Jev.
+// The night rubric is the night team's own template (Equipo 4,
+// plantillas_noche/"Herramienta 4 - Plantilla Sistematizada Orientación al Detalle.xlsx", PRD Appendix A.9),
+// with its own indicator ids ("…-noche-N").
 export const orientacionDetalle: DefinicionCompetencia = {
   id: "orientacion-detalle",
   nombre: "Orientación al detalle",
@@ -57,6 +58,57 @@ export const orientacionDetalle: DefinicionCompetencia = {
             2: "Registra las modificaciones realizadas y comprueba que correspondan con las indicaciones establecidas.",
             3: "Ajusta las modificaciones necesarias, evitando que se generen errores en los demás elementos de la tarea.",
             4: "Supervisa las modificaciones realizadas, detectando y corrigiendo inconsistencias para garantizar la precisión del resultado final.",
+          },
+        },
+      ],
+    },
+    noche: {
+      definicion:
+        "“Es la habilidad para asegurar que el trabajo y la información, propios o ajenos, sean completos y precisos, además de prepararse cuidadosamente para reuniones y hacer seguimiento a otros, para asegurar que se hayan cumplido los acuerdos y compromisos”.\nEs la capacidad de ejecutar tareas con precisión y minuciosidad, identificando errores, verificando la exactitud de los datos y comprobando que la información y los procedimientos cumplan con los requisitos establecidos. Implica mantener la atención durante el desarrollo de las actividades y dar seguimiento a los compromisos para garantizar la calidad de los resultados.",
+      fuente: "Biblioteca de Competencias, s. f.; adaptado de Compensar, s. f., y Dirección del Trabajo, s. f.",
+      indicadores: [
+        {
+          id: "orientacion-detalle-noche-1",
+          numero: 1,
+          titulo: "Asegura que la información esté completa y precisa.",
+          niveles: {
+            1: "Completa la información solicitada en los documentos correspondientes.",
+            2: "Revisa que los documentos contengan todos los datos requeridos.",
+            3: "Comprueba que los datos coincidan con los documentos de respaldo.",
+            4: "Verifica la integridad y exactitud de la información en los documentos antes de su entrega.",
+          },
+        },
+        {
+          id: "orientacion-detalle-noche-2",
+          numero: 2,
+          titulo: "Ejecuta tareas con precisión, minuciosidad e identificando errores.",
+          niveles: {
+            1: "Sigue instrucciones y presta atención a los detalles durante la ejecución de las tareas.",
+            2: "Demuestra criterios de precisión y reconoce errores comunes en las tareas realizadas.",
+            3: "Comprueba minuciosamente los resultados e identifica errores u omisiones.",
+            4: "Garantiza la precisión en las tareas de distinta complejidad y detecta detalles poco evidentes.",
+          },
+        },
+        {
+          id: "orientacion-detalle-noche-3",
+          numero: 3,
+          titulo: "Verifica la exactitud de los datos.",
+          niveles: {
+            1: "Identifica errores evidentes en la información.",
+            2: "Comprueba la información con diferentes fuentes disponibles.",
+            3: "Reconoce errores muy complejos o poco evidentes en la información.",
+            4: "Detecta inconsistencias de manera oportuna y propone solución al problema, evitando su recurrencia.",
+          },
+        },
+        {
+          id: "orientacion-detalle-noche-4",
+          numero: 4,
+          titulo: "Garantiza la calidad de los resultados.",
+          niveles: {
+            1: "Omite comprobar si su trabajo cumple con las instrucciones establecidas.",
+            2: "Revisa parcialmente algunos requisitos, pero omite verificar otros.",
+            3: "Verifica que su trabajo cumpla con las instrucciones y los requisitos establecidos.",
+            4: "Asegura el cumplimiento de todos los requisitos y la corrección de incumplimientos antes de finalizar.",
           },
         },
       ],

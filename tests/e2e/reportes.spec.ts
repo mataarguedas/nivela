@@ -252,18 +252,16 @@ test.describe("como docente", () => {
     expect(texto).toContain("Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,");
   });
 
-  test("una competencia sin rúbrica en la jornada no tiene reporte; una inexistente responde 404", async ({ page }) => {
+  test("cada competencia tiene reporte en ambas jornadas; una inexistente responde 404", async ({ page }) => {
     const inexistente = await page.goto("/reportes/no-existe");
     expect(inexistente?.status()).toBe(404);
     expect((await page.request.get("/api/reportes/no-existe")).status()).toBe(404);
 
-    // Pensamiento crítico has only the morning team's rubric (PRD Appendix A).
+    // Since v1.7 Pensamiento crítico has a night rubric too (PRD Appendix A.7).
     expect((await page.request.post("/api/jornada", { data: { jornada: "noche" } })).status()).toBe(200);
     await page.goto("/reportes");
-    await expect(page.getByRole("link", { name: /Pensamiento crítico/ })).toHaveAttribute("aria-disabled", "true");
-    await page.goto("/reportes/pensamiento-critico");
-    await expect(page.getByRole("heading", { level: 1, name: "Página no encontrada" })).toBeVisible();
-    expect((await page.request.get("/api/reportes/pensamiento-critico")).status()).toBe(404);
+    await expect(page.getByRole("link", { name: /Pensamiento crítico/ })).toHaveAttribute("href", "/reportes/pensamiento-critico");
+    expect((await page.request.get("/api/reportes/pensamiento-critico")).status()).toBe(200);
   });
 });
 

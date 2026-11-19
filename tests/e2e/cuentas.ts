@@ -1,4 +1,3 @@
-import { obtenerCompetencia } from "../../src/config/competencias";
 import { EQUIPOS, equipoDeCompetencia } from "../../src/config/equipos";
 import type { JornadaId } from "../../src/config/jornadas";
 
@@ -10,8 +9,10 @@ import type { JornadaId } from "../../src/config/jornadas";
 //
 // The specs that activate, lock or recover an account change its state, and
 // the Playwright projects run in parallel, so each project gets its own
-// members for those (cuentasDelProyecto). They come from teams whose
-// competencia isn't enabled, so no other spec signs in as them.
+// members for those (cuentasDelProyecto). They come from the night teams
+// other than Adaptabilidad (the competencia the other specs rate), so no
+// other spec signs in as them. Before v1.7 those competencias had no night
+// rubric; now they do, which doesn't matter to these specs.
 
 export const DOMINIO_PRUEBA = "ejemplo.test";
 
@@ -40,9 +41,16 @@ export function contrasenaDePrueba(): string {
 /** Must match the project names in playwright.config.ts. */
 export const PROYECTOS = ["iPhone 13", "Pixel 7", "Firefox", "Desktop Chrome", "Admin"] as const;
 
-const LIBRES = EQUIPOS.filter((e) => !obtenerCompetencia(e.jornada, e.competenciaId)?.habilitada).flatMap((e) =>
+const LIBRES = EQUIPOS.filter((e) => e.jornada === "noche" && e.competenciaId !== "adaptabilidad").flatMap((e) =>
   e.integrantes.map((i) => i.id),
 );
+
+/** The competencia of a member's team (looked up by member, never by team number). */
+export function competenciaDeIntegrante(integranteId: string): string {
+  const equipo = EQUIPOS.find((e) => e.integrantes.some((i) => i.id === integranteId));
+  if (!equipo) throw new Error(`Unknown integrante ${integranteId}`);
+  return equipo.competenciaId;
+}
 
 export type CuentasProyecto = { activar: string; recuperar: string; bloquear: string };
 
@@ -51,11 +59,11 @@ export function cuentasDelProyecto(proyecto: string): CuentasProyecto {
   const indice = PROYECTOS.indexOf(proyecto as (typeof PROYECTOS)[number]);
   if (indice < 0) throw new Error(`Unknown Playwright project: ${proyecto}`);
   const [activar, recuperar, bloquear] = LIBRES.slice(indice * 3, indice * 3 + 3);
-  if (!bloquear) throw new Error("Not enough members outside enabled teams for the e2e accounts");
+  if (!bloquear) throw new Error("Not enough night members outside Adaptabilidad for the e2e accounts");
   return { activar, recuperar, bloquear };
 }
 
-/** An activated member of a team whose competencia isn't enabled, that no spec changes. */
+/** An activated member of a night team other than Adaptabilidad, that no spec changes. */
 export const CUENTA_OTRO_EQUIPO = LIBRES[LIBRES.length - 1];
 
 /** Left "Pendiente de activar" by the reset. */

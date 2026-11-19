@@ -2,9 +2,10 @@ import type { DefinicionCompetencia } from "./index";
 
 // Morning team's template (Equipo 2, "Plantilla sistematizada autorregulación
 // emocional.xlsx", PRD Appendix A.3) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev. No night rubric
-// yet: the night team (Equipo 2) hasn't sent its template, so the competencia
-// shows "Próximamente" at night.
+// there. Keep it verbatim: it is also the rubric sent to Jev.
+// The night rubric is the night team's own template (Equipo 2,
+// plantillas_noche/"Plantilla_sistematizada Autoregulación emocional.xlsx", PRD Appendix A.8),
+// with its own indicator ids ("…-noche-N").
 export const autorregulacionEmocional: DefinicionCompetencia = {
   id: "autorregulacion-emocional",
   nombre: "Autorregulación emocional",
@@ -56,6 +57,57 @@ export const autorregulacionEmocional: DefinicionCompetencia = {
             2: "Valora las circunstancias emocionalmente exigentes, pero necesita tiempo, orientación e instrucciones específicas para la adaptación.",
             3: "Remodela el desafío como situaciones temporales y manejables, manteniendo la calma y actúa proactivamente.",
             4: "Afronta con resiliencia situaciones críticas e inesperadas, adaptando estrategias ante la adversidad y asegurando la continuidad de los procesos.",
+          },
+        },
+      ],
+    },
+    noche: {
+      definicion:
+        "Capacidad de manejar las emociones de forma adecuada, comprendiendo la relación entre lo que se siente, se piensa y se hace, y utilizando recursos para afrontar situaciones difíciles.\nCapacidad de gestionar las emociones perturbadoras, evitar respuestas impulsivas y mantener un comportamiento eficaz bajo estrés.",
+      fuente: "Guzmán Coyago, E. y Moreno, E. M., 2025; Goleman, D., 2024",
+      indicadores: [
+        {
+          id: "autorregulacion-emocional-noche-1",
+          numero: 1,
+          titulo: "Autorregula sus emociones.",
+          niveles: {
+            1: "Reacciona emocionalmente sin lograr controlar sus respuestas.",
+            2: "Reconoce sus emociones e intenta controlarlas, aunque de manera inconsistente.",
+            3: "Controla sus emociones de forma consciente y mantiene una respuesta adecuada ante situaciones difíciles.",
+            4: "Anticipa sus reacciones y mantiene un equilibrio emocional constante ante situaciones complejas.",
+          },
+        },
+        {
+          id: "autorregulacion-emocional-noche-2",
+          numero: 2,
+          titulo: "Expresa su desacuerdo.",
+          niveles: {
+            1: "Confronta de manera impulsiva o poco respetuosa al expresar desacuerdos.",
+            2: "Reconoce su desacuerdo con respeto, aunque puede perder el control bajo presión.",
+            3: "Expresa sus diferencias con respeto, escucha y sostiene un diálogo constructivo de forma autónoma.",
+            4: "Promueve el diálogo constructivo y expresa sus diferencias de forma asertiva, favoreciendo la resolución de conflictos.",
+          },
+        },
+        {
+          id: "autorregulacion-emocional-noche-3",
+          numero: 3,
+          titulo: "Gestiona emociones perturbadoras bajo estrés.",
+          niveles: {
+            1: "Se deja dominar por el estrés, afectando su comportamiento y capacidad de respuesta.",
+            2: "Identifica el estrés e intenta gestionarlo, aunque presenta dificultades para mantener el control.",
+            3: "Gestiona el estrés de manera efectiva, manteniendo la concentración y el comportamiento adecuado.",
+            4: "Domina sus respuestas emocionales ante situaciones de alta presión, adaptándose sin perder el enfoque.",
+          },
+        },
+        {
+          id: "autorregulacion-emocional-noche-4",
+          numero: 4,
+          titulo: "Recupera el control después de una tensión.",
+          niveles: {
+            1: "Permanece alterado o frustrado, afectando su desempeño después de una situación tensa.",
+            2: "Retoma gradualmente el control, aunque necesita tiempo o apoyo para recuperar la estabilidad.",
+            3: "Recupera la compostura y retoma la actividad de manera autónoma y constructiva.",
+            4: "Restablece rápidamente su equilibrio, reorienta su conducta y continúa sin trasladar la tensión a otras situaciones.",
           },
         },
       ],

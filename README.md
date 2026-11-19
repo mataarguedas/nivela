@@ -6,7 +6,7 @@ Nivela es una aplicación web pensada para el teléfono (se puede instalar como 
 
 Las personas evaluadoras ingresan con su correo y una contraseña propia, y marcan a cada participante como presente o ausente. Las evaluaciones enviadas se guardan en Postgres. Con el código docente se consultan los reportes (general, individual y resumen del grupo), se ve qué evaluadores ya terminaron y cuánto le falta a cada participante para el siguiente nivel, se descarga el CSV, se imprime o guarda en PDF y, al final de la actividad, se envía a cada participante su resultado por correo.
 
-Cada equipo redacta la **rúbrica** (la plantilla sistematizada) de su competencia, así que la rúbrica depende de la jornada. De **mañana** están habilitadas las cinco competencias. De **noche** solo **Adaptabilidad** (con la plantilla del equipo de la mañana); las otras cuatro aparecen como «Próximamente» hasta que los equipos de la noche entreguen sus plantillas.
+Cada equipo redacta la **rúbrica** (la plantilla sistematizada) de su competencia, así que la rúbrica depende de la jornada. Desde la v1.7 las cinco competencias están habilitadas en **ambas** jornadas: de mañana con las plantillas de los equipos de la mañana y de noche con las de los equipos de la noche (carpetas `plantillas_dia/` y `plantillas_noche/`, PRD Apéndice A). Una competencia sin plantilla en una jornada aparecería como «Próximamente».
 
 Documentos de referencia: [`PRD.md`](PRD.md) (alcance, flujos, reglas de puntaje, contrato con Jev, base de datos y textos), [`DESIGN.md`](DESIGN.md) (diseño visual) y [`CLAUDE.md`](CLAUDE.md) (reglas técnicas).
 
@@ -47,7 +47,7 @@ Para probar en el teléfono dentro de la misma red: `npm run dev -- -H 0.0.0.0` 
 | `npm test` | Pruebas unitarias (Vitest). |
 | `npm run test:e2e` | Pruebas de extremo a extremo (Playwright: iPhone 13/WebKit, Pixel 7/Chromium, Firefox móvil y Chrome de escritorio). Requiere los datos de `db:seed` en la rama de desarrollo. |
 | `npm run db:generate` / `npm run db:migrate` | Genera y aplica migraciones de Drizzle (carpeta `drizzle/`). |
-| `npm run db:seed` | Datos ficticios: el equipo de cada competencia con rúbrica en cada jornada (de mañana las cinco; de noche, Adaptabilidad) × todos sus participantes, más las cuentas de prueba. Solo corre contra la base de `.env.local` (la rama de desarrollo). `npm run db:seed -- --limpiar` vacía las tablas. |
+| `npm run db:seed` | Datos ficticios: el equipo de cada competencia con rúbrica en cada jornada (las cinco en cada jornada) × todos sus participantes, más las cuentas de prueba. Solo corre contra la base de `.env.local` (la rama de desarrollo). `npm run db:seed -- --limpiar` vacía las tablas. |
 | `npm run cuentas:prueba` | Deja cada cuenta de evaluador como `<id>@ejemplo.test` con la contraseña `E2E_CONTRASENA` (solo desarrollo; las pruebas e2e lo ejecutan solas). |
 | `npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv` | Carga los correos reales de los evaluadores desde un CSV que nunca se sube al repositorio. Muestra conteos, nunca correos. Con `--produccion` apunta a producción y pide confirmación. |
 | `npm run jev:evaluar` | Conjunto de referencia de Jev (ver abajo). |
@@ -145,15 +145,15 @@ Los cuatro deben aparecer como «Verified» en Resend → Domains. Si el dominio
 
 ## Cómo habilitar una competencia en una jornada
 
-Todo se hace en `src/config/` y en el PRD; no hay que tocar componentes. Una competencia queda habilitada en una jornada cuando tiene una **rúbrica** para esa jornada. Por ejemplo, cuando el equipo de la noche de Pensamiento crítico entregue su plantilla:
+Todo se hace en `src/config/` y en el PRD; no hay que tocar componentes. Una competencia queda habilitada en una jornada cuando tiene una **rúbrica** para esa jornada. Así se agregaron en la v1.7 las plantillas de la noche; por ejemplo, para Pensamiento crítico:
 
 1. Abra el archivo de la competencia, por ejemplo `src/config/competencias/pensamiento-critico.ts`.
-2. Agregue en `rubricas` la entrada de la jornada (`noche: { definicion, fuente, indicadores }`). Cada indicador lleva `numero`, `titulo`, `niveles` con exactamente 4 descripciones (`1` Básico a `4` Experto) y un `id` **nuevo** (por ejemplo `pensamiento-critico-noche-1`): los `id` se guardan en la base de datos y nunca deben cambiar de texto. Si la jornada usa la misma plantilla que la otra, asigne la misma rúbrica, como hace `adaptabilidad.ts`.
+2. Agregue en `rubricas` la entrada de la jornada (`noche: { definicion, fuente, indicadores }`). Cada indicador lleva `numero`, `titulo`, `niveles` con exactamente 4 descripciones (`1` Básico a `4` Experto) y un `id` **nuevo** (por ejemplo `pensamiento-critico-noche-1`): los `id` se guardan en la base de datos y nunca deben cambiar de texto. Si la jornada usa la misma plantilla que la otra, puede asignar el mismo objeto de rúbrica (así lo hacía `adaptabilidad.ts` antes de la v1.7).
 3. Copie el texto en el PRD, Apéndice A, como una sección nueva («A.n Pensamiento crítico y analítico · Noche»), con la lista de correcciones aplicadas (solo errores evidentes de ortografía o puntuación).
 4. Cambie a «Sí» la columna «Habilitada» de esa fila en el Apéndice B.
 5. Revise que el equipo correspondiente en `src/config/equipos.ts` tenga a sus integrantes (solo nombres; nunca correos ni teléfonos). **No cambie los `id` existentes**: están guardados en la base de datos y en los borradores.
 6. Ejecute `npm test`. La prueba de configuración falla si hay `id` repetidos, si un indicador no tiene 4 niveles, si una rúbrica no tiene equipo en su jornada o si el texto no coincide palabra por palabra con el Apéndice A.
-7. Escriba su conjunto de referencia de Jev (siguiente sección) y despliegue. La competencia aparecerá disponible en Inicio y en Reportes de esa jornada.
+7. Escriba su conjunto de referencia de Jev (siguiente sección, por ejemplo `scripts/fixtures/jev-pensamiento-critico-noche.json`) y despliegue. La competencia aparecerá disponible en Inicio y en Reportes de esa jornada.
 
 ## Conjunto de referencia de Jev
 

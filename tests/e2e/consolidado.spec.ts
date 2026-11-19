@@ -159,7 +159,7 @@ test.describe("como docente", () => {
     expect(mal?.status()).toBe(404);
   });
 
-  test("en la noche, las competencias sin plantilla aparecen como no disponibles", async ({ page }) => {
+  test("en la noche, el resumen marca «Sin plantilla» solo donde falta (desde v1.7, ninguna)", async ({ page }) => {
     expect((await page.request.post("/api/jornada", { data: { jornada: "noche" } })).status()).toBe(200);
     await page.goto(RUTA);
     await expect(principal(page).getByText("Todas las competencias · Jornada: Noche", { exact: true })).toBeVisible();

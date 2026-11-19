@@ -8,7 +8,13 @@ import {
   LARGO_MINIMO_DESCRIPCION_IA,
 } from "@/config/limites";
 import { VALORES_NIVEL } from "@/config/niveles";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esIdParticipante, esNombreValido } from "@/config/participantes";
+import {
+  CANTIDAD_MAXIMA_PARTICIPANTES,
+  esCarnetValido,
+  esGrupoValido,
+  esIdParticipante,
+  esNombreValido,
+} from "@/config/participantes";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { formatearEntero } from "@/lib/formato";
 
@@ -59,6 +65,7 @@ export const MENSAJES_VALIDACION = {
   nombreParticipante: TEXTOS_ADMIN.nombreInvalido,
   carnetParticipante: TEXTOS_ADMIN.carneInvalido,
   carnetRepetido: TEXTOS_ADMIN.carneRepetido,
+  grupoParticipante: TEXTOS_ADMIN.grupoInvalido,
   correoParticipante: TEXTOS_ADMIN.correoInvalido,
   listaParticipantes: TEXTOS_ADMIN.listaInvalida,
   envio: "Los datos del envío no son válidos.",
@@ -333,6 +340,12 @@ const esquemaParticipantes = z.object({
         .transform((t) => (t ? t.toLowerCase() : null)),
     )
     .max(CANTIDAD_MAXIMA_PARTICIPANTES),
+  // v1.8 (PRD §5.4, §5.10): one group (1…GRUPO_MAXIMO, or null) per name,
+  // same order. Optional: without it every row is "Sin grupo".
+  grupos: z
+    .array(z.number().refine(esGrupoValido).nullable())
+    .max(CANTIDAD_MAXIMA_PARTICIPANTES)
+    .optional(),
   confirmar: z.boolean().optional().default(false),
 });
 
@@ -341,6 +354,7 @@ export type ParticipantesValidos = {
   jornada: JornadaId;
   nombres: (string | null)[];
   carnets: (string | null)[];
+  grupos: (number | null)[];
   correos: (string | null)[];
   confirmar: boolean;
 };
@@ -357,7 +371,7 @@ export function indiceCarnetRepetido(carnets: readonly (string | null)[]): numbe
   return -1;
 }
 
-/** PUT /api/admin/participantes body: one name, one carnet and one email (each may be blank) per participant, in order. */
+/** PUT /api/admin/participantes body: one name, one carnet, one group and one email (each may be blank) per participant, in order. */
 export function validarParticipantes(datos: unknown): Resultado<ParticipantesValidos> {
   const forma = esquemaParticipantes.safeParse(datos);
   if (!forma.success) {
@@ -372,15 +386,24 @@ export function validarParticipantes(datos: unknown): Resultado<ParticipantesVal
     if (ruta[0] === "correos" && typeof ruta[1] === "number") {
       return { ok: false, error: MENSAJES_VALIDACION.correoParticipante(ruta[1] + 1) };
     }
+    if (ruta[0] === "grupos" && typeof ruta[1] === "number") {
+      return { ok: false, error: MENSAJES_VALIDACION.grupoParticipante(ruta[1] + 1) };
+    }
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
   const { jornada, cantidad, nombres, carnets, correos, confirmar } = forma.data;
-  if (nombres.length !== cantidad || carnets.length !== cantidad || correos.length !== cantidad) {
+  const grupos = forma.data.grupos ?? nombres.map(() => null);
+  if (
+    nombres.length !== cantidad ||
+    carnets.length !== cantidad ||
+    correos.length !== cantidad ||
+    grupos.length !== cantidad
+  ) {
     return { ok: false, error: MENSAJES_VALIDACION.listaParticipantes };
   }
   const repetido = indiceCarnetRepetido(carnets);
   if (repetido >= 0) return { ok: false, error: MENSAJES_VALIDACION.carnetRepetido(repetido + 1) };
-  return { ok: true, datos: { jornada, nombres, carnets, correos, confirmar } };
+  return { ok: true, datos: { jornada, nombres, carnets, grupos, correos, confirmar } };
 }
 
 const idParticipanteValido = z.string().trim().refine(esIdParticipante);

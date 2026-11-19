@@ -7,14 +7,15 @@ import { Campo, CampoTexto } from "@/components/ui/Campo";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { useToast } from "@/components/ui/Toast";
 import type { JornadaId } from "@/config/jornadas";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esNombreValido } from "@/config/participantes";
+import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esGrupoValido, esNombreValido } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import type { EstadoParticipantes } from "@/lib/db/participantes";
 import { esCorreoParticipanteValido, indiceCarnetRepetido, type CuerpoParticipantes } from "@/lib/validacion";
 
-// The admin's participant editor (PRD §5.10): a count, then a name, a carnet
-// and an optional email field per participant (evaluators see the name; the
+// The admin's participant editor (PRD §5.10): a count, then a name, a carnet,
+// a group (v1.8, the COFI group evaluators see the list split by) and an
+// optional email field per participant (evaluators see the name; the
 // reports show only the carnet; the email is only for sending results, §5.14). Lowering the count only hides rows: their data stays in
 // state (and in the DB once saved), so raising it again brings them back.
 // "Pegar lista" fills the rows from one-per-line text, e.g. spreadsheet
@@ -27,34 +28,50 @@ type Errores = {
   cantidad?: string;
   nombres: Record<number, string>;
   carnets: Record<number, string>;
+  grupos: Record<number, string>;
   correos: Record<number, string>;
   general?: string;
 };
 type Confirmacion = { ocultos: number; evaluaciones: number };
 
-const SIN_ERRORES: Errores = { nombres: {}, carnets: {}, correos: {} };
+const SIN_ERRORES: Errores = { nombres: {}, carnets: {}, grupos: {}, correos: {} };
 
 // A pasted field that is a carnet: carnet characters and at least one digit
 // (so a one-word name is never taken for one).
 const PARECE_CARNET = /^(?=.*\d)[0-9A-Za-z-]+$/;
 
+// A pasted group: "Grupo 3" (the word is required, so a short carnet is never taken for one).
+const PARECE_GRUPO = /^grupo\s*(\d{1,2})$/i;
+
 /**
- * One pasted line → name, carnet and email. "100000001<TAB>Ana Mora",
- * "Ana Mora;100000001;ana@ejemplo.test" or "Ana Mora". A field with "@" is
- * the email (a name never has one, PRD §5.10); of the rest, a field that
- * looks like a carnet is the carnet, and what is left is the name.
+ * One pasted line → name, carnet, group and email. "100000001<TAB>Ana Mora",
+ * "Ana Mora;100000001;Grupo 2;ana@ejemplo.test" or "Ana Mora". A field with
+ * "@" is the email (a name never has one, PRD §5.10) and "Grupo N" is the
+ * group; of the rest, a field that looks like a carnet is the carnet, and
+ * what is left is the name.
  */
-export function leerLineaPegada(linea: string): { nombre: string; carnet: string; correo: string } {
+export function leerLineaPegada(linea: string): { nombre: string; carnet: string; grupo: string; correo: string } {
   const todos = linea
     .split(/\t|;/)
     .map((c) => c.trim())
     .filter(Boolean);
   const indiceCorreo = todos.findIndex((c) => c.includes("@"));
   const correo = indiceCorreo < 0 ? "" : todos[indiceCorreo];
-  const campos = todos.filter((_, i) => i !== indiceCorreo);
+  const indiceGrupo = todos.findIndex((c) => PARECE_GRUPO.test(c));
+  const coincidencia = indiceGrupo < 0 ? null : PARECE_GRUPO.exec(todos[indiceGrupo]);
+  const grupo = coincidencia ? String(Number(coincidencia[1])) : "";
+  const campos = todos.filter((_, i) => i !== indiceCorreo && i !== indiceGrupo);
   const indice = campos.length > 1 ? campos.findIndex((c) => PARECE_CARNET.test(c)) : -1;
-  if (indice < 0) return { nombre: campos.join(" "), carnet: "", correo };
-  return { nombre: campos.filter((_, i) => i !== indice).join(" "), carnet: campos[indice], correo };
+  if (indice < 0) return { nombre: campos.join(" "), carnet: "", grupo, correo };
+  return { nombre: campos.filter((_, i) => i !== indice).join(" "), carnet: campos[indice], grupo, correo };
+}
+
+/** The group field's text → its number, null when blank, NaN when it isn't a valid group. */
+function leerGrupo(texto: string): number | null {
+  const limpio = texto.trim();
+  if (limpio === "") return null;
+  const n = /^\d{1,2}$/.test(limpio) ? Number(limpio) : Number.NaN;
+  return esGrupoValido(n) ? n : Number.NaN;
 }
 
 function leerCantidad(texto: string): number | null {
@@ -74,6 +91,9 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
   const [cantidad, setCantidad] = useState(inicial.cantidad);
   const [nombres, setNombres] = useState(() => completar(inicial.nombres.map((n) => n ?? ""), inicial.cantidad));
   const [carnets, setCarnets] = useState(() => completar(inicial.carnets.map((c) => c ?? ""), inicial.cantidad));
+  const [grupos, setGrupos] = useState(() =>
+    completar((inicial.grupos ?? []).map((g) => (g === null ? "" : String(g))), inicial.cantidad),
+  );
   const [correos, setCorreos] = useState(() => completar(inicial.correos.map((c) => c ?? ""), inicial.cantidad));
   const [pegando, setPegando] = useState(false);
   const [textoPegado, setTextoPegado] = useState("");
@@ -90,6 +110,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
     setCantidad(n);
     setNombres((actuales) => completar(actuales, n));
     setCarnets((actuales) => completar(actuales, n));
+    setGrupos((actuales) => completar(actuales, n));
     setCorreos((actuales) => completar(actuales, n));
     setErrores((e) => ({ ...e, cantidad: undefined }));
   }
@@ -116,6 +137,17 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
     }
   }
 
+  function cambiarGrupo(indice: number, valor: string) {
+    setGrupos((actuales) => actuales.map((g, i) => (i === indice ? valor : g)));
+    if (errores.grupos[indice]) {
+      setErrores((e) => {
+        const resto = { ...e.grupos };
+        delete resto[indice];
+        return { ...e, grupos: resto };
+      });
+    }
+  }
+
   function cambiarCorreo(indice: number, valor: string) {
     setCorreos((actuales) => actuales.map((c, i) => (i === indice ? valor : c)));
     if (errores.correos[indice]) {
@@ -137,12 +169,13 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       return;
     }
     // Rows past the new count stay, hidden, as when the count is lowered. A
-    // pasted line replaces its row's name, carnet and email (a line without
+    // pasted line replaces its row's name, carnet, group and email (a line without
     // one clears it, so an old carnet or email never sticks to a new name:
     // results must never go to another person's address).
     const filas = lineas.map(leerLineaPegada);
     setNombres((actuales) => [...filas.map((f) => f.nombre), ...actuales.slice(filas.length)]);
     setCarnets((actuales) => [...filas.map((f) => f.carnet), ...actuales.slice(filas.length)]);
+    setGrupos((actuales) => [...filas.map((f) => f.grupo), ...actuales.slice(filas.length)]);
     setCorreos((actuales) => [...filas.map((f) => f.correo), ...actuales.slice(filas.length)]);
     setCantidad(lineas.length);
     setTextoCantidad(String(lineas.length));
@@ -154,7 +187,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
 
   /** Client-side check with the server's rules; focuses the first problem. */
   function validar(): boolean {
-    const nuevos: Errores = { nombres: {}, carnets: {}, correos: {} };
+    const nuevos: Errores = { nombres: {}, carnets: {}, grupos: {}, correos: {} };
     if (leerCantidad(textoCantidad) === null) nuevos.cantidad = TEXTOS_ADMIN.cantidadInvalida;
     nombres.slice(0, cantidad).forEach((nombre, i) => {
       if (!esNombreValido(nombre.trim())) nuevos.nombres[i] = TEXTOS_ADMIN.nombreInvalido(i + 1);
@@ -165,6 +198,9 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
     });
     const repetido = indiceCarnetRepetido(visibles.map((c) => c || null));
     if (repetido >= 0 && !nuevos.carnets[repetido]) nuevos.carnets[repetido] = TEXTOS_ADMIN.carneRepetido(repetido + 1);
+    grupos.slice(0, cantidad).forEach((grupo, i) => {
+      if (Number.isNaN(leerGrupo(grupo))) nuevos.grupos[i] = TEXTOS_ADMIN.grupoInvalido(i + 1);
+    });
     correos.slice(0, cantidad).forEach((correo, i) => {
       if (!esCorreoParticipanteValido(correo)) nuevos.correos[i] = TEXTOS_ADMIN.correoInvalido(i + 1);
     });
@@ -173,6 +209,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       !nuevos.cantidad &&
       Object.keys(nuevos.nombres).length === 0 &&
       Object.keys(nuevos.carnets).length === 0 &&
+      Object.keys(nuevos.grupos).length === 0 &&
       Object.keys(nuevos.correos).length === 0;
     if (!valido) {
       requestAnimationFrame(() => formulario.current?.querySelector<HTMLElement>("[aria-invalid='true']")?.focus());
@@ -188,6 +225,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
       cantidad,
       nombres: nombres.slice(0, cantidad).map((n) => n.trim()),
       carnets: carnets.slice(0, cantidad).map((c) => c.trim()),
+      grupos: grupos.slice(0, cantidad).map(leerGrupo),
       correos: correos.slice(0, cantidad).map((c) => c.trim()),
       confirmar,
     };
@@ -289,20 +327,27 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
                   autoCorrect="off"
                   spellCheck={false}
                 />
-                <div className="sm:col-span-2">
-                  <Campo
-                    etiqueta={TEXTOS_ADMIN.correoDe(i + 1)}
-                    error={errores.correos[i]}
-                    value={correos[i] ?? ""}
-                    onChange={(e) => cambiarCorreo(i, e.target.value)}
-                    type="email"
-                    inputMode="email"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                  />
-                </div>
+                <Campo
+                  etiqueta={TEXTOS_ADMIN.correoDe(i + 1)}
+                  error={errores.correos[i]}
+                  value={correos[i] ?? ""}
+                  onChange={(e) => cambiarCorreo(i, e.target.value)}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <Campo
+                  etiqueta={TEXTOS_ADMIN.grupoDe(i + 1)}
+                  error={errores.grupos[i]}
+                  value={grupos[i] ?? ""}
+                  onChange={(e) => cambiarGrupo(i, e.target.value)}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                />
               </li>
             ))}
           </ol>

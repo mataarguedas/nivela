@@ -7,7 +7,7 @@ import { getSesion } from "@/lib/sesion";
 import { validarParticipantes } from "@/lib/validacion";
 
 // PUT /api/admin/participantes (PRD §10): saves how many participants there
-// are and their names, carnets and emails (PRD §5.10, §5.14), in order. Admin only; the session is re-verified here,
+// are and their names, carnets, groups and emails (PRD §5.10, §5.14), in order. Admin only; the session is re-verified here,
 // not only in proxy.ts. Hiding participants that already have evaluations
 // needs `confirmar: true`; without it the answer is 409 with the counts the
 // confirmation dialog shows. Names, carnets and emails are never logged. The list saved is the
@@ -31,12 +31,12 @@ export async function PUT(request: Request) {
 
   const validacion = validarParticipantes(await request.json().catch(() => null));
   if (!validacion.ok) return responder({ error: validacion.error }, 400);
-  const { jornada, nombres, carnets, correos, confirmar } = validacion.datos;
+  const { jornada, nombres, carnets, grupos, correos, confirmar } = validacion.datos;
   if (jornada !== sesion.jornada) return responder({ error: TEXTOS.jornada.distinta, jornadaDistinta: true }, 409);
 
   const inicio = Date.now();
   try {
-    const resultado = await guardarParticipantes(jornada, { nombres, carnets, correos }, confirmar);
+    const resultado = await guardarParticipantes(jornada, { nombres, carnets, grupos, correos }, confirmar);
     if (!resultado.ok) {
       return responder(
         {

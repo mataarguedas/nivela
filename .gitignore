@@ -51,3 +51,5 @@ next-env.d.ts
 
 # Roster screenshots and email lists (PII): never commit
 /privado/
+# Student distribution sheets (names, PII): move them into privado/
+/distribuciones/

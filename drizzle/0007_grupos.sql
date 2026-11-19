@@ -1,0 +1,2 @@
+ALTER TABLE "participantes" ADD COLUMN "grupo" smallint;--> statement-breakpoint
+ALTER TABLE "participantes" ADD CONSTRAINT "participantes_grupo_check" CHECK ("participantes"."grupo" is null or "participantes"."grupo" between 1 and 20);

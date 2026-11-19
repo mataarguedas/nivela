@@ -365,7 +365,7 @@ describe("participantes", () => {
     expect(leerCantidadParticipantes("")).toBe(20);
     const respaldo = generarParticipantes(CANTIDAD_PARTICIPANTES_PREDETERMINADA);
     expect(respaldo).toHaveLength(20);
-    const sinDatos = { nombre: null, carnet: null };
+    const sinDatos = { nombre: null, carnet: null, grupo: null };
     expect(respaldo[0]).toEqual({ id: "P01", numero: 1, ...sinDatos, etiqueta: "Participante 01", etiquetaReporte: "Participante 01" });
     expect(respaldo[19]).toEqual({ id: "P20", numero: 20, ...sinDatos, etiqueta: "Participante 20", etiquetaReporte: "Participante 20" });
   });
@@ -376,10 +376,18 @@ describe("participantes", () => {
       numero: 7,
       nombre: "Ana Pérez",
       carnet: null,
+      grupo: null,
       etiqueta: "Ana Pérez",
       etiquetaReporte: "Participante 07",
     });
     expect(crearParticipante(7, "   ")).toMatchObject({ nombre: null, etiqueta: "Participante 07" });
+  });
+
+  it("el grupo (v1.8) se guarda si está en 1…20; si no, queda sin grupo", () => {
+    expect(crearParticipante(7, "Ana", null, 3).grupo).toBe(3);
+    expect(crearParticipante(7, "Ana", null, 21).grupo).toBeNull();
+    expect(crearParticipante(7, "Ana", null, 0).grupo).toBeNull();
+    expect(crearParticipante(7, "Ana").grupo).toBeNull();
   });
 
   it("la etiqueta de los reportes es el carné (recortado), nunca el nombre", () => {

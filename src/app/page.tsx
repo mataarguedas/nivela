@@ -7,7 +7,7 @@ import { ContenidoInicio } from "./ContenidoInicio";
 
 // Inicio (PRD §5.2). Which competencias open depends on the session: its
 // jornada (PRD §5.11) and, for an evaluador, their own team's competencia
-// (PRD §5.12). The content reads the cookie behind Suspense; the hero
+// (PRD §5.12). The docente switches jornada here too (PRD §5.11). The content reads the cookie behind Suspense; the hero
 // prerenders into the shell as the fallback.
 
 export default function Inicio() {
@@ -29,5 +29,5 @@ async function InicioSesion() {
     sesion?.rol === "evaluador" && sesion.integranteId
       ? (buscarIntegrante(sesion.integranteId)?.equipo.competenciaId ?? null)
       : undefined;
-  return <ContenidoInicio jornada={jornada} asignada={asignada} />;
+  return <ContenidoInicio jornada={jornada} asignada={asignada} cambiaJornada={sesion?.rol === "docente"} />;
 }

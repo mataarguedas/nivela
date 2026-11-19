@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CURSOS } from "@/config/equipos";
+import { nombreJornada } from "@/config/jornadas";
 import { TEXTOS } from "@/config/textos";
 import { contextoEvaluacion } from "@/lib/jornadaActual";
 import { SelectorEvaluador, type GrupoCurso } from "./SelectorEvaluador";
@@ -37,7 +38,7 @@ async function Equipo({ params }: Pick<PageProps<"/[competencia]/evaluador">, "p
   const { competencia: id } = await params;
   const contexto = await contextoEvaluacion(id);
   if (!contexto) notFound();
-  const { competencia, equipo } = contexto;
+  const { jornada, competencia, equipo } = contexto;
   // Evaluadores don't choose: their account says who they are (PRD §5.3).
   if (contexto.evaluadorSesion) redirect(`/${competencia.id}`);
 
@@ -48,7 +49,8 @@ async function Equipo({ params }: Pick<PageProps<"/[competencia]/evaluador">, "p
 
   return (
     <>
-      <Encabezado competencia={competencia.nombre} />
+      {/* Names the jornada: the docente may have switched it on Inicio (PRD §5.11). */}
+      <Encabezado competencia={`${competencia.nombre} · ${TEXTOS.jornada.actual(nombreJornada(jornada))}`} />
       <SelectorEvaluador competenciaId={competencia.id} grupos={grupos} />
     </>
   );

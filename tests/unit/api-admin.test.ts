@@ -19,7 +19,12 @@ const SID = "0123456789abcdef0123";
 const NOMBRES = ["Ana Pérez", "", "Carlos Peña"];
 const CARNETS = ["100000001", " 200000002 ", ""];
 /** What the db layer receives for NOMBRES + CARNETS (no emails): trimmed, blanks as null. */
-const LISTA = { nombres: ["Ana Pérez", null, "Carlos Peña"], carnets: ["100000001", "200000002", null], correos: [null, null, null] };
+const LISTA = {
+  nombres: ["Ana Pérez", null, "Carlos Peña"],
+  carnets: ["100000001", "200000002", null],
+  grupos: [null, null, null],
+  correos: [null, null, null],
+};
 
 function guardar(cuerpo: unknown) {
   return PUT(

@@ -290,11 +290,31 @@ describe("validarParticipantes (PUT /api/admin/participantes)", () => {
         jornada: "manana",
         nombres: ["Ana Pérez", null, "José Ñúñez Solís"],
         carnets: [null, null, null],
+        grupos: [null, null, null],
         correos: [null, null, null],
         confirmar: false,
       },
     });
     expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
+  });
+
+  it("acepta un grupo por nombre (v1.8) y rechaza uno fuera de 1…20 o una lista de otro largo", () => {
+    expect(validarParticipantes(lista(["Ana", "Bea"], { grupos: [2, null] }))).toMatchObject({
+      ok: true,
+      datos: { grupos: [2, null] },
+    });
+    expect(validarParticipantes(lista(["Ana", "Bea"], { grupos: [2, 21] }))).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.grupoParticipante(2),
+    });
+    expect(validarParticipantes(lista(["Ana", "Bea"], { grupos: [1.5, null] }))).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.grupoParticipante(1),
+    });
+    expect(validarParticipantes(lista(["Ana", "Bea"], { grupos: [1] }))).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.listaParticipantes,
+    });
   });
 
   it.each([0, 100, 2.5, "5", null])("rechaza la cantidad %j", (cantidad) => {

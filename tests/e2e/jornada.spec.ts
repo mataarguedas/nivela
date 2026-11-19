@@ -83,6 +83,33 @@ test("la docente cambia de jornada en Reportes", async ({ page }) => {
   await expect(page.getByText("Adaptabilidad · Jornada: Mañana")).toBeVisible();
 });
 
+test("la docente cambia de jornada en Inicio y ve el equipo de esa jornada", async ({ page }) => {
+  await iniciarSesion(page, "docente");
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.goto("/");
+  await esperarHidratacion(page);
+  await expect(page.getByRole("radiogroup", { name: "Jornada" })).toBeVisible();
+
+  if (nocheConEquipo) {
+    await elegirJornada(page, "Noche");
+    await filaAdaptabilidad(page).click();
+    await expect(page).toHaveURL(/\/adaptabilidad\/evaluador$/);
+    await expect(page.getByText("Adaptabilidad · Jornada: Noche", { exact: true })).toBeVisible();
+    await expect(page.getByText(equipoNoche!.integrantes[0].nombre)).toBeVisible();
+    for (const integrante of equipoManana.integrantes) {
+      await expect(page.getByText(integrante.nombre)).toHaveCount(0);
+    }
+    await page.goto("/");
+    await esperarHidratacion(page);
+  }
+
+  await elegirJornada(page, "Mañana");
+  await filaAdaptabilidad(page).click();
+  await expect(page).toHaveURL(/\/adaptabilidad\/evaluador$/);
+  await expect(page.getByText("Adaptabilidad · Jornada: Mañana", { exact: true })).toBeVisible();
+  await expect(page.getByText(equipoManana.integrantes[0].nombre)).toBeVisible();
+});
+
 test("el admin edita una lista distinta en cada jornada", async ({ page }) => {
   await iniciarSesion(page, "admin");
   await page.goto("/admin");

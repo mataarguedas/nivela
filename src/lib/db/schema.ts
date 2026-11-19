@@ -102,6 +102,8 @@ export const participantes = pgTable(
      * logged, never in reports, the CSV or Jev requests.
      */
     correo: text("correo"),
+    /** v1.8 (PRD §5.4): the COFI group from the distribution sheet, 1…20. Null → "Sin grupo". */
+    grupo: smallint("grupo"),
     activo: boolean("activo").notNull().default(true),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -110,6 +112,7 @@ export const participantes = pgTable(
     unique().on(t.jornada, t.numero),
     check("participantes_numero_check", sql`${t.numero} between 1 and 99`),
     check("participantes_jornada_check", sql`${t.jornada} in ('manana', 'noche')`),
+    check("participantes_grupo_check", sql`${t.grupo} is null or ${t.grupo} between 1 and 20`),
   ],
 );
 

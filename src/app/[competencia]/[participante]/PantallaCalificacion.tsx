@@ -13,7 +13,7 @@ import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
 import { useToast } from "@/components/ui/Toast";
 import type { Indicador } from "@/config/competencias";
-import { etiquetaNumero, type Participante } from "@/config/participantes";
+import { etiquetaGrupo, etiquetaNumero, type Participante } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import {
   aplicarSugerencia,
@@ -189,8 +189,17 @@ export function PantallaCalificacion({
         <header className="mt-4 text-center">
           <p className="text-[14px] text-ink-2">{competencia.nombre}</p>
           <h1 className="mt-1 text-h3 font-semibold break-words md:text-h2">{participante.etiqueta}</h1>
-          {/* With a name, the number still matches the person's tag. */}
-          {participante.nombre && <p className="mt-1 text-[14px] text-ink-2">{etiquetaNumero(participante.numero)}</p>}
+          {/* With a name, the number still matches the person's tag; the group is the COFI group (v1.8). */}
+          {(participante.nombre || participante.grupo !== null) && (
+            <p className="mt-1 text-[14px] text-ink-2">
+              {[
+                participante.nombre ? etiquetaNumero(participante.numero) : null,
+                participante.grupo !== null ? etiquetaGrupo(participante.grupo) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
           {/* Attendance (PRD §5.5, §5.13): the way back is "Marcar presente" in the bar. */}
           <div className="mt-4 flex min-h-11 justify-center">
             {asistencia.ausente ? (

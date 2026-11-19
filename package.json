@@ -16,7 +16,8 @@
     "jev:evaluar": "tsx --conditions=react-server scripts/evaluar-jev.ts",
     "correo:prueba": "tsx --conditions=react-server scripts/correo-prueba.ts",
     "cuentas:importar": "tsx --conditions=react-server scripts/importar-cuentas.ts",
-    "cuentas:prueba": "tsx --conditions=react-server scripts/cuentas-prueba.ts"
+    "cuentas:prueba": "tsx --conditions=react-server scripts/cuentas-prueba.ts",
+    "participantes:importar": "tsx --conditions=react-server scripts/importar-participantes.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",

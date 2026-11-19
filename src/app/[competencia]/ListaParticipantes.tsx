@@ -7,6 +7,7 @@ import { Boton } from "@/components/ui/Boton";
 import { Chip, TONO_POR_ESTADO } from "@/components/ui/Chip";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
+import { etiquetaGrupo } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { borrarTodo, estadoParticipante, useBorrador, useEvaluadorActivo } from "@/lib/borrador";
 import { consultarEnviadas, type EstadoServidor } from "@/lib/envio";
@@ -14,8 +15,12 @@ import { consultarEnviadas, type EstadoServidor } from "@/lib/envio";
 type ListaParticipantesProps = {
   competenciaId: string;
   nombreCompetencia: string;
-  /** `detalle`: "Participante 07" under a name, so it matches the person's tag; null without a name. */
-  participantes: { id: string; etiqueta: string; detalle: string | null }[];
+  /**
+   * In the order to show them (by group, then number). `detalle`: "Participante 07"
+   * under a name, so it matches the person's tag; null without a name. `grupo`:
+   * the COFI group (v1.8), null for "Sin grupo".
+   */
+  participantes: { id: string; etiqueta: string; detalle: string | null; grupo: number | null }[];
   indicadorIds: string[];
   /** Team member ids, to reject a stale or foreign stored selection. */
   evaluadorIds: string[];
@@ -49,6 +54,30 @@ function useEstadoServidor(competenciaId: string, evaluadorId: string | null): E
 }
 const SIN_DATOS: EstadoServidor = { enviadas: {}, ausentes: [] };
 
+type Estado = ReturnType<typeof estadoParticipante> | "ausente" | undefined;
+type Seccion = { grupo: number | null; indices: number[] };
+
+/**
+ * Consecutive runs of the same group (the list arrives sorted by group, PRD
+ * §5.4). When nobody has a group there is one untitled section: the plain
+ * list from before v1.8.
+ */
+function secciones(grupos: readonly (number | null)[]): Seccion[] {
+  const resultado: Seccion[] = [];
+  grupos.forEach((grupo, indice) => {
+    const ultima = resultado.at(-1);
+    if (ultima && ultima.grupo === grupo) ultima.indices.push(indice);
+    else resultado.push({ grupo, indices: [indice] });
+  });
+  return resultado;
+}
+
+/** "3 de 5 enviadas" for a group; absent participants leave its total, as in the summary. */
+function avance(estados: readonly Estado[]): string {
+  const ausentes = estados.filter((e) => e === "ausente").length;
+  return TEXTOS.lista.enviadas(estados.filter((e) => e === "enviado").length, estados.length - ausentes);
+}
+
 export function ListaParticipantes({
   competenciaId,
   nombreCompetencia,
@@ -71,7 +100,7 @@ export function ListaParticipantes({
 
   const listo = evaluadorId !== null && borrador !== undefined;
   const ausentes = new Set(servidor.ausentes);
-  const estados = participantes.map((p) => {
+  const estados: Estado[] = participantes.map((p) => {
     if (!listo) return undefined;
     if (ausentes.has(p.id)) return "ausente" as const;
     return estadoParticipante(borrador.participantes[p.id], indicadorIds, servidor.enviadas[p.id]);
@@ -80,6 +109,8 @@ export function ListaParticipantes({
   const cantidadAusentes = estados.filter((e) => e === "ausente").length;
   // Absent participants leave the total and are counted apart (PRD §5.4).
   const total = participantes.length - cantidadAusentes;
+  const grupos = secciones(participantes.map((p) => p.grupo));
+  const conGrupos = participantes.some((p) => p.grupo !== null);
 
   function confirmarBorrado() {
     saliendo.current = true;
@@ -110,26 +141,53 @@ export function ListaParticipantes({
         </div>
       </header>
 
-      <ul className="flex flex-col gap-2" aria-busy={!listo || undefined}>
-        {participantes.map((participante, indice) => {
-          const estado = estados[indice];
+      {/* Split by COFI group (PRD §5.4, v1.8): a heading and its own progress per group. */}
+      <div className="flex flex-col gap-8" aria-busy={!listo || undefined}>
+        {grupos.map(({ grupo, indices }) => {
+          const titulo = conGrupos ? (grupo === null ? TEXTOS.lista.sinGrupo : etiquetaGrupo(grupo)) : null;
+          const idTitulo = `grupo-${grupo ?? "sin"}`;
+          const lista = (
+            <ul className="flex flex-col gap-2" aria-labelledby={titulo ? idTitulo : undefined}>
+              {indices.map((indice) => {
+                const participante = participantes[indice];
+                const estado = estados[indice];
+                return (
+                  <li key={participante.id}>
+                    <Link
+                      href={`/${competenciaId}/${participante.id}`}
+                      className="group flex min-h-14 w-full items-center gap-3 rounded-tile bg-surface px-4 py-3"
+                    >
+                      <span className="min-w-0 flex-1 break-words">
+                        <span className="block text-body text-ink group-hover:text-link">{participante.etiqueta}</span>
+                        {participante.detalle && (
+                          <span className="block text-caption text-ink-2">{participante.detalle}</span>
+                        )}
+                      </span>
+                      {estado && <Chip tono={TONO_POR_ESTADO[estado]}>{TEXTOS.estados[estado]}</Chip>}
+                      <IconoChevron className="shrink-0 text-ink-2" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+          if (!titulo) return <div key="todos">{lista}</div>;
           return (
-            <li key={participante.id}>
-              <Link
-                href={`/${competenciaId}/${participante.id}`}
-                className="group flex min-h-14 w-full items-center gap-3 rounded-tile bg-surface px-4 py-3"
-              >
-                <span className="min-w-0 flex-1 break-words">
-                  <span className="block text-body text-ink group-hover:text-link">{participante.etiqueta}</span>
-                  {participante.detalle && <span className="block text-caption text-ink-2">{participante.detalle}</span>}
-                </span>
-                {estado && <Chip tono={TONO_POR_ESTADO[estado]}>{TEXTOS.estados[estado]}</Chip>}
-                <IconoChevron className="shrink-0 text-ink-2" />
-              </Link>
-            </li>
+            <section key={idTitulo} aria-labelledby={idTitulo}>
+              <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+                <h2 id={idTitulo} className="text-sub font-semibold text-ink">
+                  {titulo}
+                </h2>
+                {/* Fixed height so the heading doesn't jump when the progress appears. */}
+                <p className="min-h-5 shrink-0 text-[14px] text-ink-3">
+                  {listo ? avance(indices.map((i) => estados[i])) : null}
+                </p>
+              </div>
+              {lista}
+            </section>
           );
         })}
-      </ul>
+      </div>
 
       <div className="mt-10 flex justify-center">
         <Boton variante="secundario" onClick={() => setConfirmando(true)} disabled={!leido}>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Boton } from "@/components/ui/Boton";
 import { Chip } from "@/components/ui/Chip";
+import { SelectorJornada } from "@/components/ui/SelectorJornada";
 import { IconoChevron } from "@/components/ui/iconos";
 import { competenciasDeJornada, type Competencia } from "@/config/competencias";
 import { competenciaDisponible } from "@/config/equipos";
@@ -17,6 +18,10 @@ import { TEXTOS } from "@/config/textos";
 // opens, straight to the participant list (no picker, PRD §5.3); any other
 // enabled competencia shows "No asignada". `asignada` is undefined for the
 // docente.
+//
+// The docente also gets the Mañana / Noche switch here (PRD §5.11), the same
+// SelectorJornada as /reportes: it re-signs the session, so the competencias,
+// the evaluator picker and the participant list all follow the chosen jornada.
 
 const ID_LISTA = "competencias";
 
@@ -35,9 +40,11 @@ type ContenidoInicioProps = {
   jornada: JornadaId | null;
   /** An evaluador's team competencia (null: their team has none); undefined for the docente. */
   asignada?: string | null;
+  /** The docente may switch jornada from Inicio (PRD §5.11). */
+  cambiaJornada?: boolean;
 };
 
-export function ContenidoInicio({ jornada, asignada }: ContenidoInicioProps) {
+export function ContenidoInicio({ jornada, asignada, cambiaJornada = false }: ContenidoInicioProps) {
   const lista = jornada ? filas(jornada, asignada) : [];
   const disponibles = lista.filter((f) => f.estado === "disponible").map((f) => f.competencia);
   const evaluador = asignada !== undefined;
@@ -53,8 +60,14 @@ export function ContenidoInicio({ jornada, asignada }: ContenidoInicioProps) {
         <h1 className="text-h2 font-semibold md:text-display">{TEXTOS.app.nombre}</h1>
         <p className="mx-auto mt-3 max-w-[560px] text-sub text-ink">{TEXTOS.inicio.titulo}</p>
         <p className="mt-2 text-body text-ink-3">{TEXTOS.app.lema}</p>
-        {/* The non-breaking space keeps the line's height in the shell. */}
-        <p className="mt-2 text-[14px] text-ink-3">{jornada ? TEXTOS.jornada.actual(nombreJornada(jornada)) : " "}</p>
+        {jornada && cambiaJornada ? (
+          <div className="mt-6">
+            <SelectorJornada actual={jornada} />
+          </div>
+        ) : (
+          // The non-breaking space keeps the line's height in the shell.
+          <p className="mt-2 text-[14px] text-ink-3">{jornada ? TEXTOS.jornada.actual(nombreJornada(jornada)) : " "}</p>
+        )}
         <div className="mt-8">
           <Boton href={destinoComenzar} tamano="grande">
             {TEXTOS.inicio.comenzar}

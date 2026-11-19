@@ -13,10 +13,18 @@ test.describe.configure({ mode: "serial" });
 const NOMBRES = ["Ana Pérez Solano", "Bruno Céspedes", "Carla Mora", "Diego Vargas Núñez", "Elena Rojas"];
 // Fake carnets (never real ones in tests): the reports show these, not the names.
 const CARNETS = ["900000001", "900000002", "", "900000004", "900000005"];
+// COFI groups (v1.8): evaluators see Grupo 1 (P02, P05), Grupo 2 (P01, P03), then Sin grupo (P04).
+const GRUPOS = ["2", "1", "2", "", "1"];
 
-let original: { cantidad: number; nombres: string[]; carnets: string[]; correos: string[] } | null = null;
+let original: {
+  cantidad: number;
+  nombres: string[];
+  carnets: string[];
+  correos: string[];
+  grupos: (number | null)[];
+} | null = null;
 
-/** Each row has the name field, then the carnet field, then the email field (PRD §5.14). */
+/** Each row has the name field, the carnet field, the email field (PRD §5.14), then the group field (v1.8). */
 async function leerEditor(page: Page) {
   const cantidad = Number(await page.getByLabel("Cantidad de participantes").inputValue());
   const filas = await page
@@ -27,6 +35,7 @@ async function leerEditor(page: Page) {
     nombres: filas.map((f) => f[0] ?? ""),
     carnets: filas.map((f) => f[1] ?? ""),
     correos: filas.map((f) => f[2] ?? ""),
+    grupos: filas.map((f) => (f[3] ? Number(f[3]) : null)),
   };
 }
 
@@ -71,7 +80,7 @@ test("el docente no puede abrir /admin", async ({ page }) => {
   await expect(page.getByText("Esta sección requiere el código de administración.")).toBeVisible();
 });
 
-test("el admin define 5 participantes con nombre y carné; quien evalúa ve los nombres y el reporte solo los carnés", async ({
+test("el admin define 5 participantes con nombre, carné y grupo; quien evalúa los ve por grupo y el reporte solo los carnés", async ({
   page,
   browser,
 }) => {
@@ -89,6 +98,7 @@ test("el admin define 5 participantes con nombre y carné; quien evalúa ve los 
   for (const [i, nombre] of NOMBRES.entries()) {
     await page.getByLabel(`Participante 0${i + 1}`, { exact: true }).fill(nombre);
     await page.getByLabel(`Carné · Participante 0${i + 1}`, { exact: true }).fill(CARNETS[i]);
+    await page.getByLabel(`Grupo · Participante 0${i + 1}`, { exact: true }).fill(GRUPOS[i]);
   }
   // 375 px: no horizontal page scroll with 5 name fields and the bottom bar.
   const desborde = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -105,18 +115,33 @@ test("el admin define 5 participantes con nombre y carné; quien evalúa ve los 
   }
   await expect(guardado).toBeVisible();
 
-  // An evaluator, in a separate session, sees exactly those 5 names.
+  // An evaluator, in a separate session, sees exactly those 5 names, split by group (PRD §5.4).
   const evaluador = await browser.newContext({ viewport: { width: 375, height: 667 } });
   const pagina = await evaluador.newPage();
   await iniciarSesion(pagina);
   await pagina.goto("/adaptabilidad");
   const filas = pagina.getByRole("main").getByRole("listitem");
   await expect(filas).toHaveCount(5);
-  await expect(filas.first()).toContainText("Ana Pérez Solano");
-  await expect(filas.first()).toContainText("Participante 01");
+  await expect(pagina.getByRole("main").getByRole("heading", { level: 2 })).toHaveText(["Grupo 1", "Grupo 2", "Sin grupo"]);
+  const grupo1 = pagina.getByRole("region", { name: "Grupo 1" });
+  await expect(grupo1.getByRole("listitem")).toHaveCount(2);
+  await expect(grupo1.getByRole("listitem").first()).toContainText("Bruno Céspedes");
+  await expect(grupo1.getByRole("listitem").first()).toContainText("Participante 02");
+  // Per-group progress; seeded evaluations may already count as sent.
+  await expect(grupo1).toContainText(/[0-2] de 2 enviadas/);
+  await expect(pagina.getByRole("region", { name: "Grupo 2" }).getByRole("listitem")).toHaveText([
+    /Ana Pérez Solano/,
+    /Carla Mora/,
+  ]);
+  await expect(pagina.getByRole("region", { name: "Sin grupo" })).toContainText("Diego Vargas Núñez");
+  const desbordeLista = await pagina.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(desbordeLista).toBeLessThanOrEqual(0);
 
-  await filas.nth(2).getByRole("link").click();
+  await pagina.getByRole("link", { name: /Carla Mora/ }).click();
   await expect(pagina.getByRole("heading", { level: 1, name: "Carla Mora" })).toBeVisible();
+  await expect(pagina.getByText("Participante 03 · Grupo 2", { exact: true })).toBeVisible();
 
   // A hidden participant is gone from the rating routes.
   await pagina.goto("/adaptabilidad/P06");

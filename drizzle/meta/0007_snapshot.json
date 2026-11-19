@@ -1,0 +1,679 @@
+{
+  "id": "3fca7503-db90-4cbd-bf02-903457a1a790",
+  "prevId": "49c0e2d4-c6d0-4c95-947a-9db8c5d109e7",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.asistencia": {
+      "name": "asistencia",
+      "schema": "",
+      "columns": {
+        "jornada": {
+          "name": "jornada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competencia_id": {
+          "name": "competencia_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evaluador_id": {
+          "name": "evaluador_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participante_id": {
+          "name": "participante_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ausente": {
+          "name": "ausente",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "asistencia_jornada_competencia_id_evaluador_id_participante_id_pk": {
+          "name": "asistencia_jornada_competencia_id_evaluador_id_participante_id_pk",
+          "columns": [
+            "jornada",
+            "competencia_id",
+            "evaluador_id",
+            "participante_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "asistencia_jornada_check": {
+          "name": "asistencia_jornada_check",
+          "value": "\"asistencia\".\"jornada\" in ('manana', 'noche')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.calificaciones": {
+      "name": "calificaciones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "evaluacion_id": {
+          "name": "evaluacion_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indicador_id": {
+          "name": "indicador_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nivel": {
+          "name": "nivel",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observacion": {
+          "name": "observacion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origen": {
+          "name": "origen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ia_nivel_sugerido": {
+          "name": "ia_nivel_sugerido",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_probabilidades": {
+          "name": "ia_probabilidades",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_confianza": {
+          "name": "ia_confianza",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ia_modelo": {
+          "name": "ia_modelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "calificaciones_evaluacion_id_evaluaciones_id_fk": {
+          "name": "calificaciones_evaluacion_id_evaluaciones_id_fk",
+          "tableFrom": "calificaciones",
+          "tableTo": "evaluaciones",
+          "columnsFrom": [
+            "evaluacion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calificaciones_evaluacion_id_indicador_id_unique": {
+          "name": "calificaciones_evaluacion_id_indicador_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "evaluacion_id",
+            "indicador_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "calificaciones_nivel_check": {
+          "name": "calificaciones_nivel_check",
+          "value": "\"calificaciones\".\"nivel\" between 1 and 4"
+        },
+        "calificaciones_origen_check": {
+          "name": "calificaciones_origen_check",
+          "value": "\"calificaciones\".\"origen\" in ('manual', 'ia')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.codigos_verificacion": {
+      "name": "codigos_verificacion",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "integrante_id": {
+          "name": "integrante_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposito": {
+          "name": "proposito",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "codigo_hash": {
+          "name": "codigo_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expira_en": {
+          "name": "expira_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intentos": {
+          "name": "intentos",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "usado_en": {
+          "name": "usado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "codigos_verificacion_integrante_idx": {
+          "name": "codigos_verificacion_integrante_idx",
+          "columns": [
+            {
+              "expression": "integrante_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "codigos_verificacion_integrante_id_cuentas_integrante_id_fk": {
+          "name": "codigos_verificacion_integrante_id_cuentas_integrante_id_fk",
+          "tableFrom": "codigos_verificacion",
+          "tableTo": "cuentas",
+          "columnsFrom": [
+            "integrante_id"
+          ],
+          "columnsTo": [
+            "integrante_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "codigos_verificacion_proposito_check": {
+          "name": "codigos_verificacion_proposito_check",
+          "value": "\"codigos_verificacion\".\"proposito\" in ('activar', 'recuperar')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cuentas": {
+      "name": "cuentas",
+      "schema": "",
+      "columns": {
+        "integrante_id": {
+          "name": "integrante_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "correo": {
+          "name": "correo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contrasena_hash": {
+          "name": "contrasena_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activada_en": {
+          "name": "activada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultimo_acceso": {
+          "name": "ultimo_acceso",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intentos_fallidos": {
+          "name": "intentos_fallidos",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bloqueada_hasta": {
+          "name": "bloqueada_hasta",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cuentas_correo_unique": {
+          "name": "cuentas_correo_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "correo"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.envios_resultados": {
+      "name": "envios_resultados",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jornada": {
+          "name": "jornada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competencia_id": {
+          "name": "competencia_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participante_id": {
+          "name": "participante_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estado": {
+          "name": "estado",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "motivo": {
+          "name": "motivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enviado_en": {
+          "name": "enviado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "envios_resultados_participante_idx": {
+          "name": "envios_resultados_participante_idx",
+          "columns": [
+            {
+              "expression": "jornada",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "competencia_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "participante_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "envios_resultados_jornada_check": {
+          "name": "envios_resultados_jornada_check",
+          "value": "\"envios_resultados\".\"jornada\" in ('manana', 'noche')"
+        },
+        "envios_resultados_estado_check": {
+          "name": "envios_resultados_estado_check",
+          "value": "\"envios_resultados\".\"estado\" in ('enviado', 'error')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.evaluaciones": {
+      "name": "evaluaciones",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "jornada": {
+          "name": "jornada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "competencia_id": {
+          "name": "competencia_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evaluador_id": {
+          "name": "evaluador_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participante_id": {
+          "name": "participante_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "puntaje": {
+          "name": "puntaje",
+          "type": "numeric(3, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "evaluaciones_jornada_competencia_id_evaluador_id_participante_id_unique": {
+          "name": "evaluaciones_jornada_competencia_id_evaluador_id_participante_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "jornada",
+            "competencia_id",
+            "evaluador_id",
+            "participante_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "evaluaciones_jornada_check": {
+          "name": "evaluaciones_jornada_check",
+          "value": "\"evaluaciones\".\"jornada\" in ('manana', 'noche')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.participantes": {
+      "name": "participantes",
+      "schema": "",
+      "columns": {
+        "jornada": {
+          "name": "jornada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numero": {
+          "name": "numero",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "carnet": {
+          "name": "carnet",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "correo": {
+          "name": "correo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "grupo": {
+          "name": "grupo",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "participantes_jornada_id_pk": {
+          "name": "participantes_jornada_id_pk",
+          "columns": [
+            "jornada",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "participantes_jornada_numero_unique": {
+          "name": "participantes_jornada_numero_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "jornada",
+            "numero"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "participantes_numero_check": {
+          "name": "participantes_numero_check",
+          "value": "\"participantes\".\"numero\" between 1 and 99"
+        },
+        "participantes_jornada_check": {
+          "name": "participantes_jornada_check",
+          "value": "\"participantes\".\"jornada\" in ('manana', 'noche')"
+        },
+        "participantes_grupo_check": {
+          "name": "participantes_grupo_check",
+          "value": "\"participantes\".\"grupo\" is null or \"participantes\".\"grupo\" between 1 and 20"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.uso_jev": {
+      "name": "uso_jev",
+      "schema": "",
+      "columns": {
+        "sesion_id": {
+          "name": "sesion_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ventana": {
+          "name": "ventana",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conteo": {
+          "name": "conteo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "uso_jev_sesion_id_ventana_pk": {
+          "name": "uso_jev_sesion_id_ventana_pk",
+          "columns": [
+            "sesion_id",
+            "ventana"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

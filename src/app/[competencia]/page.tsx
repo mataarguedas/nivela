@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { etiquetaNumero } from "@/config/participantes";
+import { nombreJornada } from "@/config/jornadas";
+import { etiquetaNumero, ordenarPorGrupo } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { cargarParticipantes } from "@/lib/db/participantes";
 import { contextoEvaluacion } from "@/lib/jornadaActual";
@@ -55,11 +56,14 @@ async function Lista({ params }: Pick<PageProps<"/[competencia]">, "params">) {
   return (
     <ListaParticipantes
       competenciaId={competencia.id}
-      nombreCompetencia={competencia.nombre}
-      participantes={participantes.map((p) => ({
+      // Names the jornada: the docente may have switched it on Inicio (PRD §5.11).
+      nombreCompetencia={`${competencia.nombre} · ${TEXTOS.jornada.actual(nombreJornada(jornada))}`}
+      // By group, then by number (PRD §5.4, v1.8); the rating screen walks the same order.
+      participantes={ordenarPorGrupo(participantes).map((p) => ({
         id: p.id,
         etiqueta: p.etiqueta,
         detalle: p.nombre ? etiquetaNumero(p.numero) : null,
+        grupo: p.grupo,
       }))}
       indicadorIds={competencia.indicadores.map((i) => i.id)}
       evaluadorIds={equipo.integrantes.map((i) => i.id)}

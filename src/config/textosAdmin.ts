@@ -1,6 +1,7 @@
 import {
   CANTIDAD_MAXIMA_PARTICIPANTES,
   etiquetaNumero,
+  GRUPO_MAXIMO,
   LARGO_MAXIMO_CARNET,
   LARGO_MAXIMO_NOMBRE_PARTICIPANTE,
   numeroParticipante,
@@ -15,22 +16,24 @@ const plural = (n: number, uno: string, varios: string) => (n === 1 ? `1 ${uno}`
 export const TEXTOS_ADMIN = {
   titulo: "Participantes",
   descripcion:
-    "Indique cuántas personas serán evaluadas y escriba su nombre, carné y correo. Las personas evaluadoras verán los nombres; los reportes muestran solo el carné; el correo solo se usa para enviarle sus resultados.",
+    "Indique cuántas personas serán evaluadas y escriba su nombre, carné, grupo y correo. Las personas evaluadoras verán los nombres, separados por grupo; los reportes muestran solo el carné; el correo solo se usa para enviarle sus resultados.",
   cantidad: "Cantidad de participantes",
   ayudaCantidad: `Un número entre 1 y ${CANTIDAD_MAXIMA_PARTICIPANTES}.`,
   nombres: "Nombres y carnés",
   ayudaNombres:
-    "Escriba el nombre empezando por el nombre de pila, sin correos ni teléfonos. Si deja el nombre o el carné vacío, se mostrará «Participante 07» en su lugar.",
+    "Escriba el nombre empezando por el nombre de pila, sin correos ni teléfonos. Si deja el nombre o el carné vacío, se mostrará «Participante 07» en su lugar. El grupo es el de la hoja de distribución; si lo deja vacío, la persona aparece en «Sin grupo».",
   participante: etiquetaNumero,
   nombre: "Nombre",
   carne: "Carné",
   carneDe: (numero: number) => `Carné · ${etiquetaNumero(numero)}`,
+  /** v1.8 (PRD §5.10): the COFI group from the distribution sheet. */
+  grupoDe: (numero: number) => `Grupo · ${etiquetaNumero(numero)}`,
   /** PRD §5.14: optional, only for sending the participant their results. */
   correoDe: (numero: number) => `Correo electrónico · ${etiquetaNumero(numero)}`,
   pegarLista: "Pegar lista",
   pegarTitulo: "Pegar lista de participantes",
   pegarAyuda:
-    "Una persona por línea: el carné, el nombre y, si lo tiene, el correo, separados por una tabulación o por «;» (por ejemplo, copiados de una hoja de cálculo), o solo el nombre. La cantidad se ajusta al número de líneas.",
+    "Una persona por línea: el carné, el nombre y, si los tiene, el grupo («Grupo 2») y el correo, separados por una tabulación o por «;» (por ejemplo, copiados de una hoja de cálculo), o solo el nombre. La cantidad se ajusta al número de líneas.",
   usarLista: "Usar esta lista",
   guardar: "Guardar cambios",
   guardando: "Guardando…",
@@ -47,6 +50,8 @@ export const TEXTOS_ADMIN = {
   carneInvalido: (numero: number) =>
     `Revise el carné del participante ${numeroParticipante(numero)}: solo números, letras o guiones, con un máximo de ${LARGO_MAXIMO_CARNET} caracteres.`,
   carneRepetido: (numero: number) => `El carné del participante ${numeroParticipante(numero)} ya está en la lista.`,
+  grupoInvalido: (numero: number) =>
+    `Revise el grupo del participante ${numeroParticipante(numero)}: un número entre 1 y ${GRUPO_MAXIMO}, o vacío.`,
   correoInvalido: (numero: number) =>
     `Revise el correo del participante ${numeroParticipante(numero)}: ingrese un correo electrónico válido o déjelo vacío.`,
   listaInvalida: "Los datos de la lista de participantes no son válidos.",

@@ -72,6 +72,8 @@ export const TEXTOS = {
     titulo: "Participantes",
     borrarTodo: "Borrar todo",
     enviadas: (n: number, total: number) => `${n} de ${total} enviadas`,
+    /** v1.8 (PRD §5.4): the section for participants without a COFI group. */
+    sinGrupo: "Sin grupo",
     confirmarBorrado:
       "¿Desea borrar todas las evaluaciones guardadas en este dispositivo? Las evaluaciones ya enviadas no se eliminan del servidor.",
     // Not in PRD Appendix C: the list now comes from the database.

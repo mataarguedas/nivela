@@ -24,7 +24,14 @@ import type * as schema from "./schema";
 
 type Bd = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-export type FilaParticipante = { numero: number; nombre: string | null; carnet: string | null; activo: boolean };
+export type FilaParticipante = {
+  numero: number;
+  nombre: string | null;
+  carnet: string | null;
+  /** v1.8 (PRD §5.4): the COFI group, or null. Optional so older fixtures stay valid. */
+  grupo?: number | null;
+  activo: boolean;
+};
 
 /** What the admin editor starts from. */
 export type EstadoParticipantes = {
@@ -34,6 +41,8 @@ export type EstadoParticipantes = {
   nombres: (string | null)[];
   /** Stored carnet per numero, aligned with `nombres`. */
   carnets: (string | null)[];
+  /** Stored group per numero, aligned with `nombres` (PRD §5.4, v1.8). */
+  grupos: (number | null)[];
   /**
    * Stored email per numero, aligned with `nombres` (PRD §5.14). Only the
    * admin editor receives this: participant emails never reach any other
@@ -51,6 +60,7 @@ export function sentenciaLeerFilas<B extends Bd>(db: B, jornada: JornadaId) {
       numero: participantes.numero,
       nombre: participantes.nombre,
       carnet: participantes.carnet,
+      grupo: participantes.grupo,
       activo: participantes.activo,
     })
     .from(participantes)
@@ -74,7 +84,7 @@ function cantidadRespaldo(): number {
 /** Active participants in order; the unnamed fallback list while the jornada has no rows. */
 export function participantesActivos(filas: readonly FilaParticipante[], respaldo: number): Participante[] {
   if (filas.length === 0) return generarParticipantes(respaldo);
-  return filas.filter((f) => f.activo).map((f) => crearParticipante(f.numero, f.nombre, f.carnet));
+  return filas.filter((f) => f.activo).map((f) => crearParticipante(f.numero, f.nombre, f.carnet, f.grupo ?? null));
 }
 
 export function estadoDesdeFilas(
@@ -82,19 +92,21 @@ export function estadoDesdeFilas(
   respaldo: number,
   filasCorreo: readonly FilaCorreo[] = [],
 ): EstadoParticipantes {
-  if (filas.length === 0) return { cantidad: respaldo, nombres: [], carnets: [], correos: [] };
+  if (filas.length === 0) return { cantidad: respaldo, nombres: [], carnets: [], grupos: [], correos: [] };
   const maximo = Math.max(...filas.map((f) => f.numero));
   const nombres: (string | null)[] = Array.from({ length: maximo }, () => null);
   const carnets: (string | null)[] = Array.from({ length: maximo }, () => null);
+  const grupos: (number | null)[] = Array.from({ length: maximo }, () => null);
   const correos: (string | null)[] = Array.from({ length: maximo }, () => null);
   for (const f of filas) {
     nombres[f.numero - 1] = f.nombre;
     carnets[f.numero - 1] = f.carnet;
+    grupos[f.numero - 1] = f.grupo ?? null;
   }
   for (const f of filasCorreo) {
     if (f.numero >= 1 && f.numero <= maximo) correos[f.numero - 1] = f.correo;
   }
-  return { cantidad: filas.filter((f) => f.activo).length, nombres, carnets, correos };
+  return { cantidad: filas.filter((f) => f.activo).length, nombres, carnets, grupos, correos };
 }
 
 export async function obtenerParticipantes(jornada: JornadaId): Promise<Participante[]> {
@@ -118,7 +130,7 @@ export async function obtenerCorreosParticipantes(jornada: JornadaId): Promise<M
 export async function obtenerTodosLosParticipantes(jornada: JornadaId): Promise<Participante[]> {
   const filas = await sentenciaLeerFilas(getDb(), jornada);
   if (filas.length === 0) return generarParticipantes(cantidadRespaldo());
-  return filas.map((f) => crearParticipante(f.numero, f.nombre, f.carnet));
+  return filas.map((f) => crearParticipante(f.numero, f.nombre, f.carnet, f.grupo ?? null));
 }
 
 /**
@@ -159,16 +171,18 @@ export function sentenciaContarEvaluaciones<B extends Bd>(db: B, jornada: Jornad
     .where(and(eq(evaluaciones.jornada, jornada), inArray(evaluaciones.participanteId, [...ids])));
 }
 
-/** The list the admin saves: names, carnets and emails aligned by position (P01 first). */
+/** The list the admin saves: names, carnets, groups and emails aligned by position (P01 first). */
 export type ListaParticipantes = {
   nombres: readonly (string | null)[];
   carnets: readonly (string | null)[];
+  /** Missing → every row "Sin grupo". */
+  grupos?: readonly (number | null)[];
   correos: readonly (string | null)[];
 };
 
 /**
  * Saving the list as two statements for one transaction (a neon-http batch):
- * upsert P01…P{n} as active with their names, carnets and emails, then hide every row
+ * upsert P01…P{n} as active with their names, carnets, groups and emails, then hide every row
  * above n. Rows are never deleted, so hidden participants keep their data.
  */
 export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: JornadaId, lista: ListaParticipantes) {
@@ -182,6 +196,7 @@ export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: Jor
         numero: i + 1,
         nombre,
         carnet: lista.carnets[i] ?? null,
+        grupo: lista.grupos?.[i] ?? null,
         correo: lista.correos[i] ?? null,
         activo: true,
       })),
@@ -191,6 +206,7 @@ export function sentenciasGuardarParticipantes<B extends Bd>(db: B, jornada: Jor
       set: {
         nombre: sql`excluded.nombre`,
         carnet: sql`excluded.carnet`,
+        grupo: sql`excluded.grupo`,
         correo: sql`excluded.correo`,
         activo: true,
         updatedAt: sql`now()`,
@@ -226,6 +242,26 @@ export async function guardarParticipantes(
   await db.batch(sentenciasGuardarParticipantes(db, jornada, lista));
   return {
     ok: true,
-    participantes: lista.nombres.map((nombre, i) => crearParticipante(i + 1, nombre, lista.carnets[i] ?? null)),
+    participantes: lista.nombres.map((nombre, i) =>
+      crearParticipante(i + 1, nombre, lista.carnets[i] ?? null, lista.grupos?.[i] ?? null),
+    ),
   };
+}
+
+/**
+ * v1.8 (`participantes:importar`, PRD §5.10): set only the group of existing
+ * rows, by numero, leaving names, carnets and emails as they are. One
+ * statement per row, for one neon-http batch (at most 99).
+ */
+export function sentenciasAsignarGrupos<B extends Bd>(
+  db: B,
+  jornada: JornadaId,
+  grupos: readonly { numero: number; grupo: number | null }[],
+) {
+  return grupos.map(({ numero, grupo }) =>
+    db
+      .update(participantes)
+      .set({ grupo, updatedAt: sql`now()` })
+      .where(and(eq(participantes.jornada, jornada), eq(participantes.numero, numero))),
+  );
 }

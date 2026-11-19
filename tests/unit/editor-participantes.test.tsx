@@ -24,10 +24,11 @@ function montar(
   nombres: (string | null)[] = ["Ana", null, "Carlos", "Dani"],
   carnets: (string | null)[] = nombres.map(() => null),
   correos: (string | null)[] = nombres.map(() => null),
+  grupos: (number | null)[] = nombres.map(() => null),
 ) {
   render(
     <ProveedorToast>
-      <EditorParticipantes inicial={{ cantidad, nombres, carnets, correos }} jornada="noche" />
+      <EditorParticipantes inicial={{ cantidad, nombres, carnets, grupos, correos }} jornada="noche" />
     </ProveedorToast>,
   );
 }
@@ -101,26 +102,53 @@ describe("EditorParticipantes", () => {
   });
 
   it("leerLineaPegada separa carné y nombre sin confundir un nombre de una palabra", () => {
-    expect(leerLineaPegada("100000001\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "100000001", correo: "" });
-    expect(leerLineaPegada("Ana Mora;100000001")).toEqual({ nombre: "Ana Mora", carnet: "100000001", correo: "" });
-    expect(leerLineaPegada("Ana Mora")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "" });
-    expect(leerLineaPegada("Ana\tMora")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "" });
-    expect(leerLineaPegada("A-12345\tAna")).toEqual({ nombre: "Ana", carnet: "A-12345", correo: "" });
+    expect(leerLineaPegada("100000001\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "100000001", grupo: "", correo: "" });
+    expect(leerLineaPegada("Ana Mora;100000001")).toEqual({ nombre: "Ana Mora", carnet: "100000001", grupo: "", correo: "" });
+    expect(leerLineaPegada("Ana Mora")).toEqual({ nombre: "Ana Mora", carnet: "", grupo: "", correo: "" });
+    expect(leerLineaPegada("Ana\tMora")).toEqual({ nombre: "Ana Mora", carnet: "", grupo: "", correo: "" });
+    expect(leerLineaPegada("A-12345\tAna")).toEqual({ nombre: "Ana", carnet: "A-12345", grupo: "", correo: "" });
   });
 
   it("leerLineaPegada toma como correo el campo con «@», en cualquier posición", () => {
     expect(leerLineaPegada("100000001\tAna Mora\tana@ejemplo.test")).toEqual({
       nombre: "Ana Mora",
       carnet: "100000001",
+      grupo: "",
       correo: "ana@ejemplo.test",
     });
     expect(leerLineaPegada("ana@ejemplo.test;Ana Mora;100000001")).toEqual({
       nombre: "Ana Mora",
       carnet: "100000001",
+      grupo: "",
       correo: "ana@ejemplo.test",
     });
     // Without a carnet, the email still isn't taken for part of the name.
-    expect(leerLineaPegada("Ana Mora\tana2@ejemplo.test")).toEqual({ nombre: "Ana Mora", carnet: "", correo: "ana2@ejemplo.test" });
+    expect(leerLineaPegada("Ana Mora\tana2@ejemplo.test")).toEqual({ nombre: "Ana Mora", carnet: "", grupo: "", correo: "ana2@ejemplo.test" });
+  });
+
+  it("leerLineaPegada toma «Grupo N» como el grupo (v1.8); un número solo sigue siendo carné", () => {
+    expect(leerLineaPegada("100000001;Ana Mora;Grupo 02;ana@ejemplo.test")).toEqual({
+      nombre: "Ana Mora",
+      carnet: "100000001",
+      grupo: "2",
+      correo: "ana@ejemplo.test",
+    });
+    expect(leerLineaPegada("grupo 3\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "", grupo: "3", correo: "" });
+    expect(leerLineaPegada("3\tAna Mora")).toEqual({ nombre: "Ana Mora", carnet: "3", grupo: "", correo: "" });
+  });
+
+  it("envía el grupo de cada fila y rechaza uno fuera de 1…20 sin enviar", async () => {
+    montar(2, ["Ana", "Bea"], undefined, undefined, [3, null]);
+    expect(screen.getByLabelText(TEXTOS_ADMIN.grupoDe(1))).toHaveValue("3");
+    fireEvent.change(screen.getByLabelText(TEXTOS_ADMIN.grupoDe(2)), { target: { value: "21" } });
+    await guardar();
+    expect(fetchSimulado).not.toHaveBeenCalled();
+    expect(screen.getByText(TEXTOS_ADMIN.grupoInvalido(2))).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(TEXTOS_ADMIN.grupoDe(2)), { target: { value: " 5 " } });
+    responder(200, { cantidad: 2 });
+    await guardar();
+    expect(cuerpoEnviado().grupos).toEqual([3, 5]);
   });
 
   it("guarda solo los participantes visibles, recortados", async () => {
@@ -134,6 +162,7 @@ describe("EditorParticipantes", () => {
       cantidad: 3,
       nombres: ["Ana", "Bea Solís", "Carlos"],
       carnets: ["", "", ""],
+      grupos: [null, null, null],
       correos: ["", "", ""],
       confirmar: false,
     });
@@ -219,6 +248,7 @@ describe("EditorParticipantes", () => {
       cantidad: 2,
       nombres: ["Ana", ""],
       carnets: ["", ""],
+      grupos: [null, null],
       correos: ["", ""],
       confirmar: true,
     });

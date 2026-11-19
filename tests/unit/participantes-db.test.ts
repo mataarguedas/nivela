@@ -29,9 +29,12 @@ async function guardar(
   jornada: JornadaId = "manana",
   carnets: (string | null)[] = nombres.map(() => null),
   correos: (string | null)[] = nombres.map(() => null),
+  grupos?: (number | null)[],
 ) {
   await db.transaction(async (tx) => {
-    for (const sentencia of sentenciasGuardarParticipantes(tx, jornada, { nombres, carnets, correos })) await sentencia;
+    for (const sentencia of sentenciasGuardarParticipantes(tx, jornada, { nombres, carnets, grupos, correos })) {
+      await sentencia;
+    }
   });
 }
 
@@ -58,17 +61,31 @@ describe("participantes en la base de datos", () => {
       "Participante 03",
       "Participante 04",
     ]);
-    expect(estadoDesdeFilas(filas, 4)).toEqual({ cantidad: 4, nombres: [], carnets: [], correos: [] });
+    expect(estadoDesdeFilas(filas, 4)).toEqual({ cantidad: 4, nombres: [], carnets: [], grupos: [], correos: [] });
   });
 
   it("guarda la cantidad y los nombres en orden (P01…)", async () => {
     await guardar(["Ana Pérez", null, "Carlos Peña"]);
     const activos = participantesActivos(await leer(), 20);
     expect(activos).toEqual([
-      { id: "P01", numero: 1, nombre: "Ana Pérez", carnet: null, etiqueta: "Ana Pérez", etiquetaReporte: "Participante 01" },
-      { id: "P02", numero: 2, nombre: null, carnet: null, etiqueta: "Participante 02", etiquetaReporte: "Participante 02" },
-      { id: "P03", numero: 3, nombre: "Carlos Peña", carnet: null, etiqueta: "Carlos Peña", etiquetaReporte: "Participante 03" },
+      { id: "P01", numero: 1, nombre: "Ana Pérez", carnet: null, grupo: null, etiqueta: "Ana Pérez", etiquetaReporte: "Participante 01" },
+      { id: "P02", numero: 2, nombre: null, carnet: null, grupo: null, etiqueta: "Participante 02", etiquetaReporte: "Participante 02" },
+      { id: "P03", numero: 3, nombre: "Carlos Peña", carnet: null, grupo: null, etiqueta: "Carlos Peña", etiquetaReporte: "Participante 03" },
     ]);
+  });
+
+  it("guarda el grupo de cada participante; sin grupos queda «Sin grupo» (v1.8)", async () => {
+    await guardar(["Ana", "Bea", "Carlos"], "noche", undefined, undefined, [2, null, 1]);
+    expect(participantesActivos(await leer("noche"), 20).map((p) => p.grupo)).toEqual([2, null, 1]);
+    expect(estadoDesdeFilas(await leer("noche"), 20).grupos).toEqual([2, null, 1]);
+    // Saving without groups clears them; the other jornada never had any.
+    await guardar(["Ana", "Bea", "Carlos"], "noche");
+    expect(participantesActivos(await leer("noche"), 20).map((p) => p.grupo)).toEqual([null, null, null]);
+    expect(participantesActivos(await leer("manana"), 20).every((p) => p.grupo === null)).toBe(true);
+  });
+
+  it("la base rechaza un grupo fuera de 1…20", async () => {
+    await expect(guardar(["Ana"], "manana", undefined, undefined, [21])).rejects.toThrow();
   });
 
   it("guarda el carné: los reportes lo usan como etiqueta; quien evalúa ve el nombre", async () => {
@@ -95,6 +112,7 @@ describe("participantes en la base de datos", () => {
       cantidad: 2,
       nombres: ["Ana", "Beatriz", "Carlos", "Dani"],
       carnets: ["1", "2", "3", "4"],
+      grupos: [null, null, null, null],
       correos: [null, null, null, null],
     });
 

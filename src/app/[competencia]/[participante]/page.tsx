@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ordenarPorGrupo } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { cargarParticipantes } from "@/lib/db/participantes";
 import { contextoEvaluacion } from "@/lib/jornadaActual";
@@ -39,14 +40,16 @@ async function Calificacion({ params }: Pick<PageProps<"/[competencia]/[particip
   if (!contexto) notFound();
   const { jornada, competencia, equipo, evaluadorSesion } = contexto;
 
-  const participantes = await cargarParticipantes("/[competencia]/[participante]", jornada);
-  if (!participantes) {
+  const cargados = await cargarParticipantes("/[competencia]/[participante]", jornada);
+  if (!cargados) {
     return (
       <p role="alert" className="px-4 pt-16 text-center text-body text-ink">
         {TEXTOS.lista.errorCarga}
       </p>
     );
   }
+  // Previous / next walk the list's order: by group, then by number (PRD §5.4, v1.8).
+  const participantes = ordenarPorGrupo(cargados);
   // A participant the admin has hidden (or never created).
   const indice = participantes.findIndex((p) => p.id === idParticipante);
   if (indice === -1) notFound();

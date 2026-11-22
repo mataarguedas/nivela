@@ -64,7 +64,13 @@ export type FilaReporte = {
 };
 
 /** An evaluator's account as the reports need it: status and last access, never the email. */
-export type InfoCuenta = { estado: EstadoCuenta; /** ISO, or null if they never signed in. */ ultimoAcceso: string | null };
+export type InfoCuenta = {
+  estado: EstadoCuenta;
+  /** ISO, or null if they never signed in. */
+  ultimoAcceso: string | null;
+  /** ISO, when the account was first activated (v1.14, "Uso de la aplicación"); null or absent if never. */
+  activadaEn?: string | null;
+};
 
 /** One absent mark (asistencia.ausente = true), as read from the DB. */
 export type ParAusente = { evaluadorId: string; participanteId: string };
@@ -166,6 +172,10 @@ export type AvanceEvaluador = {
   curso: string;
   cuenta: EstadoCuenta;
   ultimoAcceso: string | null;
+  /** ISO; null unless the account is active (a reset account reads as never activated). */
+  activadaEn: string | null;
+  /** ISO, the latest evaluation this evaluator sent in this competencia (v1.14); null if none. */
+  ultimoEnvio: string | null;
   enviadas: number;
   /** Active participants minus the ones this evaluator marked absent. */
   esperadas: number;
@@ -248,6 +258,13 @@ export function agregarReporte(
     const enviados = evaluadoresPorParticipante.get(fila.participanteId) ?? new Set<string>();
     enviados.add(fila.evaluadorId);
     evaluadoresPorParticipante.set(fila.participanteId, enviados);
+  }
+
+  // evaluador → their latest sent evaluation (ISO strings from one source compare chronologically).
+  const ultimoEnvioPorEvaluador = new Map<string, string>();
+  for (const { evaluadorId, actualizadoEn } of validas) {
+    const previo = ultimoEnvioPorEvaluador.get(evaluadorId);
+    if (previo === undefined || actualizadoEn > previo) ultimoEnvioPorEvaluador.set(evaluadorId, actualizadoEn);
   }
 
   // participante -> evaluadores who marked them absent (team and list only).
@@ -350,6 +367,8 @@ export function agregarReporte(
         curso: integrante.curso,
         cuenta: cuenta.estado,
         ultimoAcceso: cuenta.ultimoAcceso,
+        activadaEn: cuenta.estado === "activa" ? (cuenta.activadaEn ?? null) : null,
+        ultimoEnvio: ultimoEnvioPorEvaluador.get(integrante.id) ?? null,
         enviadas: fila.total,
         esperadas: fila.esperadas,
         ausentes: fila.celdas.filter((c) => c === "ausente").length,
@@ -896,5 +915,99 @@ export function agregarParticipanteConsolidado(
     evaluaciones: competencias.reduce((suma, c) => suma + c.evaluaciones, 0),
     competencias,
     ...destacadas(competencias.filter((c) => c.disponible)),
+  };
+}
+
+// --- Uso de la aplicación (PRD §11.6, v1.14) --------------------------------
+//
+// Which evaluators (the students who use the app) activated their account and
+// which are actually rating, over every team of the session's jornada. Built
+// from each competencia's "Avance de evaluadores" (§11.2), so the figures
+// match it. Account status only: never an email.
+
+/**
+ * Sin activar: the account isn't active (no email, or never activated / reset).
+ * Sin actividad: active, but no evaluation sent and nobody marked absent.
+ * Evaluando: some activity, still pending participants. Completo: nothing left.
+ */
+export type EstadoUso = "sin-activar" | "sin-actividad" | "evaluando" | "completo";
+
+export function estadoUso(a: Pick<AvanceEvaluador, "cuenta" | "enviadas" | "ausentes" | "estado">): EstadoUso {
+  if (a.cuenta !== "activa") return "sin-activar";
+  if (a.estado === "completo") return "completo";
+  return a.enviadas === 0 && a.ausentes === 0 ? "sin-actividad" : "evaluando";
+}
+
+const ORDEN_USO: Record<EstadoUso, number> = { "sin-activar": 0, "sin-actividad": 1, evaluando: 2, completo: 3 };
+
+export type EvaluadorUso = AvanceEvaluador & { uso: EstadoUso };
+
+export type EquipoUso = {
+  competenciaId: string;
+  competencia: string;
+  /** This jornada's display label for the team. */
+  numeroEquipo: number;
+  /** Least advanced first (Sin activar … Completo), team order within each. */
+  evaluadores: EvaluadorUso[];
+  total: number;
+  activadas: number;
+  conActividad: number;
+  completos: number;
+};
+
+export type UsoAplicacion = {
+  /** One per competencia with a rubric and a team in the jornada, in team-number order. */
+  equipos: EquipoUso[];
+  /** Every evaluator without an active account, with their team: who to remind. */
+  sinActivar: (EvaluadorUso & { competencia: string; numeroEquipo: number })[];
+  kpis: {
+    total: number;
+    activadas: number;
+    pendientes: number;
+    sinCorreo: number;
+    /** Sent at least 1 evaluation or marked someone absent. */
+    conActividad: number;
+    completos: number;
+  };
+};
+
+export function agregarUsoAplicacion(entradas: readonly EntradaConsolidado[]): UsoAplicacion {
+  const equipos = entradas
+    .flatMap(({ id, nombre, reporte }): EquipoUso[] => {
+      if (reporte === null) return [];
+      const evaluadores = reporte.avance.evaluadores
+        .map((a) => ({ ...a, uso: estadoUso(a) }))
+        // Array.prototype.sort is stable: the avance order holds within each status.
+        .sort((a, b) => ORDEN_USO[a.uso] - ORDEN_USO[b.uso]);
+      return [
+        {
+          competenciaId: id,
+          competencia: nombre,
+          numeroEquipo: reporte.avance.numeroEquipo,
+          evaluadores,
+          total: evaluadores.length,
+          activadas: evaluadores.filter((e) => e.cuenta === "activa").length,
+          conActividad: evaluadores.filter((e) => e.enviadas > 0 || e.ausentes > 0).length,
+          completos: evaluadores.filter((e) => e.uso === "completo").length,
+        },
+      ];
+    })
+    .sort((a, b) => a.numeroEquipo - b.numeroEquipo);
+
+  const todos = equipos.flatMap((e) => e.evaluadores);
+  const suma = (f: (e: EquipoUso) => number) => equipos.reduce((total, e) => total + f(e), 0);
+  return {
+    equipos,
+    sinActivar: equipos.flatMap((e) =>
+      e.evaluadores.filter((a) => a.uso === "sin-activar").map((a) => ({ ...a, competencia: e.competencia, numeroEquipo: e.numeroEquipo })),
+    ),
+    kpis: {
+      total: suma((e) => e.total),
+      activadas: suma((e) => e.activadas),
+      pendientes: todos.filter((a) => a.cuenta === "pendiente").length,
+      sinCorreo: todos.filter((a) => a.cuenta === "sin-correo").length,
+      conActividad: suma((e) => e.conActividad),
+      completos: suma((e) => e.completos),
+    },
   };
 }

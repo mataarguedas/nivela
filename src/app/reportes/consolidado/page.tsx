@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { BarrasHorizontales } from "@/components/reportes/BarrasHorizontales";
+import { RUTA_ENVIO } from "@/components/reportes/AccionesReporte";
 import { BotonImprimir } from "@/components/reportes/BotonImprimir";
 import {
   barrasParticipantesPorNivel,
@@ -17,7 +18,7 @@ import { IconoChevron } from "@/components/ui/iconos";
 import { nombreJornada } from "@/config/jornadas";
 import { NIVELES, obtenerNivel } from "@/config/niveles";
 import { TEXTOS } from "@/config/textos";
-import { TEXTOS_REPORTES } from "@/config/textosReportes";
+import { TEXTOS_ENVIO, TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearPuntos, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { proporcion } from "@/lib/puntajes";
 import { CANTIDAD_MEJORES, tableroConsolidado, type CompetenciaConsolidada, type ReporteConsolidado } from "@/lib/reportes";
@@ -30,7 +31,8 @@ import { exigirDocente } from "../exigirDocente";
 // summary, "Los 5 promedios más altos" (v1.12) and the "Mapa de niveles" heatmap; v1.11 removed "Requieren atención"), the group's puntaje per competencia (simple
 // bars plus a table linking to each Reporte general), participants per level
 // by their promedio entre competencias, and one sortable table with every
-// participant's puntaje general in each competencia. Everything comes from
+// participant's puntaje general in each competencia. "Enviar resultados por
+// correo" (v1.13) sends each participant their general report. Everything comes from
 // each competencia's own aggregation (lib/reportes.ts agregarConsolidado), so
 // the figures match the Reportes generales. Docente only (proxy.ts gates
 // /reportes/**, and the page re-checks with exigirDocente). The static
@@ -81,6 +83,9 @@ async function ReporteConsolidadoJornada() {
         <a href="/api/reportes/consolidado/csv" download className={clasesBoton({ variante: "primario" })}>
           {TEXTOS.reportes.descargarCsv}
         </a>
+        <Link href={RUTA_ENVIO} className={clasesBoton({ variante: "secundario" })}>
+          {TEXTOS_ENVIO.titulo}
+        </Link>
         <BotonImprimir />
       </div>
 

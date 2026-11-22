@@ -14,7 +14,8 @@ import { formatearEntero, formatearFecha } from "@/lib/formato";
 import { yaEnviado, type FilaEnvio, type MotivoOmision } from "@/lib/resultados";
 import type { CuerpoEnvioResultados } from "@/lib/validacion";
 
-// "Enviar resultados por correo" (PRD §5.14): recipients, skipped
+// "Enviar resultados por correo" (PRD §5.14, v1.13: one general report per
+// participant with every competencia of the jornada): recipients, skipped
 // participants with their reason, a rendered preview of the exact email for
 // one recipient, "Enviarme una prueba", and "Enviar a {n} participantes" (the
 // view's single primary button) behind a confirmation. Participants are
@@ -25,11 +26,15 @@ import type { CuerpoEnvioResultados } from "@/lib/validacion";
 
 export type VistaPrevia = { participanteId: string; etiqueta: string; para: string; asunto: string; html: string };
 
+const RUTA_PAGINA = "/reportes/consolidado/enviar";
+const RUTA_API = "/api/reportes/consolidado/enviar";
+
 type Props = {
-  competenciaId: string;
   destinatarios: FilaEnvio[];
   omitidos: (FilaEnvio & { motivo: MotivoOmision })[];
   previa: VistaPrevia | null;
+  /** Competencias with a rubric in the jornada: "{n} de {m} competencias" per recipient. */
+  competencias: number;
 };
 
 type Respuesta = { enviados?: number; errores?: { participanteId: string; motivo: string }[]; error?: string };
@@ -41,7 +46,7 @@ function estadoEnvio(fila: FilaEnvio): string {
   return ultimo.estado === "enviado" ? TEXTOS_ENVIO.enviadoEl(fecha) : TEXTOS_ENVIO.errorEl(fecha);
 }
 
-export function EnvioResultados({ competenciaId, destinatarios, omitidos, previa }: Props) {
+export function EnvioResultados({ destinatarios, omitidos, previa, competencias }: Props) {
   const router = useRouter();
   const { mostrar } = useToast();
   const idSelector = useId();
@@ -66,7 +71,7 @@ export function EnvioResultados({ competenciaId, destinatarios, omitidos, previa
   }
 
   async function publicar(cuerpo: CuerpoEnvioResultados): Promise<{ ok: boolean; datos: Respuesta }> {
-    const respuesta = await fetch(`/api/reportes/${competenciaId}/enviar`, {
+    const respuesta = await fetch(RUTA_API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cuerpo),
@@ -133,7 +138,10 @@ export function EnvioResultados({ competenciaId, destinatarios, omitidos, previa
                     <Chip tono={enviado ? "enviado" : d.ultimoEnvio ? "medio" : "suave"} className="justify-self-end sm:order-3">
                       {estadoEnvio(d)}
                     </Chip>
-                    <span className="text-caption text-ink-2 sm:order-2">{TEXTOS_ENVIO.evaluaciones(formatearEntero(d.evaluaciones))}</span>
+                    <span className="text-caption text-ink-2 sm:order-2">
+                      {TEXTOS_ENVIO.cobertura(formatearEntero(d.competenciasEvaluadas), formatearEntero(competencias))} ·{" "}
+                      {TEXTOS_ENVIO.evaluaciones(formatearEntero(d.evaluaciones))}
+                    </span>
                     {enviado && (
                       <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 justify-self-end text-[14px] text-ink sm:order-4">
                         <input
@@ -185,7 +193,7 @@ export function EnvioResultados({ competenciaId, destinatarios, omitidos, previa
               aria-busy={cambiandoPrevia || undefined}
               onChange={(e) => {
                 const id = e.target.value;
-                iniciarCambioPrevia(() => router.replace(`/reportes/${competenciaId}/enviar?participante=${id}`, { scroll: false }));
+                iniciarCambioPrevia(() => router.replace(`${RUTA_PAGINA}?participante=${id}`, { scroll: false }));
               }}
               className="mt-1 min-h-11 w-full rounded-tile border border-hairline bg-surface px-3 text-body text-ink sm:w-auto"
             >

@@ -71,6 +71,14 @@ const PANTALLAS: Pantalla[] = [
     },
   },
   {
+    nombre: "Uso de la aplicación",
+    ruta: "/reportes/uso",
+    rol: "docente",
+    preparar: async (page) => {
+      await expect(page.getByRole("heading", { level: 1, name: "Uso de la aplicación" })).toBeVisible();
+    },
+  },
+  {
     nombre: "Resumen del grupo (ambas jornadas)",
     ruta: "/reportes/adaptabilidad/grupo?jornada=ambas",
     rol: "docente",
@@ -83,7 +91,7 @@ const PANTALLAS: Pantalla[] = [
     // The email preview is a sandboxed iframe holding the email's own HTML
     // (not app UI; tests/unit cover the template), so frames are skipped.
     nombre: "Enviar resultados",
-    ruta: "/reportes/adaptabilidad/enviar",
+    ruta: "/reportes/consolidado/enviar",
     rol: "docente",
     marcos: false,
     preparar: async (page) => {

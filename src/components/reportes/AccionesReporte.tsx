@@ -8,7 +8,11 @@ import { BotonImprimir } from "./BotonImprimir";
 // view's single primary button; it is a plain <a download> rather than a
 // Next <Link> because the target is a file from a route handler. The Reporte
 // general adds "Resumen del grupo" and "Enviar resultados por correo" (§11.2,
-// both secondary). Hidden when printing.
+// both secondary). Since v1.13 the email is one general report with every
+// competencia, so that link opens the Reporte consolidado's send page.
+// Hidden when printing.
+
+export const RUTA_ENVIO = "/reportes/consolidado/enviar";
 
 export function AccionesReporte({ competenciaId, general = false }: { competenciaId: string; general?: boolean }) {
   return (
@@ -21,7 +25,7 @@ export function AccionesReporte({ competenciaId, general = false }: { competenci
           <Link href={`/reportes/${competenciaId}/grupo`} className={clasesBoton({ variante: "secundario" })}>
             {TEXTOS_REPORTES.resumenGrupo}
           </Link>
-          <Link href={`/reportes/${competenciaId}/enviar`} className={clasesBoton({ variante: "secundario" })}>
+          <Link href={RUTA_ENVIO} className={clasesBoton({ variante: "secundario" })}>
             {TEXTOS_ENVIO.titulo}
           </Link>
         </>

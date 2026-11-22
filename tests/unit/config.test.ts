@@ -309,8 +309,8 @@ describe("equipos por jornada", () => {
     expect(duplicados(integrantes.map((i) => i.id))).toEqual([]);
   });
 
-  it("Adaptabilidad de mañana tiene 8 evaluadores y obtenerEvaluador respeta equipo y jornada", () => {
-    expect(equipoDeCompetencia("manana", "adaptabilidad")?.integrantes).toHaveLength(8);
+  it("Adaptabilidad de mañana tiene 7 evaluadores y obtenerEvaluador respeta equipo y jornada", () => {
+    expect(equipoDeCompetencia("manana", "adaptabilidad")?.integrantes).toHaveLength(7);
     expect(obtenerEvaluador("manana", "adaptabilidad", "jimena-salgado")?.nombre).toBe("Jimena Salgado");
     expect(obtenerEvaluador("manana", "adaptabilidad", "felipe-lopez")).toBeUndefined();
     expect(obtenerEvaluador("noche", "adaptabilidad", "jimena-salgado")).toBeUndefined();
@@ -338,8 +338,12 @@ describe("equipos por jornada", () => {
 
     const manana = equipoDeCompetencia("manana", "adaptabilidad")!;
     const noche = equipoDeCompetencia("noche", "adaptabilidad")!;
-    expect([manana.numero, manana.integrantes.length]).toEqual([4, 8]);
-    expect([noche.numero, noche.integrantes.length]).toEqual([1, 7]);
+    expect([manana.numero, manana.integrantes.length]).toEqual([4, 7]);
+    expect([noche.numero, noche.integrantes.length]).toEqual([1, 6]);
+    // Removed from the roster in v1.15 (PRD Appendix B).
+    for (const retirado of ["sebastian-chaves", "emmanuel-reyes"]) {
+      expect(EQUIPOS.some((e) => e.integrantes.some((i) => i.id === retirado))).toBe(false);
+    }
     expect(obtenerEvaluador("noche", "adaptabilidad", "gabriela-salgado")?.nombre).toBe("Gabriela Salgado");
     expect(obtenerEvaluador("manana", "adaptabilidad", "gabriela-salgado")).toBeUndefined();
   });

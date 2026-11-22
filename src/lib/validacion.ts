@@ -424,7 +424,7 @@ export type EnvioResultadosValido =
   | { tipo: "envio"; participantes: string[]; reenviar: boolean }
   | { tipo: "prueba"; para: string; participanteId: string };
 
-/** POST /api/reportes/[competencia]/enviar body (PRD §10, §5.14). Scores never come from the client. */
+/** POST /api/reportes/consolidado/enviar body (PRD §10, §5.14). Scores never come from the client. */
 export function validarEnvioResultados(datos: unknown): Resultado<EnvioResultadosValido> {
   const forma = esquemaEnvioResultados.safeParse(datos);
   if (!forma.success) {

@@ -129,15 +129,33 @@ Con el código de administración, en `/admin`, elija la jornada y baje a **Cuen
 - Para cambiar o agregar un correo, edítelo y confirme. La cuenta vuelve a «Pendiente de activar».
 - **Restablecer acceso** borra la contraseña: la persona vuelve a activar su cuenta con un código nuevo.
 
+## Cómo retirar a un evaluador
+
+1. Quite a la persona de su equipo en `src/config/equipos.ts` y de la tabla del Apéndice B de `PRD.md` (la prueba de configuración compara ambas), y su fila de `privado/correos-evaluadores.csv`.
+2. Despliegue. Desde ese momento no puede ingresar y sus evaluaciones y ausencias dejan de contar en los reportes.
+3. Borre sus datos guardados (cuenta, evaluaciones y ausencias). Primero cuente, después elimine:
+
+   ```bash
+   npm run evaluadores:retirados                          # rama de desarrollo, solo cuenta
+   npm run evaluadores:retirados -- --eliminar            # rama de desarrollo
+   npm run evaluadores:retirados -- --eliminar --produccion   # pide escribir «sí»
+   ```
+
+   Solo se borra lo de evaluadores que ya no están en la configuración; no se puede deshacer. El script muestra cantidades, nunca nombres ni correos.
+
+## Quién activó su cuenta y quién está evaluando
+
+En **Reportes → Uso de la aplicación** el docente ve, para todos los equipos de la jornada elegida, qué evaluadores activaron su cuenta y cuáles ya están evaluando: cuentas activadas, quiénes ya evalúan y quiénes completaron, la lista de quienes **aún no activan su cuenta** (para recordárselo) y, por equipo, la fecha de activación, el último ingreso, la última evaluación enviada y un estado (*Sin activar*, *Sin evaluaciones*, *Evaluando*, *Completó*). No muestra correos. Los borradores quedan en el teléfono de cada evaluador y no se cuentan.
+
 ## Cómo enviar los resultados por correo
 
 1. Asegúrese de que la administración haya escrito el correo de cada participante en `/admin`.
-2. Ingrese con el código docente, elija la jornada y abra **Reportes →** la competencia **→ Enviar resultados por correo**.
-3. Revise las listas: **Destinatarios** (con correo y al menos una evaluación) y **Omitidos** con su motivo (*Sin correo*, *Sin evaluaciones*, *Ausente*). La vista previa muestra el correo exacto que recibirá el participante elegido.
+2. Ingrese con el código docente, elija la jornada y abra **Reportes → Reporte consolidado → Enviar resultados por correo** (el botón del Reporte general de cada competencia abre la misma página).
+3. Revise las listas: **Destinatarios** (con correo y al menos una evaluación en alguna competencia; cada uno indica en cuántas competencias fue evaluado) y **Omitidos** con su motivo (*Sin correo*, *Sin evaluaciones*, *Ausente*). La vista previa muestra el correo exacto que recibirá el participante elegido.
 4. Si quiere verlo en su bandeja, use **Enviarme una prueba** con su propio correo (no se guarda; el asunto empieza con «[Prueba]»).
 5. Toque **Enviar a {n} participantes** y confirme. Los envíos van de uno en uno, al ritmo que permite Resend.
 
-El correo incluye el nivel general, el puntaje (de 0 a 100: Básico 0–25, Intermedio 26–50, Avanzado 51–75, Experto 76–100), cuántas evaluaciones recibió y, por indicador, el puntaje, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general muestra Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
+Cada participante recibe **un solo correo** con su reporte general: el resultado general (el promedio entre competencias, de 0 a 100: Básico 0–25, Intermedio 26–50, Avanzado 51–75, Experto 76–100, con su nivel y cuánto le falta para el siguiente), un resumen con el puntaje de cada competencia y, por cada competencia evaluada, el puntaje, el nivel, cuántas evaluaciones recibió y, por indicador, el puntaje, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. Si aún faltan competencias por evaluar, el correo incluye solo las evaluadas. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general de cada competencia muestra el estado de ese correo general: Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
 
 ## Dominio de correo
 

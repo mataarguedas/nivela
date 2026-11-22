@@ -5,9 +5,10 @@ import type { UltimoEnvio } from "@/lib/resultados";
 import { getDb } from "./index";
 import { enviosResultados } from "./schema";
 
-// envios_resultados (PRD §5.14, §9.2): one row per send attempt, for one
-// jornada + competencia. Never the address or the body: only the outcome and
-// an error category.
+// envios_resultados (PRD §5.14, §9.2): one row per send attempt, per jornada
+// and competencia_id. Since v1.13 the app reads and writes only
+// ENVIO_CONSOLIDADO (one general report); older rows name a competencia.
+// Never the address or the body: only the outcome and an error category.
 
 export type EstadoEnvio = "enviado" | "error";
 

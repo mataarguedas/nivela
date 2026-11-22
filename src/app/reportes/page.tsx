@@ -12,7 +12,8 @@ import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { exigirDocente } from "./exigirDocente";
 
 // Reportes (PRD §5.9, §5.11): jornada switch, the Reporte consolidado (all
-// competencias together, §11.4), then the competencia picker.
+// competencias together, §11.4), "Uso de la aplicación" (who activated their
+// account and is rating, §11.6, v1.14), then the competencia picker.
 // Same rows as Inicio: competencias with a rubric and a team in the session's jornada open
 // their Reporte general; the others are visible but inert ("Próximamente",
 // aria-disabled, no href).
@@ -43,12 +44,19 @@ async function SelectorCompetencia() {
       <div className="mb-8">
         <SelectorJornada actual={jornada} />
       </div>
-      <Link href="/reportes/consolidado" className={`${FILA} group mb-6`}>
+      <Link href="/reportes/consolidado" className={`${FILA} group mb-2`}>
         <span className="min-w-0 flex-1">
           <span className="block text-body font-semibold text-ink group-hover:text-link">
             {TEXTOS_REPORTES.consolidado.enlace}
           </span>
           <span className="block text-caption text-ink-2">{TEXTOS_REPORTES.consolidado.enlaceDetalle}</span>
+        </span>
+        <IconoChevron className="shrink-0 text-ink-2" />
+      </Link>
+      <Link href="/reportes/uso" className={`${FILA} group mb-6`}>
+        <span className="min-w-0 flex-1">
+          <span className="block text-body font-semibold text-ink group-hover:text-link">{TEXTOS_REPORTES.uso.enlace}</span>
+          <span className="block text-caption text-ink-2">{TEXTOS_REPORTES.uso.enlaceDetalle}</span>
         </span>
         <IconoChevron className="shrink-0 text-ink-2" />
       </Link>

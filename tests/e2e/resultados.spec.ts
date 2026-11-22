@@ -1,33 +1,26 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { obtenerCompetencia } from "../../src/config/competencias";
-import { equipoDeCompetencia } from "../../src/config/equipos";
+import { expect, test, type Page } from "@playwright/test";
+import { competenciasDeJornada } from "../../src/config/competencias";
+import { competenciaDisponible, equipoDeCompetencia } from "../../src/config/equipos";
 import { correoParticipantePrueba } from "./cuentas";
 import { esperarHidratacion } from "./hidratacion";
 import { iniciarSesion } from "./sesion";
 
-// Personal results by email (PRD §5.14, §15.17) with CORREO_MODO=consola: the
-// dev server keeps the last 20 messages in memory (GET /api/dev/correos).
+// Personal results by email (PRD §5.14 v1.13, §15.17) with CORREO_MODO=consola:
+// one general report per participant with every competencia of the jornada.
+// The dev server keeps the last 20 messages in memory (GET /api/dev/correos).
 // Data: `npm run db:seed` (evaluations for every morning rubric) plus the
 // fake participant emails that `npm run cuentas:prueba` (the global setup)
 // writes: participante-NN.manana@ejemplo.test, except P02 ("Sin correo").
 //
 // The outbox is small and shared by the parallel projects, so every project
-// checks the send page on its own morning competencia and sends only a test
-// email to its own address; only one project sends a whole list.
+// checks the send page and sends only a test email to its own address; only
+// one project sends a whole list.
 
-const COMPETENCIA_POR_PROYECTO: Record<string, string> = {
-  "iPhone 13": "pensamiento-critico",
-  "Pixel 7": "autorregulacion-emocional",
-  Firefox: "orientacion-detalle",
-  "Desktop Chrome": "orientacion-resultados",
-};
+const RUTA = "/reportes/consolidado/enviar";
+const ASUNTO = "Su reporte general de competencias · Nivela";
 const PROYECTO_QUE_ENVIA = "Desktop Chrome";
 
-function competenciaDe(info: TestInfo): string {
-  const id = COMPETENCIA_POR_PROYECTO[info.project.name];
-  if (!id) throw new Error(`No competencia for project ${info.project.name}`);
-  return id;
-}
+const competenciasManana = () => competenciasDeJornada("manana").filter((c) => competenciaDisponible("manana", c.id));
 
 /** The visible page (Next keeps the previous route mounted but hidden). */
 function principal(page: Page) {
@@ -52,17 +45,16 @@ test.describe("como docente", () => {
     await iniciarSesion(page, "docente");
   });
 
-  test("abre el envío desde el Reporte general: destinatarios, omitidos, vista previa y una prueba", async ({ page }, info) => {
-    const id = competenciaDe(info);
-    const competencia = obtenerCompetencia("manana", id)!;
+  test("abre el envío desde el Reporte consolidado: destinatarios, omitidos, vista previa y una prueba", async ({ page }, info) => {
+    const competencias = competenciasManana();
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(`/reportes/${id}`);
+    await page.goto("/reportes/consolidado");
     await principal(page).getByRole("link", { name: "Enviar resultados por correo" }).click();
 
-    await expect(page).toHaveURL(new RegExp(`/reportes/${id}/enviar$`));
+    await expect(page).toHaveURL(new RegExp(`${RUTA}$`));
     const vista = principal(page);
     await expect(vista.getByRole("heading", { level: 1, name: "Enviar resultados por correo" })).toBeVisible();
-    await expect(vista.getByText(`${competencia.nombre} · Jornada: Mañana`, { exact: true })).toBeVisible();
+    await expect(vista.getByText("Todas las competencias · Jornada: Mañana", { exact: true })).toBeVisible();
     await expect(vista.getByText("Aún no hay evaluaciones enviadas"), "run `npm run db:seed` first").toHaveCount(0);
 
     // P02 has no email; the lists name participants by carnet or number, never by name.
@@ -70,14 +62,17 @@ test.describe("como docente", () => {
     await expect(omitidos.getByRole("listitem").filter({ hasText: "Sin correo" })).not.toHaveCount(0);
     const destinatarios = vista.getByRole("list", { name: /^Destinatarios/ });
     await expect(destinatarios.getByRole("listitem")).not.toHaveCount(0);
+    // Each recipient says in how many of the jornada's competencias they were evaluated.
+    await expect(destinatarios.getByRole("listitem").first()).toContainText(new RegExp(`\\d+ de ${competencias.length} competencias`));
     await expect(vista.getByRole("button", { name: /^Enviar a \d+ participantes?$/ })).toBeVisible();
 
     // The preview is the exact email for the first recipient (P01 has an email and evaluations).
     await expect(vista.getByText(`Para: ${correoParticipantePrueba("manana", 1)}`)).toBeVisible();
-    await expect(vista.getByText(`Asunto: Sus resultados de ${competencia.nombre} · Nivela`)).toBeVisible();
+    await expect(vista.getByText(`Asunto: ${ASUNTO}`)).toBeVisible();
     const marco = page.frameLocator("iframe[title^='Vista previa del correo']").first();
-    await expect(marco.getByRole("heading", { name: `Sus resultados de ${competencia.nombre}` })).toBeVisible();
-    await expect(marco.getByText("Nivel general", { exact: true })).toBeVisible();
+    await expect(marco.getByRole("heading", { name: "Su reporte general de competencias" })).toBeVisible();
+    await expect(marco.getByText("Resultado general", { exact: true })).toBeVisible();
+    await expect(marco.getByRole("heading", { name: "Resumen por competencia" })).toBeVisible();
     await sinDesborde(page);
 
     // "Enviarme una prueba" to this project's own address (not stored).
@@ -87,23 +82,31 @@ test.describe("como docente", () => {
     await vista.getByRole("button", { name: "Enviarme una prueba" }).click();
     await expect(page.getByText("Prueba enviada")).toBeVisible();
     const prueba = await ultimoCorreo(page, para);
-    expect(prueba.asunto).toBe(`[Prueba] Sus resultados de ${competencia.nombre} · Nivela`);
+    expect(prueba.asunto).toBe(`[Prueba] ${ASUNTO}`);
     // Greeted by name, or plain "Hola:" for a participant without one.
     expect(prueba.texto).toMatch(/^Hola(, .+)?:$/m);
+    expect(prueba.texto).toMatch(/^Promedio entre competencias: \d{1,3} de 100$/m);
+    // One summary line per competencia of the jornada.
+    for (const c of competencias) expect(prueba.texto).toContain(`- ${c.nombre}: `);
     expect(prueba.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100");
-    // Never an evaluator's name.
-    for (const integrante of equipoDeCompetencia("manana", id)!.integrantes) {
-      expect(prueba.texto).not.toContain(integrante.nombre);
-      expect(prueba.html).not.toContain(integrante.nombre);
+    // Never an evaluator's name, from any team.
+    for (const c of competencias) {
+      for (const integrante of equipoDeCompetencia("manana", c.id)!.integrantes) {
+        expect(prueba.texto).not.toContain(integrante.nombre);
+        expect(prueba.html).not.toContain(integrante.nombre);
+      }
     }
+  });
+
+  test("el Reporte general lleva al mismo envío de todas las competencias", async ({ page }) => {
+    await page.goto("/reportes/adaptabilidad");
+    await expect(principal(page).getByRole("link", { name: "Enviar resultados por correo" })).toHaveAttribute("href", RUTA);
   });
 
   test("envía a todos los destinatarios: confirmación, estados «Enviado» y columna «Correo»", async ({ page }, info) => {
     test.skip(info.project.name !== PROYECTO_QUE_ENVIA, "only one project sends a whole list (shared in-memory outbox)");
     test.slow();
-    const id = competenciaDe(info);
-    const competencia = obtenerCompetencia("manana", id)!;
-    await page.goto(`/reportes/${id}/enviar`);
+    await page.goto(RUTA);
     const vista = principal(page);
     await esperarHidratacion(page, "main ul");
 
@@ -124,17 +127,18 @@ test.describe("como docente", () => {
     await expect(destinatarios.filter({ hasText: /Enviado el \d{2}\/\d{2}\/\d{4}/ })).toHaveCount(n);
     await expect(vista.getByRole("button", { name: "Enviar a 0 participantes" })).toBeDisabled();
 
-    // The last message to P01 is this competencia's results (re-send only P01 so it is the newest).
-    const respuesta = await page.request.post(`/api/reportes/${id}/enviar`, { data: { participantes: ["P01"], reenviar: true } });
+    // The last message to P01 is their general report (re-send only P01 so it is the newest).
+    const respuesta = await page.request.post("/api/reportes/consolidado/enviar", { data: { participantes: ["P01"], reenviar: true } });
     expect(await respuesta.json()).toEqual({ enviados: 1, errores: [] });
     const mensaje = await ultimoCorreo(page, correoParticipantePrueba("manana", 1));
-    expect(mensaje.asunto).toBe(`Sus resultados de ${competencia.nombre} · Nivela`);
+    expect(mensaje.asunto).toBe(ASUNTO);
     expect(mensaje.plantilla).toBe("resultados");
+    expect(mensaje.texto).toContain("Resultado general:");
     await page.goto("/dev/correos");
-    await expect(page.getByText(`Sus resultados de ${competencia.nombre} · Nivela`).first()).toBeVisible();
+    await expect(page.getByText(ASUNTO).first()).toBeVisible();
 
-    // Reporte general: the "Correo" column.
-    await page.goto(`/reportes/${id}`);
+    // Reporte general of any competencia: the "Correo" column shows the general report's status.
+    await page.goto("/reportes/adaptabilidad");
     const tabla = principal(page).getByRole("table", { name: "Tabla de participantes" });
     await expect(tabla.getByRole("columnheader", { name: "Correo" })).toBeVisible();
     await expect(tabla.getByRole("cell", { name: "Enviado", exact: true })).toHaveCount(n);
@@ -143,8 +147,8 @@ test.describe("como docente", () => {
 
 test("el rol evaluador no accede al envío de resultados", async ({ page }) => {
   await iniciarSesion(page, "evaluador");
-  const api = await page.request.post("/api/reportes/adaptabilidad/enviar", { data: { participantes: ["P01"] } });
+  const api = await page.request.post("/api/reportes/consolidado/enviar", { data: { participantes: ["P01"] } });
   expect(api.status()).toBe(403);
-  await page.goto("/reportes/adaptabilidad/enviar");
+  await page.goto(RUTA);
   await expect(page).toHaveURL(/\/acceso\?/);
 });

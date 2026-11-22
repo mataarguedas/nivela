@@ -1,34 +1,37 @@
 import "server-only";
-import type { Competencia } from "@/config/competencias";
-import type { Equipo } from "@/config/equipos";
 import { nombreJornada, type JornadaId } from "@/config/jornadas";
 import { enviarCorreo, ErrorCorreo, type TipoErrorCorreo } from "@/lib/correo";
 import { PLANTILLA_RESULTADOS, resultados } from "@/lib/correos/resultados";
 import type { PlantillaCorreo } from "@/lib/correos/plantilla";
 import { leerUltimosEnvios, registrarEnvio } from "@/lib/db/envios";
-import { obtenerCorreosParticipantes, obtenerParticipantes } from "@/lib/db/participantes";
-import { obtenerReporte } from "@/lib/db/reportes";
-import type { Reporte } from "@/lib/reportes";
+import { obtenerCorreosParticipantes } from "@/lib/db/participantes";
+import { leerEntradasConsolidado } from "@/lib/db/reportes";
+import { agregarConsolidado, type EntradaConsolidado, type ReporteConsolidado } from "@/lib/reportes";
 import {
   claveIdempotencia,
   datosResultados,
+  ENVIO_CONSOLIDADO,
   motivoOmision,
   seleccionarDestinatarios,
+  ultimaEvaluacion,
   yaEnviado,
   type MotivoOmision,
   type SeleccionEnvio,
   type UltimoEnvio,
 } from "@/lib/resultados";
 
-// Sending each participant their results (PRD §5.14), for the session's
-// jornada only. The server recomputes every result from the DB: the client
-// only names participants, never sends a score.
+// Sending each participant their general report (PRD §5.14, v1.13): one
+// email with every competencia of the session's jornada and the overall
+// result. The server recomputes every result from the DB (the same
+// aggregation as the Reporte consolidado): the client only names
+// participants, never sends a score.
 //
 // Pacing: Resend allows a few requests per second per team, so sends go one
 // at a time with PAUSA_ENTRE_ENVIOS_MS between them; a rate-limit answer
 // waits (Retry-After, capped) and retries once. Each send carries an
 // Idempotency-Key (lib/resultados.ts), so a retried request never sends the
-// same email twice. Every attempt is recorded in envios_resultados.
+// same email twice. Every attempt is recorded in envios_resultados under
+// ENVIO_CONSOLIDADO.
 //
 // Never logged: addresses, names, subjects or bodies (enviarCorreo logs only
 // the template name, status and latency).
@@ -38,8 +41,9 @@ const ESPERA_MAXIMA_LIMITE_S = 5;
 
 export type ContextoEnvio = {
   jornada: JornadaId;
-  competencia: Competencia;
-  reporte: Reporte;
+  /** Each competencia's Reporte (null without a rubric in the jornada). */
+  entradas: EntradaConsolidado[];
+  consolidado: ReporteConsolidado;
   /** By participant id (this jornada): the name for the greeting; null without one. */
   nombres: Map<string, string | null>;
   /** By participant id: active participants with an email only. */
@@ -48,36 +52,45 @@ export type ContextoEnvio = {
   seleccion: SeleccionEnvio;
 };
 
-/** Everything the send page and the send route need, read in parallel. */
-export async function cargarContextoEnvio(jornada: JornadaId, competencia: Competencia, equipo: Equipo): Promise<ContextoEnvio> {
-  const [reporte, participantes, correos, envios] = await Promise.all([
-    obtenerReporte(jornada, competencia, equipo),
-    obtenerParticipantes(jornada),
-    obtenerCorreosParticipantes(jornada),
-    leerUltimosEnvios(jornada, competencia.id),
-  ]);
+/** Builds the context from data already read; pure, so the tests build it without a DB. */
+export function contextoEnvio(
+  jornada: JornadaId,
+  participantes: readonly { id: string; nombre: string | null; etiquetaReporte: string }[],
+  entradas: EntradaConsolidado[],
+  correos: Map<string, string>,
+  envios: Map<string, UltimoEnvio>,
+): ContextoEnvio {
+  const consolidado = agregarConsolidado(participantes, entradas);
   return {
     jornada,
-    competencia,
-    reporte,
+    entradas,
+    consolidado,
     nombres: new Map(participantes.map((p) => [p.id, p.nombre])),
     correos,
     envios,
-    seleccion: seleccionarDestinatarios(reporte.participantes, new Set(correos.keys()), envios),
+    seleccion: seleccionarDestinatarios(consolidado.participantes, new Set(correos.keys()), envios),
   };
 }
 
-/** The exact email a participant would receive, or null if they get none (no evaluations). */
+/** Everything the send page and the send route need, read in parallel. */
+export async function cargarContextoEnvio(jornada: JornadaId): Promise<ContextoEnvio> {
+  const [{ participantes, entradas }, correos, envios] = await Promise.all([
+    leerEntradasConsolidado(jornada),
+    obtenerCorreosParticipantes(jornada),
+    leerUltimosEnvios(jornada, ENVIO_CONSOLIDADO),
+  ]);
+  return contextoEnvio(jornada, participantes, entradas, correos, envios);
+}
+
+/** The exact email a participant would receive, or null if they get none (no evaluations, or unknown). */
 export function plantillaParaParticipante(
   contexto: ContextoEnvio,
   participanteId: string,
   { prueba = false }: { prueba?: boolean } = {},
 ): PlantillaCorreo | null {
-  const fila = contexto.reporte.participantes.find((p) => p.id === participanteId);
-  if (!fila) return null;
-  const datos = datosResultados(fila, {
+  if (!contexto.nombres.has(participanteId)) return null;
+  const datos = datosResultados(contexto.entradas, participanteId, {
     nombre: contexto.nombres.get(participanteId) ?? null,
-    competencia: contexto.competencia.nombre,
     jornada: nombreJornada(contexto.jornada),
   });
   return datos && resultados(datos, { prueba });
@@ -91,11 +104,11 @@ type Opciones = { pausaMs?: number; dormir?: (ms: number) => Promise<void> };
 const esperar = (ms: number) => new Promise<void>((resolver) => setTimeout(resolver, ms));
 
 /**
- * Sends the listed participants their results. A participant who isn't a
- * recipient (no email, no evaluations, absent, unknown) or was already sent
- * (without `reenviar`) is reported in `errores` and not sent. Provider
- * failures are recorded and reported per participant; one failure never
- * stops the rest.
+ * Sends the listed participants their general report. A participant who
+ * isn't a recipient (no email, no evaluations, absent, unknown) or was
+ * already sent (without `reenviar`) is reported in `errores` and not sent.
+ * Provider failures are recorded and reported per participant; one failure
+ * never stops the rest.
  */
 export async function enviarResultados(
   contexto: ContextoEnvio,
@@ -107,10 +120,11 @@ export async function enviarResultados(
   let intentos = 0;
 
   for (const participanteId of new Set(participantes)) {
-    const fila = contexto.reporte.participantes.find((p) => p.id === participanteId);
+    const fila = contexto.consolidado.participantes.find((p) => p.id === participanteId);
     const para = contexto.correos.get(participanteId);
     const omision = fila ? motivoOmision(fila, para !== undefined) : "no-existe";
-    if (omision || !fila || !para || !fila.actualizadoEn) {
+    const actualizadoEn = ultimaEvaluacion(contexto.entradas, participanteId);
+    if (omision || !fila || !para || !actualizadoEn) {
       resultado.errores.push({ participanteId, motivo: omision ?? "no-existe" });
       continue;
     }
@@ -131,10 +145,10 @@ export async function enviarResultados(
       plantilla: PLANTILLA_RESULTADOS,
       para,
       ...plantilla,
-      idempotencia: claveIdempotencia(contexto.jornada, contexto.competencia.id, participanteId, fila.actualizadoEn, ultimo?.enviados ?? 0),
+      idempotencia: claveIdempotencia(contexto.jornada, participanteId, actualizadoEn, ultimo?.enviados ?? 0),
     };
     const fallo = await enviarConReintento(correo, dormir);
-    await registrarEnvio(contexto.jornada, contexto.competencia.id, participanteId, fallo ? "error" : "enviado", fallo);
+    await registrarEnvio(contexto.jornada, ENVIO_CONSOLIDADO, participanteId, fallo ? "error" : "enviado", fallo);
     if (fallo) resultado.errores.push({ participanteId, motivo: fallo });
     else resultado.enviados += 1;
   }

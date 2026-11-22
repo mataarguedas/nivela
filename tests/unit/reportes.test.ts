@@ -327,21 +327,23 @@ describe("agregarReporte: avance de evaluadores (PRD §11.2)", () => {
       // e1 sent P01 and P02 and marked P03 absent: 2 of 2, complete.
       [{ evaluadorId: "e1", participanteId: "P03" }],
       {
-        e1: { estado: "activa", ultimoAcceso: "2026-11-17T14:05:00.000Z" },
-        e2: { estado: "pendiente", ultimoAcceso: null },
+        e1: { estado: "activa", ultimoAcceso: "2026-11-17T14:05:00.000Z", activadaEn: "2026-11-10T13:00:00.000Z" },
+        // e2's access was reset: the old activation date no longer shows.
+        e2: { estado: "pendiente", ultimoAcceso: null, activadaEn: "2026-11-09T13:00:00.000Z" },
         e3: { estado: "activa", ultimoAcceso: "2026-11-16T20:00:00.000Z" },
         // e4 has no account row: "Sin correo".
       },
     );
+    const ENVIADO = "2026-10-25T18:00:00.000Z"; // every fixture row's actualizadoEn
     expect(reporte.avance).toEqual({
       numeroEquipo: 9,
       completos: 1,
       total: 4,
       evaluadores: [
-        { evaluadorId: "e4", nombre: "Dina Mora", curso: "AGRH 315 Psicología 2", cuenta: "sin-correo", ultimoAcceso: null, enviadas: 0, esperadas: 3, ausentes: 0, estado: "sin-iniciar" },
-        { evaluadorId: "e2", nombre: "Bea Solís", curso: "AGRH 613 Seminario Integrado de RRHH", cuenta: "pendiente", ultimoAcceso: null, enviadas: 2, esperadas: 3, ausentes: 0, estado: "en-progreso" },
-        { evaluadorId: "e3", nombre: "Carlos Peña", curso: "AGRH 613 Seminario Integrado de RRHH", cuenta: "activa", ultimoAcceso: "2026-11-16T20:00:00.000Z", enviadas: 1, esperadas: 3, ausentes: 0, estado: "en-progreso" },
-        { evaluadorId: "e1", nombre: "Ana Núñez", curso: "AGRH 315 Psicología 2", cuenta: "activa", ultimoAcceso: "2026-11-17T14:05:00.000Z", enviadas: 2, esperadas: 2, ausentes: 1, estado: "completo" },
+        { evaluadorId: "e4", nombre: "Dina Mora", curso: "AGRH 315 Psicología 2", cuenta: "sin-correo", ultimoAcceso: null, activadaEn: null, ultimoEnvio: null, enviadas: 0, esperadas: 3, ausentes: 0, estado: "sin-iniciar" },
+        { evaluadorId: "e2", nombre: "Bea Solís", curso: "AGRH 613 Seminario Integrado de RRHH", cuenta: "pendiente", ultimoAcceso: null, activadaEn: null, ultimoEnvio: ENVIADO, enviadas: 2, esperadas: 3, ausentes: 0, estado: "en-progreso" },
+        { evaluadorId: "e3", nombre: "Carlos Peña", curso: "AGRH 613 Seminario Integrado de RRHH", cuenta: "activa", ultimoAcceso: "2026-11-16T20:00:00.000Z", activadaEn: null, ultimoEnvio: ENVIADO, enviadas: 1, esperadas: 3, ausentes: 0, estado: "en-progreso" },
+        { evaluadorId: "e1", nombre: "Ana Núñez", curso: "AGRH 315 Psicología 2", cuenta: "activa", ultimoAcceso: "2026-11-17T14:05:00.000Z", activadaEn: "2026-11-10T13:00:00.000Z", ultimoEnvio: ENVIADO, enviadas: 2, esperadas: 2, ausentes: 1, estado: "completo" },
       ],
     });
     expect(reporte.kpis).toMatchObject({ evaluadoresCompletos: 1, evaluadoresTotal: 4 });

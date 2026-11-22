@@ -17,6 +17,7 @@
     "correo:prueba": "tsx --conditions=react-server scripts/correo-prueba.ts",
     "cuentas:importar": "tsx --conditions=react-server scripts/importar-cuentas.ts",
     "cuentas:prueba": "tsx --conditions=react-server scripts/cuentas-prueba.ts",
+    "evaluadores:retirados": "tsx --conditions=react-server scripts/eliminar-retirados.ts",
     "participantes:importar": "tsx --conditions=react-server scripts/importar-participantes.ts",
     "participantes:matricula": "tsx --conditions=react-server scripts/importar-matricula.ts"
   },

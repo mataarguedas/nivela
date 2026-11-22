@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sinRubrica } from "./sinRubrica";
 
-// POST /api/reportes/[competencia]/enviar (PRD §10, §5.14) with the send
+// POST /api/reportes/consolidado/enviar (PRD §10, §5.14 v1.13) with the send
 // layer mocked: docente only, the session's jornada only (never one from the
 // request), body validation (participant ids only: never scores), the test
 // send, and error handling. The sending itself is covered in
@@ -13,19 +12,18 @@ vi.mock("@/lib/envioResultados", () => envio);
 vi.mock("@/lib/sesion", () => sesion);
 
 const { ErrorCorreo } = await import("@/lib/correo");
-const { POST, maxDuration } = await import("@/app/api/reportes/[competencia]/enviar/route");
+const { POST, maxDuration } = await import("@/app/api/reportes/consolidado/enviar/route");
 
 const DOCENTE = { rol: "docente", sid: "0123456789abcdef0123", jornada: "noche" };
 const CONTEXTO = { marcador: "contexto" };
 
-function pedir(cuerpo: unknown, competencia = "adaptabilidad") {
+function pedir(cuerpo: unknown) {
   return POST(
-    new Request(`http://localhost/api/reportes/${competencia}/enviar`, {
+    new Request("http://localhost/api/reportes/consolidado/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(cuerpo),
     }),
-    { params: Promise.resolve({ competencia }) },
   );
 }
 
@@ -41,7 +39,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("POST /api/reportes/[competencia]/enviar", () => {
+describe("POST /api/reportes/consolidado/enviar", () => {
   it("401 sin sesión y 403 para evaluador o admin, sin enviar nada", async () => {
     sesion.getSesion.mockResolvedValue(null);
     expect((await pedir({ participantes: ["P01"] })).status).toBe(401);
@@ -52,15 +50,12 @@ describe("POST /api/reportes/[competencia]/enviar", () => {
     expect(envio.cargarContextoEnvio).not.toHaveBeenCalled();
   });
 
-  it("envía con la jornada de la sesión y su propio equipo, y responde { enviados, errores }", async () => {
+  it("envía con la jornada de la sesión (todas sus competencias) y responde { enviados, errores }", async () => {
     const respuesta = await pedir({ participantes: ["P01", "P02", "P04"], reenviar: true });
     expect(respuesta.status).toBe(200);
     expect(respuesta.headers.get("Cache-Control")).toBe("no-store");
     await expect(respuesta.json()).resolves.toEqual({ enviados: 2, errores: [{ participanteId: "P04", motivo: "sin-correo" }] });
-    const [jornada, competencia, equipo] = envio.cargarContextoEnvio.mock.calls[0];
-    expect(jornada).toBe("noche");
-    expect(competencia.id).toBe("adaptabilidad");
-    expect(equipo).toMatchObject({ jornada: "noche", competenciaId: "adaptabilidad" });
+    expect(envio.cargarContextoEnvio).toHaveBeenCalledWith("noche");
     expect(envio.enviarResultados).toHaveBeenCalledWith(CONTEXTO, ["P01", "P02", "P04"], true);
   });
 
@@ -68,13 +63,6 @@ describe("POST /api/reportes/[competencia]/enviar", () => {
     await pedir({ participantes: ["P01"], jornada: "manana", puntaje: 4 });
     expect(envio.cargarContextoEnvio.mock.calls[0][0]).toBe("noche");
     expect(envio.enviarResultados).toHaveBeenCalledWith(CONTEXTO, ["P01"], false);
-  });
-
-  it("404 para una competencia sin plantilla en la jornada de la sesión", async () => {
-    sinRubrica("noche", "pensamiento-critico"); // no real night-less rubric since v1.7
-    const respuesta = await pedir({ participantes: ["P01"] }, "pensamiento-critico");
-    expect(respuesta.status).toBe(404);
-    expect(envio.cargarContextoEnvio).not.toHaveBeenCalled();
   });
 
   it.each([null, {}, { participantes: [] }, { participantes: ["X1"] }, { participantes: ["P01"], reenviar: "sí" }])(

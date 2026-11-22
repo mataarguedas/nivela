@@ -10,6 +10,7 @@ import {
   agregarParticipanteConsolidado,
   agregarReporte,
   agregarResumenGrupo,
+  agregarUsoAplicacion,
   type EntradaConsolidado,
   type FilaReporte,
   type InfoCuenta,
@@ -17,6 +18,7 @@ import {
   type ReporteConsolidado,
   type ReporteParticipanteConsolidado,
   type ResumenGrupo,
+  type UsoAplicacion,
 } from "@/lib/reportes";
 import type { JornadaResumen } from "@/lib/validacion";
 import { leerAusenciasReporte } from "./asistencia";
@@ -74,9 +76,10 @@ async function reporteSobre(
 /**
  * Every competencia of the jornada, each over its own rubric and team, all
  * over the jornada's one participant list (read once). A competencia without
- * a rubric or a team in the jornada comes back with `reporte: null`.
+ * a rubric or a team in the jornada comes back with `reporte: null`. Also
+ * used by the results email (lib/envioResultados.ts, PRD §5.14 v1.13).
  */
-async function leerEntradasConsolidado(
+export async function leerEntradasConsolidado(
   jornada: JornadaId,
 ): Promise<{ participantes: Participante[]; entradas: EntradaConsolidado[] }> {
   const participantes = await obtenerParticipantes(jornada);
@@ -116,6 +119,12 @@ export async function obtenerParticipanteConsolidado(
   };
 }
 
+/** "Uso de la aplicación" (PRD §11.6, v1.14): every team of the session's jornada. Read-only. */
+export async function obtenerUsoAplicacion(jornada: JornadaId): Promise<UsoAplicacion> {
+  const { entradas } = await leerEntradasConsolidado(jornada);
+  return agregarUsoAplicacion(entradas);
+}
+
 /**
  * The group summary (PRD §11.3) for the jornadas validarSeleccionResumen()
  * resolved: each jornada's own report (its team, participants, evaluations),
@@ -134,6 +143,9 @@ export async function obtenerResumenGrupo(jornadas: readonly JornadaResumen[]): 
 async function leerCuentasEquipo(equipo: Equipo): Promise<Record<string, InfoCuenta>> {
   const filas = await cuentasPorIds(getDb(), equipo.integrantes.map((i) => i.id));
   return Object.fromEntries(
-    filas.map((f) => [f.integranteId, { estado: estadoCuenta(f), ultimoAcceso: f.ultimoAcceso?.toISOString() ?? null }]),
+    filas.map((f) => [
+      f.integranteId,
+      { estado: estadoCuenta(f), ultimoAcceso: f.ultimoAcceso?.toISOString() ?? null, activadaEn: f.activadaEn?.toISOString() ?? null },
+    ]),
   );
 }

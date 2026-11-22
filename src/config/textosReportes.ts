@@ -215,6 +215,35 @@ export const TEXTOS_REPORTES = {
       verTodas: "Ver todas sus competencias",
     },
   },
+  // "Uso de la aplicación" (PRD §11.6, v1.14): which evaluators activated their account and are rating.
+  uso: {
+    titulo: "Uso de la aplicación",
+    enlace: "Uso de la aplicación",
+    enlaceDetalle: "Quién activó su cuenta y quién ya está evaluando",
+    subtitulo: "Evaluadores de todos los equipos",
+    kpiActivadas: "Cuentas activadas",
+    kpiActividad: "Ya evalúan",
+    kpiActividadDetalle: "Enviaron al menos una evaluación o marcaron una ausencia",
+    kpiCompletos: "Completaron",
+    kpiSinActivar: "Sin activar",
+    kpiSinActivarDetalle: (pendientes: string, sinCorreo: string) => `${pendientes} pendientes de activar · ${sinCorreo} sin correo`,
+    resumen: (activadas: string, total: string, actividad: string, completos: string) =>
+      `${activadas} de ${total} evaluadores activaron su cuenta; ${actividad} ya evalúan y ${completos} completaron todas sus evaluaciones.`,
+    sinActivarTitulo: "Aún no activan su cuenta",
+    sinActivarNota:
+      "Pídales que ingresen con su correo para activar la cuenta. Quien aparece «Sin correo» necesita que la administración lo agregue.",
+    todosActivaron: "Todos los evaluadores activaron su cuenta.",
+    equipo: (numero: number, competencia: string) => `Equipo ${numero} · ${competencia}`,
+    resumenEquipo: (activadas: string, completos: string, total: string) =>
+      `${activadas} de ${total} activaron su cuenta · ${completos} de ${total} completaron`,
+    activadaEl: "Activada el",
+    ultimaEvaluacion: "Última evaluación",
+    uso: "Uso",
+    estados: { "sin-activar": "Sin activar", "sin-actividad": "Sin evaluaciones", evaluando: "Evaluando", completo: "Completó" },
+    nota:
+      "«Último ingreso» es la última vez que inició sesión (la sesión dura 12 horas). «Última evaluación» es su último envío. Los borradores quedan en el teléfono de cada evaluador y no se cuentan.",
+    vacio: "No hay equipos con plantilla en esta jornada.",
+  },
   volverGeneral: "Volver al Reporte general",
   volverReportes: "Volver a Reportes",
   otrosParticipantes: "Otros participantes",
@@ -229,10 +258,13 @@ const participantesN = (n: number) => (n === 1 ? "1 participante" : `${n} partic
 
 export const TEXTOS_ENVIO = {
   titulo: "Enviar resultados por correo",
+  // v1.13: one general report per participant with every competencia of the jornada.
   descripcion:
-    "Cada participante recibe solo sus propios resultados: nivel general, puntaje, evaluaciones recibidas y, por indicador, el promedio y lo que le falta para el siguiente nivel. El correo no incluye nombres de evaluadores, calificaciones individuales ni observaciones.",
+    "Cada participante recibe un solo correo con su reporte general: el resultado general (promedio entre competencias) y, por competencia, el puntaje, el nivel y, por indicador, lo que le falta para el siguiente nivel. El correo no incluye nombres de evaluadores, calificaciones individuales ni observaciones.",
   destinatarios: "Destinatarios",
-  destinatariosAyuda: "Participantes con correo y al menos una evaluación. A quien ya recibió sus resultados no se le envía de nuevo, salvo que marque «Reenviar».",
+  destinatariosAyuda:
+    "Participantes con correo y al menos una evaluación en alguna competencia. Si aún faltan competencias por evaluar, el correo incluye solo las evaluadas. A quien ya recibió sus resultados no se le envía de nuevo, salvo que marque «Reenviar».",
+  cobertura: (n: string, total: string) => `${n} de ${total} competencias`,
   sinDestinatarios: "Aún no hay participantes con correo y evaluaciones.",
   omitidos: "No se les enviará",
   sinOmitidos: "Todos los participantes recibirán sus resultados.",

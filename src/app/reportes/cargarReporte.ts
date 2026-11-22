@@ -1,14 +1,19 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import type { Competencia } from "@/config/competencias";
-import type { Equipo } from "@/config/equipos";
 import type { JornadaId } from "@/config/jornadas";
 import { leerUltimosEnvios } from "@/lib/db/envios";
-import { obtenerParticipanteConsolidado, obtenerReporte, obtenerReporteConsolidado, obtenerResumenGrupo } from "@/lib/db/reportes";
+import {
+  obtenerParticipanteConsolidado,
+  obtenerReporte,
+  obtenerReporteConsolidado,
+  obtenerResumenGrupo,
+  obtenerUsoAplicacion,
+} from "@/lib/db/reportes";
 import { cargarContextoEnvio, type ContextoEnvio } from "@/lib/envioResultados";
 import { registrarError } from "@/lib/registro";
-import type { Reporte, ReporteConsolidado, ReporteParticipanteConsolidado, ResumenGrupo } from "@/lib/reportes";
-import type { UltimoEnvio } from "@/lib/resultados";
+import type { Reporte, ReporteConsolidado, ReporteParticipanteConsolidado, ResumenGrupo, UsoAplicacion } from "@/lib/reportes";
+import { ENVIO_CONSOLIDADO, type UltimoEnvio } from "@/lib/resultados";
 import { validarCompetenciaReporte, type JornadaResumen } from "@/lib/validacion";
 
 // Loads the report of the session's jornada for a report page. A DB failure
@@ -85,18 +90,13 @@ export async function cargarParticipanteConsolidado(
 }
 
 /**
- * The send page's data (PRD §5.14) for the session's jornada; like
- * cargarReporte, a DB failure becomes `null`, logged without PII.
+ * The send page's data (PRD §5.14, v1.13: every competencia of the session's
+ * jornada); like cargarReporte, a DB failure becomes `null`, logged without PII.
  */
-export async function cargarEnvio(
-  jornada: JornadaId,
-  competencia: Competencia,
-  equipo: Equipo,
-  ruta: string,
-): Promise<ContextoEnvio | null> {
+export async function cargarEnvio(jornada: JornadaId, ruta: string): Promise<ContextoEnvio | null> {
   const inicio = Date.now();
   try {
-    return await cargarContextoEnvio(jornada, competencia, equipo);
+    return await cargarContextoEnvio(jornada);
   } catch (error) {
     registrarError(ruta, "GET", inicio, error);
     return null;
@@ -104,17 +104,28 @@ export async function cargarEnvio(
 }
 
 /**
- * Each participant's latest results-email status, for the Reporte general's
- * "Correo" column (PRD §11.2). Null on a DB failure: the column then reads "—".
+ * Each participant's latest results-email status (the one general report,
+ * v1.13), for the Reporte general's "Correo" column (PRD §11.2). Null on a DB
+ * failure: the column then reads "—".
  */
-export async function cargarEstadosCorreo(
-  jornada: JornadaId,
-  competenciaId: string,
-  ruta: string,
-): Promise<Map<string, UltimoEnvio> | null> {
+export async function cargarEstadosCorreo(jornada: JornadaId, ruta: string): Promise<Map<string, UltimoEnvio> | null> {
   const inicio = Date.now();
   try {
-    return await leerUltimosEnvios(jornada, competenciaId);
+    return await leerUltimosEnvios(jornada, ENVIO_CONSOLIDADO);
+  } catch (error) {
+    registrarError(ruta, "GET", inicio, error);
+    return null;
+  }
+}
+
+/**
+ * "Uso de la aplicación" (PRD §11.6) of the session's jornada. Like
+ * cargarReporte, a DB failure becomes `null` and is logged without PII.
+ */
+export async function cargarUsoAplicacion(jornada: JornadaId, ruta: string): Promise<UsoAplicacion | null> {
+  const inicio = Date.now();
+  try {
+    return await obtenerUsoAplicacion(jornada);
   } catch (error) {
     registrarError(ruta, "GET", inicio, error);
     return null;

@@ -25,7 +25,8 @@ const RUTAS = [
   "/reportes/adaptabilidad/P01",
   "/reportes/adaptabilidad/grupo",
   "/reportes/adaptabilidad/grupo?jornada=ambas",
-  "/reportes/adaptabilidad/enviar",
+  "/reportes/consolidado/enviar",
+  "/reportes/uso",
   "/reportes/pensamiento-critico",
   "/reportes/no-existe",
   "/api/reportes/adaptabilidad",
@@ -44,7 +45,7 @@ const RUTAS = [
   "/api/acceso/contrasena",
   "/api/acceso/recuperar",
   "/api/dev/correos",
-  "/api/reportes/adaptabilidad/enviar",
+  "/api/reportes/consolidado/enviar",
   "/dev/correos",
   // PUT-only (PRD §5.13).
   "/api/asistencia",

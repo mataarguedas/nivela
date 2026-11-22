@@ -10,9 +10,10 @@ describe("destinoVolver", () => {
     ["/adaptabilidad/evaluador", "/", "Inicio"],
     ["/reportes/adaptabilidad/P07", "/reportes/adaptabilidad", "Reporte general"],
     ["/reportes/adaptabilidad/grupo", "/reportes/adaptabilidad", "Reporte general"],
-    ["/reportes/adaptabilidad/enviar", "/reportes/adaptabilidad", "Reporte general"],
+    ["/reportes/consolidado/enviar", "/reportes/consolidado", "Reporte consolidado"],
     ["/reportes/adaptabilidad", "/reportes", "Reportes"],
     ["/reportes/consolidado", "/reportes", "Reportes"],
+    ["/reportes/uso", "/reportes", "Reportes"],
     ["/reportes/consolidado/P07", "/reportes/consolidado", "Reporte consolidado"],
     ["/reportes", "/", "Inicio"],
   ])("%s → %s (%s)", (ruta, href, etiqueta) => {

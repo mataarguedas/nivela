@@ -89,7 +89,6 @@ export const EQUIPOS: readonly Equipo[] = [
       { id: "wesnlyn-garcia-perez", nombre: "Wesnlyn García Pérez", curso: PSICOLOGIA },
       { id: "stacy-zamora-rodriguez", nombre: "Stacy Zamora Rodríguez", curso: PSICOLOGIA },
       { id: "ramses-salas-vargas", nombre: "Ramsés Salas Vargas", curso: PSICOLOGIA },
-      { id: "sebastian-chaves", nombre: "Sebastian Chaves", curso: PSICOLOGIA },
       { id: "kristel-barrantes-lopez", nombre: "Kristel Barrantes López", curso: SEMINARIO },
       { id: "angelina-mata-arguedas", nombre: "Angelina Mata Arguedas", curso: SEMINARIO },
       { id: "allison-campos-morera", nombre: "Allison Campos Morera", curso: SEMINARIO },
@@ -120,7 +119,6 @@ export const EQUIPOS: readonly Equipo[] = [
     competenciaId: "adaptabilidad",
     integrantes: [
       { id: "gabriela-salgado", nombre: "Gabriela Salgado", curso: PSICOLOGIA },
-      { id: "emmanuel-reyes", nombre: "Emmanuel Reyes", curso: PSICOLOGIA },
       { id: "reylin-centeno", nombre: "Reylin Centeno", curso: PSICOLOGIA },
       { id: "goldine-foster-mclean", nombre: "Goldine Foster Mclean", curso: SEMINARIO },
       { id: "anna-sevilla-lopez", nombre: "Anna Sevilla López", curso: SEMINARIO },

@@ -74,7 +74,7 @@ async function ReporteGeneral({ params }: Pick<PageProps<"/reportes/[competencia
   const jornada = await exigirDocente(`/reportes/${id}`);
   const [{ competencia, reporte }, envios] = await Promise.all([
     cargarReporte(jornada, id, "/reportes/[competencia]"),
-    cargarEstadosCorreo(jornada, id, "/reportes/[competencia]"),
+    cargarEstadosCorreo(jornada, "/reportes/[competencia]"),
   ]);
 
   return (

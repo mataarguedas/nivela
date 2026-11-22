@@ -12,7 +12,7 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
 6. **Jev suggests, the human decides.** A suggestion is never applied without a tap on "Aplicar sugerencia". A Jev failure must never block manual rating or submission.
 7. **Competencias, indicators and teams are data** in `src/config/`; participants are runtime data in the DB. No competencia-specific logic in components. Enabling a competencia means editing config only.
    - **A rubric belongs to jornada + competencia** (PRD §9.1, Appendix A): each jornada's team writes its own template. A competencia is enabled in a jornada exactly when its config has a rubric for that jornada. Since v1.7 all five have one in both jornadas (night rubrics use `…-noche-N` indicator ids). Always resolve it with the session's jornada: `obtenerCompetenciaHabilitada(jornada, id)` / `competenciasDeJornada(jornada)`; `obtenerDefinicionCompetencia(id)` is for names only. A new rubric gets new indicator ids (they are stored in the DB), its Appendix A section and a golden-set fixture.
-   - **A team is identified by jornada + competencia.** Its number is a per-jornada display label and its size varies: Adaptabilidad is Equipo 4 (8 members) in the morning and Equipo 1 (7 members) at night. Never look a team up by number, and never hard-code a team number or size in code, tests, seed data or copy. Use `equipoDeCompetencia(jornada, competenciaId)` and read `numero` and `integrantes` from it.
+   - **A team is identified by jornada + competencia.** Its number is a per-jornada display label and its size varies: Adaptabilidad is Equipo 4 (7 members) in the morning and Equipo 1 (6 members) at night. Never look a team up by number, and never hard-code a team number or size in code, tests, seed data or copy. Use `equipoDeCompetencia(jornada, competenciaId)` and read `numero` and `integrantes` from it.
 8. **Design**: DESIGN.md tokens only.
    - Pill buttons (980 px radius).
    - Exactly one filled `#0071e3` primary button per view. Links and outlines use `#0066cc`.
@@ -57,6 +57,7 @@ npm run correo:prueba -- --para <correo>   # v1.2 (Prompt 13): send a sample ema
 npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv [--produccion]   # v1.2: load evaluator emails (prints counts and host, never emails)
 npm run participantes:importar -- --archivo privado/<hoja>.xlsx --jornada manana|noche [--simular] [--produccion]   # v1.8: a COFI distribution sheet → the jornada's list (names + groups), or only the groups when names exist; prints counts and positions, never names
 npm run participantes:matricula -- --jornada manana|noche --archivo privado/matricula/<lista>.pdf [--archivo …] [--simular] [--produccion]   # v1.9: the university's enrollment lists → carnets + emails of an already named list, matched by name (pdftotext -layout); prints counts and positions only
+npm run evaluadores:retirados -- [--eliminar] [--produccion]   # v1.15: data (account, evaluations, attendance) of evaluators no longer in equipos.ts; counts only without --eliminar; production asks for a typed "sí"; prints counts and host only
 npm run cuentas:prueba # dev/e2e: reset every evaluator account to <id>@ejemplo.test + E2E_CONTRASENA, and give every stored participant participante-NN.<jornada>@ejemplo.test except P02 (the e2e global setup runs it)
 ```
 
@@ -97,9 +98,10 @@ src/
     reportes/[competencia]/page.tsx              # Reporte general
     reportes/[competencia]/[participante]/page.tsx  # Reporte individual
     reportes/[competencia]/grupo/page.tsx           # v1.2: Resumen del grupo (PRD §11.3)
-    reportes/[competencia]/enviar/page.tsx          # v1.2: send results by email (PRD §5.14)
     reportes/consolidado/page.tsx                   # v1.5: Reporte consolidado + dashboard, all competencias together (PRD §11.4; static segment beats [competencia])
     reportes/consolidado/[participante]/page.tsx    # v1.5: Reporte del participante, one student across every competencia (PRD §11.5)
+    reportes/consolidado/enviar/page.tsx            # v1.13: send each participant one general-report email, every competencia (PRD §5.14)
+    reportes/uso/page.tsx                           # v1.14: Uso de la aplicación, which evaluators activated their account and are rating (PRD §11.6)
     admin/page.tsx + EditorParticipantes.tsx       # admin: participants (names, emails) and evaluator accounts
     api/acceso/route.ts                             # docente/admin codes
     api/acceso/{correo,activar,contrasena,recuperar}/route.ts  # v1.2: evaluator email login
@@ -107,7 +109,6 @@ src/
     api/admin/participantes/route.ts
     api/admin/cuentas/route.ts                      # v1.2
     api/reportes/[competencia]/grupo/route.ts       # v1.2
-    api/reportes/[competencia]/enviar/route.ts      # v1.2
     api/salir/route.ts
     api/jornada/route.ts      # docente/admin switch jornada (re-signs the cookie)
     api/jev/route.ts
@@ -115,6 +116,7 @@ src/
     api/reportes/[competencia]/route.ts
     api/reportes/[competencia]/csv/route.ts
     api/reportes/consolidado/csv/route.ts           # v1.5: consolidated CSV (PRD §10)
+    api/reportes/consolidado/enviar/route.ts        # v1.13: results email, one per participant (replaces api/reportes/[competencia]/enviar)
   proxy.ts                  # session check + role gating (middleware.ts on Next < 16)
   config/
     jornadas.ts             # manana | noche (PRD §5.11)
@@ -132,19 +134,19 @@ src/
     importarCuentas.ts      # v1.2: CSV validation for cuentas:importar
     correo.ts               # v1.2, server-only: send email (Resend | consola)
     correos/                # v1.2: email templates { asunto, html, texto } (codigoVerificacion, resultados)
-    resultados.ts           # v1.2: pure parts of the results email (data, recipients, idempotency key)
+    resultados.ts           # v1.2: pure parts of the results email (data, recipients, idempotency key); v1.13: one general report over every competencia, recorded as ENVIO_CONSOLIDADO
     envioResultados.ts      # v1.2, server-only: load, preview and send results (paced, recorded)
     db/{index.ts,schema.ts,participantes.ts,cuentas.ts,envios.ts}  # participantes.ts: the admin's list per jornada (emails read apart); cuentas.ts: account statements; envios.ts: envios_resultados
     jornadaActual.ts        # the session's jornada (and contextoEvaluacion: team + evaluador id) for Server Components
     puntajes.ts             # pure scoring (PRD §7): levels 1–4 in, report scores in points 0–100 out
-    reportes.ts             # aggregation for report routes (agregarReporte, agregarResumenGrupo, agregarConsolidado + tableroConsolidado, agregarParticipanteConsolidado)
+    reportes.ts             # aggregation for report routes (agregarReporte, agregarResumenGrupo, agregarConsolidado + tableroConsolidado, agregarParticipanteConsolidado, agregarUsoAplicacion)
     borrador.ts             # localStorage drafts (client), try/catch + memory fallback
     validacion.ts           # zod schemas + config cross-checks
     formato.ts              # Intl es-CR number/percent/date helpers
   components/
     ui/                     # Boton, Chip, Campo, Dialogo, Toast, Nav, SelectorNivel
     calificacion/           # IndicadorSeccion, PanelSugerencia, BarraEnvio
-    reportes/               # datosGraficos (chart data + title sentences), BarrasHorizontales, GraficosDetallados (RadarIndicadores, DistribucionNiveles), TablaParticipantes, TablaConsolidada, MapaNiveles, MatrizCobertura
+    reportes/               # datosGraficos (chart data + title sentences), BarrasHorizontales, GraficosDetallados (RadarIndicadores, DistribucionNiveles), TablaParticipantes, TablaConsolidada, MapaNiveles, MatrizCobertura, UsoAplicacion
 scripts/
   seed.ts
   evaluar-jev.ts
@@ -152,6 +154,7 @@ scripts/
   importar-matricula.ts     # v1.9: enrollment list PDFs → carnets + emails (lib/matricula.ts)
   importar-participantes.ts # v1.8: COFI distribution sheet (.xlsx) → participants + groups (lib/distribucion.ts); xlsx.ts reads the sheet, no dependency
   cuentas-prueba.ts         # v1.2, dev/e2e: fake accounts (cuentasPrueba.ts); entornoDesarrollo.ts guards dev-only writes
+  eliminar-retirados.ts     # v1.15: evaluadores:retirados, deletes the DB data of evaluators removed from config (lib/db/retirados.ts)
   fixtures/jev-{competencia}[-noche].json   # one golden set per rubric (its `jornada`, default manana)
 privado/                    # gitignored: roster screenshots, the evaluator email CSV and the COFI distribution sheets (PII)
 public/

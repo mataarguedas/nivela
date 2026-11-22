@@ -61,15 +61,15 @@ describe("promedio y puntajes", () => {
   });
 });
 
-describe("nivelGeneral (0–24 Básico, 25–49 Intermedio, 50–74 Avanzado, 75–100 Experto)", () => {
+describe("nivelGeneral (0–25 Básico, 26–50 Intermedio, 51–75 Avanzado, 76–100 Experto; v1.10)", () => {
   it.each([
     [0, 1],
-    [24, 1],
-    [25, 2],
-    [49, 2],
-    [50, 3],
-    [74, 3],
-    [75, 4],
+    [25, 1],
+    [26, 2],
+    [50, 2],
+    [51, 3],
+    [75, 3],
+    [76, 4],
     [100, 4],
   ] as const)("%d → nivel %d", (puntaje, nivel) => {
     expect(nivelGeneral(puntaje)).toBe(nivel);
@@ -77,10 +77,10 @@ describe("nivelGeneral (0–24 Básico, 25–49 Intermedio, 50–74 Avanzado, 75
 
   it("las bandas de puntos cubren 0–100 sin huecos", () => {
     expect(RANGOS_PUNTOS).toEqual({
-      1: { min: 0, max: 24 },
-      2: { min: 25, max: 49 },
-      3: { min: 50, max: 74 },
-      4: { min: 75, max: 100 },
+      1: { min: 0, max: 25 },
+      2: { min: 26, max: 50 },
+      3: { min: 51, max: 75 },
+      4: { min: 76, max: 100 },
     });
     for (let p = 0; p <= 100; p += 1) {
       const n = nivelGeneral(p);
@@ -90,14 +90,17 @@ describe("nivelGeneral (0–24 Básico, 25–49 Intermedio, 50–74 Avanzado, 75
   });
 
   it("clasifica con el valor entero que se muestra", () => {
-    // 24,5 is displayed as "25", so it must read Intermedio, not Básico.
-    expect(nivelGeneral(24.5)).toBe(2);
-    expect(nivelGeneral(24.49)).toBe(1);
-    expect(nivelGeneral(74.6)).toBe(4);
+    // 25,5 is displayed as "26", so it must read Intermedio, not Básico.
+    expect(nivelGeneral(25.5)).toBe(2);
+    expect(nivelGeneral(25.49)).toBe(1);
+    expect(nivelGeneral(75.6)).toBe(4);
     // Float noise from a mean of means must not drop below a boundary.
-    expect(nivelGeneral(49.99999999999999)).toBe(3);
-    expect(nivelGeneral(puntosDesdeNiveles(1.75))).toBe(2);
-    expect(nivelGeneral(puntosDesdeNiveles(3.25))).toBe(4);
+    expect(nivelGeneral(50.99999999999999)).toBe(3);
+    // Each level rated alone stays in its own band; the quarter steps sit on the top edges.
+    expect(nivelGeneral(puntosDesdeNiveles(1.75))).toBe(1); // 25
+    expect(nivelGeneral(puntosDesdeNiveles(2.5))).toBe(2); // 50
+    expect(nivelGeneral(puntosDesdeNiveles(3.25))).toBe(3); // 75
+    expect(nivelGeneral(puntosDesdeNiveles(3.5))).toBe(4); // 83
   });
 
   it("redondearPuntos", () => {
@@ -202,33 +205,33 @@ describe("distribucion y proporcion", () => {
 describe("brechaSiguienteNivel (PRD §7)", () => {
   it.each([
     // [puntaje, nivel actual, siguiente, umbral, faltante]
-    [0, 1, 2, 25, 25],
-    [24, 1, 2, 25, 1],
-    [25, 2, 3, 50, 25],
-    [49, 2, 3, 50, 1],
-    [50, 3, 4, 75, 25],
-    [61, 3, 4, 75, 14],
-    [74, 3, 4, 75, 1],
+    [0, 1, 2, 26, 26],
+    [25, 1, 2, 26, 1],
+    [26, 2, 3, 51, 25],
+    [50, 2, 3, 51, 1],
+    [51, 3, 4, 76, 25],
+    [61, 3, 4, 76, 15],
+    [75, 3, 4, 76, 1],
   ] as const)("%s → nivel %s, faltan %s… para %s", (puntaje, actual, siguiente, umbral, faltante) => {
     expect(brechaSiguienteNivel(puntaje)).toEqual({ nivelActual: actual, siguiente, umbral, faltante });
   });
 
-  it("desde 75 no hay siguiente: Nivel máximo alcanzado", () => {
-    for (const puntaje of [75, 83, 100]) {
+  it("desde 76 no hay siguiente: Nivel máximo alcanzado", () => {
+    for (const puntaje of [76, 83, 100]) {
       expect(brechaSiguienteNivel(puntaje)).toEqual({ nivelActual: 4, siguiente: null, umbral: null, faltante: null });
     }
   });
 
   it("redondea como nivelGeneral: el puntaje mostrado y la brecha siempre coinciden", () => {
-    // 49,6 se muestra como 50: Avanzado, faltan 25 para Experto (no 0,4 para Avanzado).
-    expect(brechaSiguienteNivel(49.6)).toEqual({ nivelActual: 3, siguiente: 4, umbral: 75, faltante: 25 });
-    expect(brechaSiguienteNivel(49.4)).toMatchObject({ nivelActual: 2, faltante: 1 });
-    expect(brechaSiguienteNivel(74.5)).toMatchObject({ nivelActual: 4, siguiente: null });
+    // 50,6 se muestra como 51: Avanzado, faltan 25 para Experto (no 0,4 para Avanzado).
+    expect(brechaSiguienteNivel(50.6)).toEqual({ nivelActual: 3, siguiente: 4, umbral: 76, faltante: 25 });
+    expect(brechaSiguienteNivel(50.4)).toMatchObject({ nivelActual: 2, faltante: 1 });
+    expect(brechaSiguienteNivel(75.5)).toMatchObject({ nivelActual: 4, siguiente: null });
     // Scores from level means: 2,125 → 37,5 → 38; 7/3 → 44,4 → 44.
-    expect(brechaSiguienteNivel(puntosDesdeNiveles(2.125))).toMatchObject({ nivelActual: 2, faltante: 12 });
-    expect(brechaSiguienteNivel(puntosDesdeNiveles(7 / 3))).toMatchObject({ nivelActual: 2, faltante: 6 });
-    // Up to 74,4: from 74,5 the score shows as 75 (Experto, no next level).
-    for (let decimas = 0; decimas < 745; decimas += 1) {
+    expect(brechaSiguienteNivel(puntosDesdeNiveles(2.125))).toMatchObject({ nivelActual: 2, faltante: 13 });
+    expect(brechaSiguienteNivel(puntosDesdeNiveles(7 / 3))).toMatchObject({ nivelActual: 2, faltante: 7 });
+    // Up to 75,4: from 75,5 the score shows as 76 (Experto, no next level).
+    for (let decimas = 0; decimas < 755; decimas += 1) {
       const p = decimas / 10;
       const { nivelActual, faltante, umbral } = brechaSiguienteNivel(p);
       expect(nivelActual).toBe(nivelGeneral(p));

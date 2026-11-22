@@ -87,7 +87,7 @@ export function posicionEnEje(valor: number, min: number, max: number): number {
   return Math.round(Math.min(100, Math.max(0, p)) * 100) / 100;
 }
 
-/** The thresholds 25 / 50 / 75 on the 0–100 axis, labelled Intermedio / Avanzado / Experto. */
+/** The thresholds 26 / 51 / 76 on the 0–100 axis, labelled Intermedio / Avanzado / Experto. */
 export const REFERENCIAS_NIVEL: readonly Referencia[] = (
   [
     [UMBRALES_NIVEL.intermedio, 2],

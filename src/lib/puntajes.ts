@@ -5,16 +5,16 @@
 // stored puntaje of an evaluation is the mean of those levels. Every score in
 // the reports and the results email is in points, 0–100: a mean of levels m
 // is (m − 1) ÷ 3 × 100, so all-Básico is 0 and all-Experto is 100. Points are
-// shown and compared as whole numbers; the level bands are 0–24 Básico,
-// 25–49 Intermedio, 50–74 Avanzado and 75–100 Experto.
+// shown and compared as whole numbers; the level bands (v1.10) are 0–25
+// Básico, 26–50 Intermedio, 51–75 Avanzado and 76–100 Experto.
 import type { NivelValor } from "@/config/niveles";
 
 /** The report scale (points). */
 export const ESCALA_PUNTOS = { min: 0, max: 100 } as const;
 /** The lowest whole number of points of each level above Básico (PRD §7). */
-export const UMBRALES_NIVEL = { intermedio: 25, avanzado: 50, experto: 75 } as const;
+export const UMBRALES_NIVEL = { intermedio: 26, avanzado: 51, experto: 76 } as const;
 
-/** Each level's band in whole points: Básico 0–24, Intermedio 25–49, Avanzado 50–74, Experto 75–100. */
+/** Each level's band in whole points: Básico 0–25, Intermedio 26–50, Avanzado 51–75, Experto 76–100. */
 export const RANGOS_PUNTOS: Readonly<Record<NivelValor, { min: number; max: number }>> = {
   1: { min: ESCALA_PUNTOS.min, max: UMBRALES_NIVEL.intermedio - 1 },
   2: { min: UMBRALES_NIVEL.intermedio, max: UMBRALES_NIVEL.avanzado - 1 },
@@ -80,7 +80,7 @@ export function puntajeGeneral(mediasIndicadores: readonly number[]): number | n
 /**
  * Nivel general from a score in points. The score is rounded to a whole
  * number first so the level always agrees with the number the docente sees
- * (e.g. 24,6 shows as "25" → Intermedio).
+ * (e.g. 25,6 shows as "26" → Intermedio).
  */
 export function nivelGeneral(puntaje: number): NivelValor {
   const p = redondearPuntos(puntaje);
@@ -167,7 +167,7 @@ export type Brecha = {
   nivelActual: NivelValor;
   /** Null at Experto: "Nivel máximo alcanzado". */
   siguiente: NivelValor | null;
-  /** The threshold that opens `siguiente` (25 / 50 / 75 points). */
+  /** The threshold that opens `siguiente` (26 / 51 / 76 points). */
   umbral: number | null;
   /** umbral − score, in whole points. */
   faltante: number | null;
@@ -183,7 +183,7 @@ const UMBRAL_DEL_SIGUIENTE: Record<Exclude<NivelValor, 4>, number> = {
  * The gap from a score in points (a puntaje general, an indicator score or
  * the group score) to the next level. The score is rounded to a whole number
  * first, exactly like nivelGeneral(), so the number on screen and the gap
- * always agree: 49 → 1 to Avanzado; 49,6 shows as 50 → Avanzado, 25 to Experto.
+ * always agree: 50 → 1 to Avanzado; 50,6 shows as 51 → Avanzado, 25 to Experto.
  */
 export function brechaSiguienteNivel(puntaje: number): Brecha {
   const p = redondearPuntos(puntaje);

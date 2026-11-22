@@ -47,11 +47,11 @@ describe("posicionEnEje", () => {
     expect(posicionEnEje(3, 0, 0)).toBe(0);
   });
 
-  it("las líneas de referencia marcan 25 / 50 / 75 puntos con el nivel que abren", () => {
+  it("las líneas de referencia marcan 26 / 51 / 76 puntos con el nivel que abren", () => {
     expect(REFERENCIAS_NIVEL).toEqual([
-      { posicion: 25, etiqueta: "Intermedio" },
-      { posicion: 50, etiqueta: "Avanzado" },
-      { posicion: 75, etiqueta: "Experto" },
+      { posicion: 26, etiqueta: "Intermedio" },
+      { posicion: 51, etiqueta: "Avanzado" },
+      { posicion: 76, etiqueta: "Experto" },
     ]);
   });
 });
@@ -122,19 +122,19 @@ describe("Puntaje por indicador", () => {
   });
 
   it("barras en el eje fijo 0–100 con «valor · nivel» y las 3 líneas de referencia", () => {
-    const datos = barrasPuntajePorIndicador([ind(1, "Uno", 75), ind(2, "Dos", 0), ind(3, "Tres", 49), ind(4, "Cuatro", null)]);
+    const datos = barrasPuntajePorIndicador([ind(1, "Uno", 76), ind(2, "Dos", 0), ind(3, "Tres", 50), ind(4, "Cuatro", null)]);
     expect(datos.barras).toEqual([
-      { clave: "ind-1", etiqueta: "Indicador 1. Uno", ancho: 75, texto: "75 · Experto", nivel: 4 },
+      { clave: "ind-1", etiqueta: "Indicador 1. Uno", ancho: 76, texto: "76 · Experto", nivel: 4 },
       { clave: "ind-2", etiqueta: "Indicador 2. Dos", ancho: 0, texto: "0 · Básico", nivel: 1 },
-      { clave: "ind-3", etiqueta: "Indicador 3. Tres", ancho: 49, texto: "49 · Intermedio", nivel: 2 },
+      { clave: "ind-3", etiqueta: "Indicador 3. Tres", ancho: 50, texto: "50 · Intermedio", nivel: 2 },
       { clave: "ind-4", etiqueta: "Indicador 4. Cuatro", ancho: 0, texto: "Sin datos", nivel: null },
     ]);
     expect(datos.referencias).toEqual(REFERENCIAS_NIVEL);
   });
 
   it("el nivel de la barra usa el mismo redondeo que el puntaje mostrado", () => {
-    const [barra] = barrasPuntajePorIndicador([ind(1, "Uno", 49.6)]).barras;
-    expect(barra.texto).toBe("50 · Avanzado");
+    const [barra] = barrasPuntajePorIndicador([ind(1, "Uno", 50.6)]).barras;
+    expect(barra.texto).toBe("51 · Avanzado");
     expect(barra.nivel).toBe(3);
   });
 });
@@ -201,7 +201,7 @@ describe("párrafo del Resumen del grupo (PRD §11.3)", () => {
 
   it("nivel, brecha, indicador más fuerte y el que más necesita refuerzo", () => {
     expect(parrafoResumenGrupo(grupo(61, cuatro, [1], [3]))).toBe(
-      "El grupo alcanzó un nivel Avanzado (61). Le faltan 14 puntos para Experto. " +
+      "El grupo alcanzó un nivel Avanzado (61). Le faltan 15 puntos para Experto. " +
         "El indicador más fuerte es «Actúa de manera rápida y flexible» (70) y el que más necesita refuerzo es «Mantiene la calma» (47).",
     );
   });
@@ -213,7 +213,7 @@ describe("párrafo del Resumen del grupo (PRD §11.3)", () => {
   it("los empates se nombran por número", () => {
     const empatados = [indicador(1, "A", 67), indicador(2, "B", 67), indicador(3, "C", 50), indicador(4, "D", 50)];
     expect(parrafoResumenGrupo(grupo(58, empatados, [1, 2], [3, 4]))).toBe(
-      "El grupo alcanzó un nivel Avanzado (58). Le faltan 17 puntos para Experto. " +
+      "El grupo alcanzó un nivel Avanzado (58). Le faltan 18 puntos para Experto. " +
         "Los indicadores 1 y 2 son los más fuertes (67) y los indicadores 3 y 4 son los que más necesitan refuerzo (50).",
     );
   });
@@ -221,13 +221,13 @@ describe("párrafo del Resumen del grupo (PRD §11.3)", () => {
   it("todos los indicadores iguales: frase neutra", () => {
     const iguales = [1, 2, 3, 4].map((n) => indicador(n, `T${n}`, 33));
     expect(parrafoResumenGrupo(grupo(33, iguales, [1, 2, 3, 4], [1, 2, 3, 4]))).toBe(
-      "El grupo alcanzó un nivel Intermedio (33). Le faltan 17 puntos para Avanzado. Todos los indicadores tienen el mismo promedio (33).",
+      "El grupo alcanzó un nivel Intermedio (33). Le faltan 18 puntos para Avanzado. Todos los indicadores tienen el mismo promedio (33).",
     );
   });
 
   it("sin indicadores comunes (dos plantillas) omite la frase de indicadores; sin puntaje, frase neutra", () => {
     // A gap of 1 point reads in the singular.
-    expect(parrafoResumenGrupo(grupo(49, null))).toBe("El grupo alcanzó un nivel Intermedio (49). Le falta 1 punto para Avanzado.");
+    expect(parrafoResumenGrupo(grupo(50, null))).toBe("El grupo alcanzó un nivel Intermedio (50). Le falta 1 punto para Avanzado.");
     expect(parrafoResumenGrupo(grupo(null, null))).toBe("Aún no hay participantes con puntaje general.");
   });
 });

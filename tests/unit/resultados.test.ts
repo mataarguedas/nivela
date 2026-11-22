@@ -77,14 +77,15 @@ describe("datosResultados", () => {
       jornada: "Mañana",
       puntajeGeneral: expect.closeTo(pts(2.25), 10),
       nivelGeneral: 2,
-      brecha: { siguiente: 3, faltante: 8 },
+      brecha: { siguiente: 3, faltante: 9 },
       evaluaciones: 2,
     });
     expect(datos.indicadores.map((i) => [i.numero, i.media, i.nivel, i.brecha.faltante])).toEqual([
-      [1, pts(2.5), 3, 25],
-      [2, pts(3), 3, 8],
-      [3, pts(2), 2, 17],
-      [4, pts(1.5), 1, 8],
+      // 50 is Intermedio since v1.10 (Avanzado opens at 51).
+      [1, pts(2.5), 2, 1],
+      [2, pts(3), 3, 9],
+      [3, pts(2), 2, 18],
+      [4, pts(1.5), 1, 9],
     ]);
     expect(datos.indicadores[2].descripcionSiguiente).toBe(competencia.indicadores[2].niveles[3]);
     // Nothing about evaluators, ratings, observations or AI.
@@ -175,14 +176,14 @@ describe("plantilla de resultados", () => {
     expect(correo.texto).toContain("Estos son sus resultados en la competencia Adaptabilidad (jornada Mañana).");
     expect(correo.texto).toContain("Nivel general: Intermedio");
     expect(correo.texto).toContain("Puntaje general: 42 de 100");
-    expect(correo.texto).toContain("Le faltan 8 puntos para Avanzado");
+    expect(correo.texto).toContain("Le faltan 9 puntos para Avanzado");
     expect(correo.texto).toContain("Recibió 2 evaluaciones de sus pares.");
     expect(correo.texto).toContain(`Indicador 1. ${competencia.indicadores[0].titulo}`);
-    expect(correo.texto).toContain("Puntaje: 50 de 100 · Avanzado");
+    expect(correo.texto).toContain("Puntaje: 50 de 100 · Intermedio");
     expect(correo.texto).toContain("Puntaje: 17 de 100 · Básico");
     expect(correo.texto).toContain(`Para llegar a Avanzado: ${competencia.indicadores[2].niveles[3]}`);
     expect(correo.texto).toContain("Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100");
-    expect(correo.texto).toContain("Básico de 0 a 24, Intermedio de 25 a 49, Avanzado de 50 a 74 y Experto de 75 a 100.");
+    expect(correo.texto).toContain("Básico de 0 a 25, Intermedio de 26 a 50, Avanzado de 51 a 75 y Experto de 76 a 100.");
     expect(correo.html).toContain("Intermedio");
     expect(correo.html).toContain('<html lang="es-CR">');
   });

@@ -1,4 +1,5 @@
-import { obtenerNivel } from "@/config/niveles";
+import { NIVELES, obtenerNivel } from "@/config/niveles";
+import { RANGOS_PUNTOS } from "@/lib/puntajes";
 import { formatearEntero, formatearPuntos } from "@/lib/formato";
 import type { DatosResultados } from "@/lib/resultados";
 import { textoBrecha } from "@/lib/textoBrecha";
@@ -29,8 +30,12 @@ export const TEXTOS_RESULTADOS = {
   indicador: (numero: number, titulo: string) => `Indicador ${numero}. ${titulo}`,
   promedio: (media: string, nivel: string) => `Puntaje: ${media} de 100 · ${nivel}`,
   paraLlegar: (nivel: string, descripcion: string) => `Para llegar a ${nivel}: ${descripcion}`,
-  cierre:
-    "Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100: Básico de 0 a 24, Intermedio de 25 a 49, Avanzado de 50 a 74 y Experto de 75 a 100.",
+  // "Básico de 0 a 25, Intermedio de 26 a 50, Avanzado de 51 a 75 y Experto de 76 a 100", from the bands in puntajes.ts.
+  cierre: `Estos resultados son el promedio de las evaluaciones que hicieron sus pares, en una escala de 0 a 100: ${NIVELES.map(
+    (n) => `${n.etiqueta} de ${RANGOS_PUNTOS[n.valor].min} a ${RANGOS_PUNTOS[n.valor].max}`,
+  )
+    .join(", ")
+    .replace(/, (?=[^,]*$)/, " y ")}.`,
   dudas: "Si tiene dudas sobre sus resultados, consulte con su docente. Este es un mensaje automático; no lo responda.",
 } as const;
 

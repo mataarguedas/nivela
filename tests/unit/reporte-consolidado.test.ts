@@ -138,8 +138,9 @@ describe("agregarConsolidado", () => {
     });
     expect(a.puntaje).toBeCloseTo(pts(2.75), 10);
     expect(a.cobertura).toBeCloseTo(0.4, 10);
-    expect(a.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 75, faltante: 17 });
-    expect(p).toMatchObject({ numeroEquipo: 1, nivel: 3, recibidas: 2, esperadas: 3, evaluadoresTotal: 1 });
+    expect(a.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 76, faltante: 18 });
+    // 2,50 → 50 puntos: Intermedio since v1.10.
+    expect(p).toMatchObject({ numeroEquipo: 1, nivel: 2, recibidas: 2, esperadas: 3, evaluadoresTotal: 1 });
     expect(p.puntaje).toBeCloseTo(pts(2.5), 10);
     expect(o).toMatchObject({ disponible: false, numeroEquipo: null, conEvaluaciones: false, puntaje: null, evaluadoresTotal: 0 });
   });
@@ -154,7 +155,7 @@ describe("agregarConsolidado", () => {
     ]);
     expect(p01).toMatchObject({ competenciasEvaluadas: 2, nivel: 3 });
     expect(p01.promedio).toBeCloseTo(pts(2.75), 10);
-    expect(p01.brecha?.faltante).toBe(17);
+    expect(p01.brecha?.faltante).toBe(18);
 
     expect(p02.etiqueta).toBe("Participante 02");
     expect(p02.celdas[1]).toEqual({ puntaje: null, nivel: null, evaluaciones: 0, asistencia: null });
@@ -245,7 +246,7 @@ describe("tableroConsolidado y «En pocas palabras»", () => {
       },
     ]);
     expect(parrafoConsolidado(reporte, tablero)).toBe(
-      "El grupo alcanzó un nivel Intermedio (47) como promedio entre competencias. Le faltan 3 puntos para Avanzado. " +
+      "El grupo alcanzó un nivel Intermedio (47) como promedio entre competencias. Le faltan 4 puntos para Avanzado. " +
         "La competencia más fuerte es «Adaptabilidad» (58) y la que más necesita refuerzo es «Pensamiento crítico y analítico» (33). " +
         "1 participante tiene al menos una competencia en nivel Básico.",
     );
@@ -292,7 +293,7 @@ describe("agregarParticipanteConsolidado", () => {
       masFuertes: [{ id: "adaptabilidad", puntaje: expect.closeTo(pts(3.5), 10) }],
       masDebiles: [{ id: "pensamiento-critico", puntaje: expect.closeTo(pts(2), 10) }],
     });
-    expect(reporte.brecha?.faltante).toBe(17);
+    expect(reporte.brecha?.faltante).toBe(18);
     const [a, p, o] = reporte.competencias;
     expect(a).toMatchObject({ disponible: true, puntaje: expect.closeTo(pts(3.5), 10), nivel: 4, evaluaciones: 1, asistencia: null });
     expect(a.brecha).toMatchObject({ siguiente: null, faltante: null });
@@ -304,7 +305,7 @@ describe("agregarParticipanteConsolidado", () => {
     expect(o).toMatchObject({ disponible: false, puntaje: null, indicadores: [], evaluaciones: 0 });
 
     expect(parrafoParticipante(reporte)).toBe(
-      "El promedio entre competencias es 58 (Avanzado), en 2 de 2 competencias. Le faltan 17 puntos para Experto. " +
+      "El promedio entre competencias es 58 (Avanzado), en 2 de 2 competencias. Le faltan 18 puntos para Experto. " +
         "La competencia más fuerte es «Adaptabilidad» (83) y la que más necesita refuerzo es «Pensamiento crítico y analítico» (33).",
     );
   });
@@ -312,7 +313,7 @@ describe("agregarParticipanteConsolidado", () => {
   it("con una sola competencia evaluada no compara; ausente se conserva; un id fuera de la lista es null", () => {
     const p02 = agregarParticipanteConsolidado(participantes, entradas(), "P02")!;
     expect(parrafoParticipante(p02)).toBe(
-      "El promedio entre competencias es 33 (Intermedio), en 1 de 2 competencias. Le faltan 17 puntos para Avanzado.",
+      "El promedio entre competencias es 33 (Intermedio), en 1 de 2 competencias. Le faltan 18 puntos para Avanzado.",
     );
     const p03 = agregarParticipanteConsolidado(participantes, entradas(), "P03")!;
     expect(p03.competencias[0]).toMatchObject({ puntaje: null, asistencia: "ausente", indicadoresFuertes: [] });

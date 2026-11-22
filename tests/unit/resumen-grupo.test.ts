@@ -98,7 +98,7 @@ describe("agregarResumenGrupo: una jornada", () => {
     const { grupo } = resumen;
     expect(grupo.puntaje).toBeCloseTo(pts(2.875), 10);
     expect(grupo.nivel).toBe(3);
-    expect(grupo.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 75, faltante: 12 });
+    expect(grupo.brecha).toEqual({ nivelActual: 3, siguiente: 4, umbral: 76, faltante: 13 });
     expect(grupo).toMatchObject({
       participantesEvaluados: 2,
       participantesTotal: 3,
@@ -116,8 +116,8 @@ describe("agregarResumenGrupo: una jornada", () => {
     const { grupo } = agregarResumenGrupo([entrada("manana")]);
     expect(grupo.indicadores?.map((i) => i.media)).toEqual(enPuntos([3, 3, 2.75, 2.75]));
     expect(grupo.indicadores?.map((i) => i.nivel)).toEqual([3, 3, 3, 3]);
-    // 3 → 67 puntos: 8 to Experto.
-    expect(grupo.indicadores?.[0].brecha).toMatchObject({ siguiente: 4, faltante: 8 });
+    // 3 → 67 puntos: 9 to Experto.
+    expect(grupo.indicadores?.[0].brecha).toMatchObject({ siguiente: 4, faltante: 9 });
     expect(grupo.masFuertes.map((i) => i.numero)).toEqual([1, 2]);
     expect(grupo.masDebiles.map((i) => i.numero)).toEqual([3, 4]);
   });
@@ -128,7 +128,7 @@ describe("agregarResumenGrupo: una jornada", () => {
     expect(resumen.jornadas).toHaveLength(1);
     expect(resumen.jornadas[0]).toMatchObject({ jornada: "noche", numeroEquipo: 1, evaluadoresTotal: 2, evaluadoresCompletos: 2 });
     expect(resumen.grupo.puntaje).toBeCloseTo(pts(1.5), 10);
-    expect(resumen.grupo.brecha).toEqual({ nivelActual: 1, siguiente: 2, umbral: 25, faltante: 8 });
+    expect(resumen.grupo.brecha).toEqual({ nivelActual: 1, siguiente: 2, umbral: 26, faltante: 9 });
     expect(resumen.grupo.cobertura).toBe(1);
     // All indicators equal: each one is both the strongest and the weakest.
     expect(resumen.grupo.masFuertes).toHaveLength(4);

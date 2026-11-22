@@ -301,7 +301,7 @@ Rules for this module:
 ## Testing expectations
 
 - **Unit (Vitest)**:
-  - `puntajes.ts`: every PRD §7 rule, including the 1–4 → 0–100 points conversion, the level bands (0–24 / 25–49 / 50–74 / 75–100, boundaries 24/25, 49/50, 74/75) and the SD buckets.
+  - `puntajes.ts`: every PRD §7 rule, including the 1–4 → 0–100 points conversion, the level bands (v1.10: 0–25 / 26–50 / 51–75 / 76–100, boundaries 25/26, 50/51, 75/76) and the SD buckets.
   - `jev.ts` mapping: normal, low-confidence, off-topic, malformed response, timeout.
   - `validacion.ts`: every rejection case in PRD §10.
   - `borrador.ts`: storage failures.

@@ -290,22 +290,22 @@ describe("agregarReporte: brecha al siguiente nivel (PRD §7, §11.1)", () => {
   const reporte = agregarReporte(competencia, equipo, participantes, FILAS);
   const [p01, p02, p03] = reporte.participantes;
 
-  it("puntaje general: Experto no tiene siguiente; Intermedio 38 → faltan 12 para Avanzado", () => {
+  it("puntaje general: Experto no tiene siguiente; Intermedio 38 → faltan 13 para Avanzado", () => {
     // P01 23/6 = 3,83 → 94 puntos → Experto.
     expect(p01.brecha).toEqual({ nivelActual: 4, siguiente: null, umbral: null, faltante: null });
-    // P02 2,125 → 37,5 se muestra 38 → 50 − 38 = 12.
-    expect(p02.brecha).toEqual({ nivelActual: 2, siguiente: 3, umbral: 50, faltante: 12 });
+    // P02 2,125 → 37,5 se muestra 38 → 51 − 38 = 13.
+    expect(p02.brecha).toEqual({ nivelActual: 2, siguiente: 3, umbral: 51, faltante: 13 });
     expect(p03.brecha).toBeNull();
   });
 
   it("por indicador, con la descripción del siguiente nivel tomada de la rúbrica", () => {
     const [ind1, , , ind4] = p02.indicadores;
-    // Ind1 1,3 → 2,00 → 33 puntos, Intermedio: faltan 17 para Avanzado.
-    expect(ind1.brecha).toMatchObject({ nivelActual: 2, siguiente: 3, faltante: 17 });
+    // Ind1 1,3 → 2,00 → 33 puntos, Intermedio: faltan 18 para Avanzado.
+    expect(ind1.brecha).toMatchObject({ nivelActual: 2, siguiente: 3, faltante: 18 });
     expect(ind1.descripcionSiguiente).toBe(competencia.indicadores[0].niveles[3]);
-    // Ind4 1,4 → 2,50 → 50 puntos, Avanzado: faltan 25 para Experto.
-    expect(ind4.brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 25 });
-    expect(ind4.descripcionSiguiente).toBe(competencia.indicadores[3].niveles[4]);
+    // Ind4 1,4 → 2,50 → 50 puntos, still Intermedio (v1.10): falta 1 para Avanzado.
+    expect(ind4.brecha).toMatchObject({ nivelActual: 2, siguiente: 3, faltante: 1 });
+    expect(ind4.descripcionSiguiente).toBe(competencia.indicadores[3].niveles[3]);
     // P01 Ind3 = 4: nada que alcanzar.
     expect(p01.indicadores[2]).toMatchObject({ brecha: { siguiente: null }, descripcionSiguiente: null });
     // Sin calificaciones, sin brecha.
@@ -383,8 +383,8 @@ describe("agregarReporte: avance de evaluadores (PRD §11.2)", () => {
       ["n2", "sin-correo", "sin-iniciar", 0, 2],
       ["n1", "activa", "completo", 2, 2],
     ]);
-    // 3,00 → 67 puntos, Avanzado → faltan 8 para Experto, with the night rubric's description.
-    expect(reporte.participantes[0].brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 8 });
+    // 3,00 → 67 puntos, Avanzado → faltan 9 para Experto, with the night rubric's description.
+    expect(reporte.participantes[0].brecha).toMatchObject({ nivelActual: 3, siguiente: 4, faltante: 9 });
     expect(reporte.participantes[0].indicadores[0].descripcionSiguiente).toBe(competenciaNoche.indicadores[0].niveles[4]);
   });
 

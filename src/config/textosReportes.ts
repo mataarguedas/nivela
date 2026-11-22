@@ -30,7 +30,7 @@ export const TEXTOS_REPORTES = {
   verGraficosDetallados: "Ver gráficos detallados",
   evaluadoresPorNivel: "Evaluadores por nivel en cada indicador",
   valorNivel: (valor: string, nivel: string) => `${valor} · ${nivel}`,
-  /** The report scale (PRD §7); the bands come formatted, e.g. "Básico 0–24". */
+  /** The report scale (PRD §7); the bands come formatted, e.g. "Básico 0–25". */
   escalaPuntos: (bandas: string) => `Puntajes de 0 a 100: ${bandas}.`,
   bandaNivel: (nivel: string, min: number, max: number) => `${nivel} ${min}–${max}`,
   conteoPorcentaje: (n: string, porcentaje: string) => `${n} · ${porcentaje}`,

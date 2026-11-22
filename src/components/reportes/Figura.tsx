@@ -97,7 +97,7 @@ export function LeyendaNiveles({ puntos = false }: { puntos?: boolean }) {
   );
 }
 
-/** "Puntajes de 0 a 100: Básico 0–24, …" under a report's KPI tiles (PRD §7). */
+/** "Puntajes de 0 a 100: Básico 0–25, …" under a report's KPI tiles (PRD §7). */
 export function EscalaPuntos() {
   const bandas = NIVELES.map((n) => TEXTOS_REPORTES.bandaNivel(n.etiqueta, RANGOS_PUNTOS[n.valor].min, RANGOS_PUNTOS[n.valor].max));
   return <p className="text-caption text-ink-2">{TEXTOS_REPORTES.escalaPuntos(bandas.join(" · "))}</p>;

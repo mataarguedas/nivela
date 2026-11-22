@@ -117,6 +117,28 @@ export type PosicionRanking = { id: string; etiqueta: string; puntaje: number; n
 /** How many places the "puntajes más altos" block shows (ties at the cut are all kept). */
 export const CANTIDAD_MEJORES = 5;
 
+/**
+ * The first places of a ranking already sorted best first (PRD §11.2,
+ * §11.4): standard competition ranking at display precision, so a tie
+ * shares the position and skips the next ones (1, 2, 2, 4…), and everyone
+ * tied at the cut stays in, so one of two equal scores is never ranked above
+ * the other.
+ */
+export function primerosLugares<T extends { puntaje: number }>(
+  ordenados: readonly T[],
+  cantidad: number = CANTIDAD_MEJORES,
+): (T & { posicion: number })[] {
+  const lugares: (T & { posicion: number })[] = [];
+  for (const [indice, elemento] of ordenados.entries()) {
+    const anterior = lugares.at(-1);
+    const posicion =
+      anterior && redondearPuntos(anterior.puntaje) === redondearPuntos(elemento.puntaje) ? anterior.posicion : indice + 1;
+    if (posicion > cantidad) break;
+    lugares.push({ ...elemento, posicion });
+  }
+  return lugares;
+}
+
 export type Destacado = PosicionRanking & {
   /** 1-based; participants with the same displayed puntaje share it (1, 2, 2, 4…). */
   posicion: number;
@@ -292,23 +314,15 @@ export function agregarReporte(
     // are ordered by code rather than by float noise.
     .sort((a, b) => redondearPuntos(b.puntaje) - redondearPuntos(a.puntaje) || a.id.localeCompare(b.id));
 
-  // Standard competition ranking at display precision: a tie shares the
-  // position and skips the next ones, and everyone tied at the cut stays in,
-  // so the block never ranks one of two equal scores above the other.
   const porId = new Map(reportesParticipantes.map((p) => [p.id, p]));
-  const mejores: Destacado[] = [];
-  for (const [indice, posicion] of ranking.entries()) {
-    const anterior = mejores.at(-1);
-    const lugar = anterior && redondearPuntos(anterior.puntaje) === redondearPuntos(posicion.puntaje) ? anterior.posicion : indice + 1;
-    if (lugar > CANTIDAD_MEJORES) break;
-    const participante = porId.get(posicion.id);
-    mejores.push({
-      ...posicion,
-      posicion: lugar,
+  const mejores: Destacado[] = primerosLugares(ranking).map((lugar) => {
+    const participante = porId.get(lugar.id);
+    return {
+      ...lugar,
       evaluaciones: participante?.evaluaciones ?? 0,
       medias: participante?.indicadores.map((i) => i.media) ?? [],
-    });
-  }
+    };
+  });
 
   const recibidas = reportesParticipantes.reduce((suma, p) => suma + p.evaluaciones, 0);
   const evaluadores = equipo.integrantes.length;
@@ -740,12 +754,22 @@ export function agregarConsolidado(
 /** A competencia named in a dashboard sentence, with its score. */
 export type CompetenciaDestacada = { id: string; nombre: string; puntaje: number };
 
+/** A top place of the Reporte consolidado (v1.12). */
+export type DestacadoConsolidado = PosicionRanking & {
+  posicion: number;
+  competenciasEvaluadas: number;
+  /** Puntaje general per competencia, aligned with ReporteConsolidado.competencias (null: none there). */
+  puntajes: (number | null)[];
+};
+
 export type TableroConsolidado = {
   /** The competencias with the highest and lowest puntaje del grupo (ties kept); empty without scores. */
   masFuertes: CompetenciaDestacada[];
   masDebiles: CompetenciaDestacada[];
   /** Participants by nivel of their promedio entre competencias. */
   conteoNiveles: Record<NivelValor, number>;
+  /** "Los 5 promedios más altos" (v1.12): the top places by promedio entre competencias, ties kept. */
+  mejores: DestacadoConsolidado[];
   // v1.11: no "Requieren atención" list. The docente asked that the report
   // never single out the participants with the lowest scores or in Básico.
 };
@@ -763,6 +787,25 @@ export function tableroConsolidado(reporte: ReporteConsolidado): TableroConsolid
   return {
     ...destacadas(disponibles),
     conteoNiveles: distribucion(reporte.participantes.flatMap((p) => (p.nivel === null ? [] : [p.nivel]))),
+    mejores: primerosLugares(
+      reporte.participantes
+        .flatMap((p) =>
+          p.promedio === null || p.nivel === null
+            ? []
+            : [
+                {
+                  id: p.id,
+                  etiqueta: p.etiqueta,
+                  puntaje: p.promedio,
+                  nivel: p.nivel,
+                  competenciasEvaluadas: p.competenciasEvaluadas,
+                  puntajes: p.celdas.map((c) => c?.puntaje ?? null),
+                },
+              ],
+        )
+        // Display precision first, then id, like the Reporte general's ranking.
+        .sort((a, b) => redondearPuntos(b.puntaje) - redondearPuntos(a.puntaje) || a.id.localeCompare(b.id)),
+    ),
   };
 }
 

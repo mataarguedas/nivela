@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MejoresPuntajes } from "@/components/reportes/MejoresPuntajes";
-import type { Destacado } from "@/lib/reportes";
+import { MejoresConsolidado, MejoresPuntajes } from "@/components/reportes/MejoresPuntajes";
+import type { CompetenciaConsolidada, Destacado, DestacadoConsolidado } from "@/lib/reportes";
 
 // The "Los 5 puntajes más altos" cards: shared positions on ties, es-CR
 // numbers, level name next to its color, and a link per participant.
@@ -34,5 +34,34 @@ describe("MejoresPuntajes", () => {
     expect(within(segundo).getByText("1 evaluación")).toBeInTheDocument();
     // A missing indicator mean shows a dash.
     expect(within(tercero).getByText("—")).toBeInTheDocument();
+  });
+});
+
+describe("MejoresConsolidado (v1.12)", () => {
+  const competencia = (id: string, nombre: string, disponible: boolean) => ({ id, nombre, disponible }) as CompetenciaConsolidada;
+  const competencias = [
+    competencia("adaptabilidad", "Adaptabilidad", true),
+    competencia("orientacion-detalle", "Orientación al detalle", false),
+    competencia("pensamiento-critico", "Pensamiento crítico y analítico", true),
+  ];
+  const consolidados: DestacadoConsolidado[] = [
+    { id: "P03", etiqueta: "1-0000-0003", puntaje: 80.4, nivel: 4, posicion: 1, competenciasEvaluadas: 2, puntajes: [83.3, null, 77.5] },
+    { id: "P01", etiqueta: "Participante 01", puntaje: 66.7, nivel: 3, posicion: 2, competenciasEvaluadas: 1, puntajes: [null, null, 66.7] },
+  ];
+
+  it("promedio, competencias evaluadas y el puntaje de cada competencia con plantilla; enlace al Reporte del participante", () => {
+    render(<MejoresConsolidado mejores={consolidados} competencias={competencias} />);
+    const [primero, segundo] = screen.getAllByRole("listitem");
+    expect(within(primero).getByRole("link", { name: "1-0000-0003" })).toHaveAttribute("href", "/reportes/consolidado/P03");
+    expect(within(primero).getByText("80")).toBeInTheDocument();
+    expect(within(primero).getByText("Experto")).toBeInTheDocument();
+    expect(within(primero).getByText("2 de 2 competencias")).toBeInTheDocument();
+    expect(within(primero).getByText("Adaptabilidad")).toBeInTheDocument();
+    expect(within(primero).getByText("83")).toBeInTheDocument();
+    expect(within(primero).getByText("78")).toBeInTheDocument();
+    // A competencia without a rubric in the jornada has no column.
+    expect(within(primero).queryByText("Orientación al detalle")).toBeNull();
+    expect(within(segundo).getByText("1 de 2 competencias")).toBeInTheDocument();
+    expect(within(segundo).getByText("—")).toBeInTheDocument();
   });
 });

@@ -15,6 +15,7 @@ import {
   agregarConsolidado,
   agregarParticipanteConsolidado,
   agregarReporte,
+  primerosLugares,
   tableroConsolidado,
   type EntradaConsolidado,
   type FilaReporte,
@@ -224,6 +225,39 @@ describe("Puntaje del grupo por competencia (título y barras)", () => {
   });
 });
 
+describe("tableroConsolidado: los 5 promedios más altos (v1.12)", () => {
+  it("ordena por promedio entre competencias, con los puntajes de cada competencia y el carné", () => {
+    // P03 67 (only Pensamiento crítico) · P01 (83 + 33) / 2 = 58 · P02 33 (only Adaptabilidad).
+    const { mejores } = tableroConsolidado(construir());
+    expect(mejores.map((m) => [m.id, m.etiqueta, m.posicion, m.nivel, m.competenciasEvaluadas])).toEqual([
+      ["P03", "1-0000-0003", 1, 3, 1],
+      ["P01", "1-0000-0001", 2, 3, 2],
+      ["P02", "Participante 02", 3, 2, 1],
+    ]);
+    expect(mejores[1].puntaje).toBeCloseTo(pts(2.75), 10);
+    expect(mejores[1].puntajes).toEqual([expect.closeTo(pts(3.5), 10), expect.closeTo(pts(2), 10), null]);
+  });
+
+  it("deja fuera a quien no tiene promedio", () => {
+    const vacio = agregarConsolidado(participantes, [{ id: "orientacion-detalle", nombre: "Orientación al detalle", reporte: null }]);
+    expect(tableroConsolidado(vacio).mejores).toEqual([]);
+  });
+});
+
+describe("primerosLugares", () => {
+  const lista = (puntajes: number[]) => puntajes.map((puntaje, i) => ({ id: `P0${i + 1}`, puntaje }));
+
+  it("los empates en puntos enteros comparten la posición y saltan las siguientes", () => {
+    expect(primerosLugares(lista([90, 80.2, 79.8, 70])).map((l) => l.posicion)).toEqual([1, 2, 2, 4]);
+  });
+
+  it("incluye a todos los empatados en el corte y corta estricto sin empate", () => {
+    expect(primerosLugares(lista([90, 80, 70, 60, 50, 50, 40])).map((l) => l.posicion)).toEqual([1, 2, 3, 4, 5, 5]);
+    expect(primerosLugares(lista([90, 80, 70, 60, 50, 45]))).toHaveLength(5);
+    expect(primerosLugares(lista([90, 80, 70]), 2)).toHaveLength(2);
+  });
+});
+
 // Tablero (PRD §11.4) with `conBasico`: Pensamiento crítico becomes P01 2 · P02 1 · P03 3
 // → group 2,00 → 33. Promedios: P01 2,75 → 58 · P02 (2 + 1) / 2 = 1,50 → 17 (Básico) · P03 3,00 → 67.
 // Group (2,75 + 1,5 + 3) / 3 = 2,4167 → 47 Intermedio, 3 to Avanzado. P02 is Básico in Pensamiento crítico (0).
@@ -237,7 +271,7 @@ describe("tableroConsolidado y «En pocas palabras»", () => {
     ]);
     expect(tablero.conteoNiveles).toEqual({ 1: 1, 2: 0, 3: 2, 4: 0 });
     // No "Requieren atención" list: the report never singles out the lowest scores.
-    expect(Object.keys(tablero).sort()).toEqual(["conteoNiveles", "masDebiles", "masFuertes"]);
+    expect(Object.keys(tablero).sort()).toEqual(["conteoNiveles", "masDebiles", "masFuertes", "mejores"]);
     expect(parrafoConsolidado(reporte, tablero)).toBe(
       "El grupo alcanzó un nivel Intermedio (47) como promedio entre competencias. Le faltan 4 puntos para Avanzado. " +
         "La competencia más fuerte es «Adaptabilidad» (58) y la que más necesita refuerzo es «Pensamiento crítico y analítico» (33).",

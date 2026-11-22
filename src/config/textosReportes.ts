@@ -161,6 +161,10 @@ export const TEXTOS_REPORTES = {
     sinPlantilla: "Sin plantilla en esta jornada",
     evaluadas: "Competencias evaluadas",
     promedio: "Promedio",
+    // "Los 5 promedios más altos" (PRD §11.4, v1.12). Numbers come formatted.
+    mejoresTitulo: (n: number) => `Los ${n} promedios más altos`,
+    mejoresDescripcion: "Según el promedio entre competencias. Los empates comparten la posición.",
+    competenciasEvaluadasCuenta: (n: string, total: string) => `${n} de ${total} competencias`,
     verIndividual: (participante: string, competencia: string) => `Reporte individual de ${participante} en ${competencia}`,
     titulos: {
       sinPuntajes: "Aún no hay puntajes por competencia.",

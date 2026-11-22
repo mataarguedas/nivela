@@ -117,6 +117,12 @@ test.describe("como docente", () => {
     expect(filas).toBeGreaterThan(1);
     // Every colored cell also shows its score (color never carries the level alone).
     await expect(mapa.getByRole("cell").first()).toHaveText(/^(\d{1,3} · (Básico|Intermedio|Avanzado|Experto)|—|Aus\.Ausente)$/);
+    // "Los 5 promedios más altos" (v1.12): up to 5 places (more only on a tie at the cut), each opening the Reporte del participante.
+    const mejores = principal(page).getByRole("region", { name: "Los 5 promedios más altos" }).getByRole("listitem");
+    expect(await mejores.count()).toBeGreaterThan(0);
+    await expect(mejores.first()).toHaveAttribute("value", "1");
+    await expect(mejores.first().getByRole("link")).toHaveAttribute("href", /^\/reportes\/consolidado\/P\d{2}$/);
+    await expect(mejores.first()).toContainText(/\d+ de \d+ competencias/);
     await expect(principal(page).getByRole("heading", { name: "Requieren atención" })).toHaveCount(0);
     await expect(principal(page).getByText(/al menos una competencia en nivel Básico/)).toHaveCount(0);
     await sinDesborde(page);

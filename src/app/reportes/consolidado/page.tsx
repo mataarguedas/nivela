@@ -9,6 +9,7 @@ import {
   parrafoConsolidado,
 } from "@/components/reportes/datosGraficos";
 import { EscalaPuntos, FiguraGrafico, Kpi, SeccionReporte, TablaEquivalente } from "@/components/reportes/Figura";
+import { MejoresConsolidado } from "@/components/reportes/MejoresPuntajes";
 import { MapaNiveles } from "@/components/reportes/MapaNiveles";
 import { TablaConsolidada } from "@/components/reportes/TablaConsolidada";
 import { clasesBoton } from "@/components/ui/Boton";
@@ -19,14 +20,14 @@ import { TEXTOS } from "@/config/textos";
 import { TEXTOS_REPORTES } from "@/config/textosReportes";
 import { formatearPuntos, formatearEntero, formatearPorcentaje } from "@/lib/formato";
 import { proporcion } from "@/lib/puntajes";
-import { tableroConsolidado, type CompetenciaConsolidada, type ReporteConsolidado } from "@/lib/reportes";
+import { CANTIDAD_MEJORES, tableroConsolidado, type CompetenciaConsolidada, type ReporteConsolidado } from "@/lib/reportes";
 import { textoBrechaCorto } from "@/lib/textoBrecha";
 import { cargarConsolidado } from "../cargarReporte";
 import { exigirDocente } from "../exigirDocente";
 
 // Reporte consolidado (PRD §11.4): the five competencias of the session's
 // jornada together. KPI tiles, then the dashboard ("Tablero": a plain-language
-// summary and the "Mapa de niveles" heatmap; v1.11 removed "Requieren atención"), the group's puntaje per competencia (simple
+// summary, "Los 5 promedios más altos" (v1.12) and the "Mapa de niveles" heatmap; v1.11 removed "Requieren atención"), the group's puntaje per competencia (simple
 // bars plus a table linking to each Reporte general), participants per level
 // by their promedio entre competencias, and one sortable table with every
 // participant's puntaje general in each competencia. Everything comes from
@@ -134,6 +135,15 @@ function Contenido({ reporte }: { reporte: ReporteConsolidado }) {
 
       <SeccionReporte id="en-pocas-palabras" titulo={t.resumenTitulo}>
         <p className="text-body text-ink">{parrafoConsolidado(reporte, tablero)}</p>
+      </SeccionReporte>
+
+      <SeccionReporte id="mejores" titulo={t.mejoresTitulo(CANTIDAD_MEJORES)}>
+        <p className="-mt-2 mb-4 text-caption text-ink-2">{t.mejoresDescripcion}</p>
+        {tablero.mejores.length === 0 ? (
+          <p className="text-body text-ink-3">{t.parrafo.sinPromedio}</p>
+        ) : (
+          <MejoresConsolidado mejores={tablero.mejores} competencias={reporte.competencias} />
+        )}
       </SeccionReporte>
 
       <SeccionReporte id="mapa" titulo={t.mapaNiveles} mensaje={t.mapaNivelesMensaje}>

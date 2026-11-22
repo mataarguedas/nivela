@@ -89,7 +89,7 @@ describe("datosResultados", () => {
     expect(datos.indicadores[2].descripcionSiguiente).toBe(competencia.indicadores[2].niveles[3]);
     // Nothing about evaluators, ratings, observations or AI.
     const texto = JSON.stringify(datos);
-    for (const prohibido of ["Evaluadora Uno", "Evaluador Dos", "e1", "Observación secreta", "0.87", "100000002"]) {
+    for (const prohibido of ["Evaluadora Uno", "Evaluador Dos", "e1", "Observación secreta", "0.87", "100000002", "1-0000-0002"]) {
       expect(texto).not.toContain(prohibido);
     }
   });
@@ -117,9 +117,9 @@ describe("destinatarios y omitidos", () => {
   it("separa destinatarios y omitidos con su motivo y su último envío, etiquetados por carné", () => {
     const envio: UltimoEnvio = { estado: "enviado", enviadoEn: "2026-11-17T20:00:00.000Z", enviados: 1 };
     const seleccion = seleccionarDestinatarios(reporte.participantes, new Set(["P01", "P03", "P04"]), new Map([["P01", envio]]));
-    expect(seleccion.destinatarios).toEqual([{ id: "P01", etiqueta: "100000001", evaluaciones: 2, ultimoEnvio: envio }]);
+    expect(seleccion.destinatarios).toEqual([{ id: "P01", etiqueta: "1-0000-0001", evaluaciones: 2, ultimoEnvio: envio }]);
     expect(seleccion.omitidos.map((o) => [o.id, o.etiqueta, o.motivo])).toEqual([
-      ["P02", "100000002", "sin-correo"],
+      ["P02", "1-0000-0002", "sin-correo"],
       ["P03", "Participante 03", "ausente"],
       ["P04", "Participante 04", "sin-evaluaciones"],
     ]);
@@ -189,7 +189,7 @@ describe("plantilla de resultados", () => {
 
   it("nunca incluye nombres de evaluadores, calificaciones individuales, observaciones ni el carné", () => {
     for (const parte of [correo.html, correo.texto, correo.asunto]) {
-      for (const prohibido of ["Evaluadora Uno", "Evaluador Dos", "Observación secreta", "100000002", "IA"]) {
+      for (const prohibido of ["Evaluadora Uno", "Evaluador Dos", "Observación secreta", "100000002", "1-0000-0002", "IA"]) {
         expect(parte).not.toContain(prohibido);
       }
     }

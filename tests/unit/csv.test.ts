@@ -43,7 +43,7 @@ describe("generarCsv", () => {
   it("una fila manual: evaluador con tildes, curso, carné (nunca el nombre), número de indicador, nivel y fecha en hora de Costa Rica", () => {
     const csv = generarCsv("manana", competencia, equipo, [fila()], PARTICIPANTES);
     const [, linea] = lineas(csv);
-    expect(linea).toBe("Mañana,Adaptabilidad,Ramsés Salas Vargas,AGRH 315 Psicología 2,P01,100000002,1,3,Avanzado,manual,,,,25/10/2026 14:05");
+    expect(linea).toBe("Mañana,Adaptabilidad,Ramsés Salas Vargas,AGRH 315 Psicología 2,P01,1-0000-0002,1,3,Avanzado,manual,,,,25/10/2026 14:05");
     expect(csv).not.toContain("Ana Pérez");
   });
 
@@ -58,7 +58,7 @@ describe("generarCsv", () => {
 
   it("una persona evaluadora fuera de config se exporta con su id y sin curso", () => {
     const [, linea] = lineas(generarCsv("manana", competencia, equipo, [fila({ evaluadorId: "antiguo-id" })], PARTICIPANTES));
-    expect(linea.startsWith("Mañana,Adaptabilidad,antiguo-id,,P01,100000002,")).toBe(true);
+    expect(linea.startsWith("Mañana,Adaptabilidad,antiguo-id,,P01,1-0000-0002,")).toBe(true);
   });
 
   it("la columna jornada nombra la jornada exportada", () => {

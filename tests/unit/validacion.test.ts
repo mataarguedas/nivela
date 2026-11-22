@@ -298,6 +298,17 @@ describe("validarParticipantes (PUT /api/admin/participantes)", () => {
     expect(validarParticipantes(lista(["Ana"], { confirmar: true }))).toMatchObject({ ok: true, datos: { confirmar: true } });
   });
 
+  it("guarda una cédula escrita con guiones como sus 9 dígitos y la reconoce repetida (v1.9)", () => {
+    expect(validarParticipantes(lista(["Ana", "Bea"], { carnets: ["1-0000-0001", "A-12345"] }))).toMatchObject({
+      ok: true,
+      datos: { carnets: ["100000001", "A-12345"] },
+    });
+    expect(validarParticipantes(lista(["Ana", "Bea"], { carnets: ["100000001", "1-0000-0001"] }))).toEqual({
+      ok: false,
+      error: MENSAJES_VALIDACION.carnetRepetido(2),
+    });
+  });
+
   it("acepta un grupo por nombre (v1.8) y rechaza uno fuera de 1…20 o una lista de otro largo", () => {
     expect(validarParticipantes(lista(["Ana", "Bea"], { grupos: [2, null] }))).toMatchObject({
       ok: true,

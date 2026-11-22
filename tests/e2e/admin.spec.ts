@@ -175,10 +175,12 @@ test("el admin define 5 participantes con nombre, carné y grupo; quien evalúa 
   await expect(tabla.locator("tbody tr th")).toHaveCount(5);
   // The table is sorted by score, so compare as a set.
   const etiquetas = (await tabla.locator("tbody tr th").allTextContents()).map((t) => t.trim()).sort();
-  expect(etiquetas).toEqual(["900000001", "900000002", "900000004", "900000005", "Participante 03"]);
+  // A 9-digit cédula is shown as "0-0000-0000" (v1.9).
+  expect(etiquetas).toEqual(["9-0000-0001", "9-0000-0002", "9-0000-0004", "9-0000-0005", "Participante 03"]);
   await expect(reporte.getByRole("main")).not.toContainText("Ana Pérez Solano");
   const csv = await (await reporte.request.get("/api/reportes/adaptabilidad/csv")).text();
   expect(csv).not.toContain("Ana Pérez Solano");
+  expect(csv).toContain(",9-0000-0001,");
   await docente.close();
 });
 

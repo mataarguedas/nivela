@@ -92,9 +92,9 @@ describe("participantes en la base de datos", () => {
     await guardar(["Ana Pérez", "Bea Solís", null], "noche", ["100000001", null, "200000002"]);
     const activos = participantesActivos(await leer("noche"), 20);
     expect(activos.map((p) => [p.etiqueta, p.etiquetaReporte])).toEqual([
-      ["Ana Pérez", "100000001"],
+      ["Ana Pérez", "1-0000-0001"],
       ["Bea Solís", "Participante 02"],
-      ["Participante 03", "200000002"],
+      ["Participante 03", "2-0000-0002"],
     ]);
     // Saving again with other carnets replaces them.
     await guardar(["Ana Pérez", "Bea Solís", null], "noche", [null, "300000003", "200000002"]);

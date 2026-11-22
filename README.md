@@ -90,7 +90,16 @@ Localmente, edite los mismos nombres en `.env.local` y reinicie `npm run dev`.
 2. Escriba la cantidad de participantes y el nombre, el carné y (opcional) el correo de cada uno, o use **Pegar lista** para pegar desde una hoja de cálculo las columnas carné, nombre y correo (separadas por tabulación o por «;», en cualquier orden; el campo con «@» se toma como correo) o solo los nombres, una persona por línea.
 3. Toque **Guardar cambios**. Las personas evaluadoras y los reportes ven la lista nueva al cargar la siguiente página; no hace falta volver a desplegar.
 
-Escriba primero el nombre de pila y después los apellidos («Ana Lucía Mora Solís»): así lo ven las personas evaluadoras y así saluda el correo de resultados. El campo de nombre rechaza correos y números de teléfono; un nombre vacío se muestra como «Participante 07». **Los reportes y el CSV muestran solo el carné, nunca el nombre**; sin carné, el reporte muestra «Participante 07». Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones. El correo del participante solo sirve para enviarle sus resultados; nunca aparece en los reportes ni en el CSV.
+Escriba primero el nombre de pila y después los apellidos («Ana Lucía Mora Solís»): así lo ven las personas evaluadoras y así saluda el correo de resultados. El campo de nombre rechaza correos y números de teléfono; un nombre vacío se muestra como «Participante 07». **Los reportes y el CSV muestran solo el carné, nunca el nombre**; sin carné, el reporte muestra «Participante 07». Una cédula de 9 dígitos se muestra como «0-0000-0000» (por ejemplo, `100000001` se ve «1-0000-0001») y se guarda con sus 9 dígitos, la escriba con guiones o sin ellos; otros carnés (un DIMEX de 12 dígitos, uno con letras) se muestran tal cual.
+
+**Carnés y correos desde las listas de matrícula.** Con los nombres ya cargados, los «Listado de Alumnos Matriculados» en PDF (uno por grupo del curso; guárdelos en `privado/matricula/`) llenan el carné y el correo de cada participante, emparejados por nombre, sin cambiar el orden, los grupos ni las evaluaciones:
+
+```bash
+npm run participantes:matricula -- --jornada manana --archivo privado/matricula/lista-1.pdf --archivo privado/matricula/lista-2.pdf --simular
+npm run participantes:matricula -- --jornada manana --archivo privado/matricula/lista-1.pdf --archivo privado/matricula/lista-2.pdf --produccion
+```
+
+Necesita `pdftotext` (viene con Git para Windows). Si una fila no coincide con nadie, o con varias personas, no se importa nada y el script indica la posición (nunca el nombre). Un correo cortado en el PDF se omite y se avisa; escríbalo en `/admin`. Si baja la cantidad, los participantes de más se **ocultan** sin borrar nada; si ya tenían evaluaciones, la app pide confirmación, y al subir la cantidad otra vez reaparecen con sus nombres y evaluaciones. El correo del participante solo sirve para enviarle sus resultados; nunca aparece en los reportes ni en el CSV.
 
 ## Cuentas de los evaluadores
 

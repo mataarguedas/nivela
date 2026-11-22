@@ -129,7 +129,7 @@ describe("GET /api/reportes/[competencia]/csv", () => {
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const texto = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
     // The participant appears by carnet, never by name (PRD §10).
-    expect(texto).toContain("Mañana,Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,100000003,2,2,Intermedio,manual");
+    expect(texto).toContain("Mañana,Adaptabilidad,Kristel Barrantes López,AGRH 613 Seminario Integrado de RRHH,P03,1-0000-0003,2,2,Intermedio,manual");
     expect(texto).not.toContain("Carla Mora");
     expect(texto).toContain(OBSERVACION);
   });

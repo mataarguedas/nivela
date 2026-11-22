@@ -159,13 +159,13 @@ describe("agregarReporte", () => {
         medias: p01.indicadores.map((i) => i.media),
       },
       // The admin's carnet reaches the report as the label, not the name.
-      expect.objectContaining({ id: "P02", etiqueta: "100000002", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5].map(pts) }),
+      expect.objectContaining({ id: "P02", etiqueta: "1-0000-0002", posicion: 2, nivel: 2, evaluaciones: 2, medias: [2, 2, 2, 2.5].map(pts) }),
     ]);
   });
 
   it("los reportes identifican por carné (o «Participante NN») y nunca incluyen nombres", () => {
-    expect(reporte.participantes.map((p) => p.etiqueta)).toEqual(["Participante 01", "100000002", "Participante 03"]);
-    expect(reporte.cobertura.participantes.map((p) => p.etiqueta)).toEqual(["Participante 01", "100000002", "Participante 03"]);
+    expect(reporte.participantes.map((p) => p.etiqueta)).toEqual(["Participante 01", "1-0000-0002", "Participante 03"]);
+    expect(reporte.cobertura.participantes.map((p) => p.etiqueta)).toEqual(["Participante 01", "1-0000-0002", "Participante 03"]);
     const texto = JSON.stringify(reporte);
     expect(texto).not.toContain("Ana Pérez");
     expect(texto).not.toContain("Carla Mora");

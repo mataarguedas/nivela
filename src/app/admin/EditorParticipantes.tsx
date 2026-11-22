@@ -7,7 +7,13 @@ import { Campo, CampoTexto } from "@/components/ui/Campo";
 import { Dialogo } from "@/components/ui/Dialogo";
 import { useToast } from "@/components/ui/Toast";
 import type { JornadaId } from "@/config/jornadas";
-import { CANTIDAD_MAXIMA_PARTICIPANTES, esCarnetValido, esGrupoValido, esNombreValido } from "@/config/participantes";
+import {
+  CANTIDAD_MAXIMA_PARTICIPANTES,
+  esCarnetValido,
+  esGrupoValido,
+  esNombreValido,
+  formatearCarnet,
+} from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import type { EstadoParticipantes } from "@/lib/db/participantes";
@@ -90,7 +96,7 @@ export function EditorParticipantes({ inicial, jornada }: { inicial: EstadoParti
   const [textoCantidad, setTextoCantidad] = useState(String(inicial.cantidad));
   const [cantidad, setCantidad] = useState(inicial.cantidad);
   const [nombres, setNombres] = useState(() => completar(inicial.nombres.map((n) => n ?? ""), inicial.cantidad));
-  const [carnets, setCarnets] = useState(() => completar(inicial.carnets.map((c) => c ?? ""), inicial.cantidad));
+  const [carnets, setCarnets] = useState(() => completar(inicial.carnets.map((c) => (c ? formatearCarnet(c) : "")), inicial.cantidad));
   const [grupos, setGrupos] = useState(() =>
     completar((inicial.grupos ?? []).map((g) => (g === null ? "" : String(g))), inicial.cantidad),
   );

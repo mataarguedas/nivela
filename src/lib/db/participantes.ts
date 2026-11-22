@@ -265,3 +265,22 @@ export function sentenciasAsignarGrupos<B extends Bd>(
       .where(and(eq(participantes.jornada, jornada), eq(participantes.numero, numero))),
   );
 }
+
+/**
+ * v1.9 (`participantes:matricula`, PRD §5.10): set the carnet of existing
+ * rows, by numero, and their email when the enrollment list has one (null
+ * keeps the stored email). Names and groups stay as they are. One statement
+ * per row, for one neon-http batch (at most 99).
+ */
+export function sentenciasAsignarMatricula<B extends Bd>(
+  db: B,
+  jornada: JornadaId,
+  cambios: readonly { numero: number; carnet: string; correo: string | null }[],
+) {
+  return cambios.map(({ numero, carnet, correo }) =>
+    db
+      .update(participantes)
+      .set(correo === null ? { carnet, updatedAt: sql`now()` } : { carnet, correo, updatedAt: sql`now()` })
+      .where(and(eq(participantes.jornada, jornada), eq(participantes.numero, numero))),
+  );
+}

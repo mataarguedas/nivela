@@ -146,7 +146,7 @@ describe("agregarConsolidado", () => {
 
   it("cada participante tiene su puntaje general por competencia (por carné) y el promedio entre competencias", () => {
     const [p01, p02, p03] = reporte.participantes;
-    expect(p01.etiqueta).toBe("100000001");
+    expect(p01.etiqueta).toBe("1-0000-0001");
     expect(p01.celdas).toEqual([
       { puntaje: expect.closeTo(pts(3.5), 10), nivel: 4, evaluaciones: 1, asistencia: null },
       { puntaje: expect.closeTo(pts(2), 10), nivel: 2, evaluaciones: 1, asistencia: null },
@@ -283,7 +283,7 @@ describe("agregarParticipanteConsolidado", () => {
     const reporte = agregarParticipanteConsolidado(participantes, entradas(), "P01")!;
     expect(reporte).toMatchObject({
       id: "P01",
-      etiqueta: "100000001",
+      etiqueta: "1-0000-0001",
       promedio: expect.closeTo(pts(2.75), 10),
       nivel: 3,
       competenciasEvaluadas: 2,
@@ -333,9 +333,9 @@ describe("generarCsvConsolidado", () => {
         "competencias_evaluadas,promedio_competencias,nivel_promedio",
     );
     // Whole points (0–100), like the reports.
-    expect(p01).toBe("Mañana,P01,100000001,83,Experto,1,33,Intermedio,1,2,58,Avanzado");
+    expect(p01).toBe("Mañana,P01,1-0000-0001,83,Experto,1,33,Intermedio,1,2,58,Avanzado");
     expect(p02).toBe("Mañana,P02,,33,Intermedio,1,,,0,1,33,Intermedio");
-    expect(p03).toBe("Mañana,P03,100000003,,,0,67,Avanzado,1,1,67,Avanzado");
+    expect(p03).toBe("Mañana,P03,1-0000-0003,,,0,67,Avanzado,1,1,67,Avanzado");
     expect(fin).toBe("");
     expect(csv).not.toMatch(/Prueba/);
   });
@@ -373,7 +373,7 @@ describe("GET /api/reportes/consolidado/csv", () => {
     expect(dbParticipantes.obtenerTodosLosParticipantes).toHaveBeenCalledWith("noche");
     expect(respuesta.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
     expect(respuesta.headers.get("Content-Disposition")).toMatch(/^attachment; filename="nivela-consolidado-noche-\d{4}-\d{2}-\d{2}\.csv"$/);
-    expect(await respuesta.text()).toContain("Noche,P01,100000001,");
+    expect(await respuesta.text()).toContain("Noche,P01,1-0000-0001,");
   });
 
   it("500 con mensaje en español si la base de datos falla", async () => {

@@ -14,7 +14,7 @@ import type { Competencia } from "@/config/competencias";
 import type { Equipo } from "@/config/equipos";
 import { nombreJornada, type JornadaId } from "@/config/jornadas";
 import { esNivelValor, obtenerNivel } from "@/config/niveles";
-import type { Participante } from "@/config/participantes";
+import { formatearCarnet, type Participante } from "@/config/participantes";
 import { formatearFechaHora } from "@/lib/formato";
 import { redondear2, redondearPuntos } from "@/lib/puntajes";
 import type { FilaReporte, ReporteConsolidado } from "@/lib/reportes";
@@ -63,7 +63,7 @@ export function generarCsv(
 ): string {
   const integrantes = new Map(equipo.integrantes.map((i) => [i.id, i]));
   const numeros = new Map(competencia.indicadores.map((i) => [i.id, i.numero]));
-  const carnets = new Map(participantes.map((p) => [p.id, p.carnet]));
+  const carnets = new Map(participantes.map((p) => [p.id, p.carnet ? formatearCarnet(p.carnet) : null]));
 
   const lineas = filas.map((f) => {
     const integrante = integrantes.get(f.evaluadorId);
@@ -116,7 +116,7 @@ export function generarCsvConsolidado(
   reporte: ReporteConsolidado,
   participantes: readonly Pick<Participante, "id" | "carnet">[],
 ): string {
-  const carnets = new Map(participantes.map((p) => [p.id, p.carnet]));
+  const carnets = new Map(participantes.map((p) => [p.id, p.carnet ? formatearCarnet(p.carnet) : null]));
   const indices = reporte.competencias.flatMap((c, i) => (c.disponible ? [i] : []));
   const encabezado = [
     ...COLUMNAS_CSV_CONSOLIDADO.inicio,

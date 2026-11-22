@@ -24,7 +24,7 @@ export type Participante = {
   grupo: number | null;
   /** What evaluators and the admin see: the name, or "Participante NN" without one. */
   etiqueta: string;
-  /** What the reports and the CSV show: the carnet, or "Participante NN" without one. Never the name. */
+  /** What the reports and the CSV show: the carnet (a cédula as "0-0000-0000"), or "Participante NN" without one. Never the name. */
   etiquetaReporte: string;
 };
 
@@ -88,6 +88,31 @@ export function esCarnetValido(carnet: string): boolean {
   return carnet === "" || (carnet.length <= LARGO_MAXIMO_CARNET && CARNET.test(carnet));
 }
 
+// A Costa Rican cédula: 9 digits, written "0-0000-0000" (PRD §5.10, v1.9).
+const CEDULA = /^\d{9}$/;
+const SEPARADORES_CARNET = /[\s-]/g;
+
+/**
+ * The stored form of a carnet: a cédula typed with hyphens or spaces
+ * ("1-0000-0001") is kept as its 9 digits, so it compares equal to the same
+ * number typed without them. Anything else (a 12-digit DIMEX, a carnet with
+ * letters) is kept as typed, trimmed.
+ */
+export function normalizarCarnet(carnet: string): string {
+  const limpio = carnet.trim();
+  const digitos = limpio.replace(SEPARADORES_CARNET, "");
+  return CEDULA.test(digitos) ? digitos : limpio;
+}
+
+/**
+ * How a carnet is shown (PRD §5.10, §11, v1.9): a 9-digit cédula as
+ * "0-0000-0000" ("100000001" → "1-0000-0001"); any other carnet as stored.
+ */
+export function formatearCarnet(carnet: string): string {
+  const digitos = normalizarCarnet(carnet);
+  return CEDULA.test(digitos) ? `${digitos[0]}-${digitos.slice(1, 5)}-${digitos.slice(5)}` : digitos;
+}
+
 /** "P01".."P99": the shape of any participant id, active or not. */
 export function esIdParticipante(valor: string): boolean {
   const coincidencia = /^P(\d{2})$/.exec(valor);
@@ -115,7 +140,7 @@ export function crearParticipante(
     carnet: carnetLimpio,
     grupo: grupo !== null && esGrupoValido(grupo) ? grupo : null,
     etiqueta: limpio ?? etiquetaNumero(numero),
-    etiquetaReporte: carnetLimpio ?? etiquetaNumero(numero),
+    etiquetaReporte: carnetLimpio ? formatearCarnet(carnetLimpio) : etiquetaNumero(numero),
   };
 }
 

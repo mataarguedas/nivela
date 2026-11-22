@@ -14,6 +14,7 @@ import {
   esGrupoValido,
   esIdParticipante,
   esNombreValido,
+  normalizarCarnet,
 } from "@/config/participantes";
 import { TEXTOS_ADMIN } from "@/config/textosAdmin";
 import { formatearEntero } from "@/lib/formato";
@@ -326,7 +327,8 @@ const esquemaParticipantes = z.object({
         .string()
         .trim()
         .refine(esCarnetValido)
-        .transform((t) => (t ? t : null)),
+        // A cédula is stored as its 9 digits, however it was typed (v1.9).
+        .transform((t) => (t ? normalizarCarnet(t) : null)),
     )
     .max(CANTIDAD_MAXIMA_PARTICIPANTES),
   // One email (or blank) per name, same order (PRD §5.10, §5.14): trimmed,
@@ -364,7 +366,7 @@ export function indiceCarnetRepetido(carnets: readonly (string | null)[]): numbe
   const vistos = new Set<string>();
   for (const [i, carnet] of carnets.entries()) {
     if (carnet === null) continue;
-    const clave = carnet.toUpperCase();
+    const clave = normalizarCarnet(carnet).toUpperCase();
     if (vistos.has(clave)) return i;
     vistos.add(clave);
   }

@@ -23,6 +23,8 @@ import {
   CANTIDAD_PARTICIPANTES_PREDETERMINADA,
   crearParticipante,
   esCarnetValido,
+  formatearCarnet,
+  normalizarCarnet,
   esIdParticipante,
   esNombreValido,
   generarParticipantes,
@@ -395,9 +397,27 @@ describe("participantes", () => {
       nombre: "Ana Pérez",
       carnet: "100000001",
       etiqueta: "Ana Pérez",
-      etiquetaReporte: "100000001",
+      etiquetaReporte: "1-0000-0001",
     });
     expect(crearParticipante(7, "Ana Pérez", "  ")).toMatchObject({ carnet: null, etiquetaReporte: "Participante 07" });
+  });
+
+  it("una cédula de 9 dígitos se muestra «0-0000-0000»; otros carnés, tal cual (v1.9)", () => {
+    expect(formatearCarnet("100000001")).toBe("1-0000-0001");
+    expect(formatearCarnet("512345678")).toBe("5-1234-5678");
+    expect(formatearCarnet("5-1234-5678")).toBe("5-1234-5678");
+    expect(formatearCarnet(" 5 1234 5678 ")).toBe("5-1234-5678");
+    for (const otro of ["155800000001", "A-12345", "DIMEX1234567", "12345678", "1234567890"]) {
+      expect(formatearCarnet(otro)).toBe(otro);
+    }
+    expect(crearParticipante(1, null, "155800000001").etiquetaReporte).toBe("155800000001");
+  });
+
+  it("una cédula con guiones o espacios se guarda como sus 9 dígitos (v1.9)", () => {
+    expect(normalizarCarnet("1-0000-0001")).toBe("100000001");
+    expect(normalizarCarnet(" 100000001 ")).toBe("100000001");
+    expect(normalizarCarnet("A-12345")).toBe("A-12345");
+    expect(normalizarCarnet("1-2345")).toBe("1-2345");
   });
 
   it("carnés: números, letras y guiones, hasta 20 caracteres; vacío es válido (sin carné)", () => {

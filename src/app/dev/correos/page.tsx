@@ -54,6 +54,12 @@ async function Buzon() {
             <dd>{m.plantilla}</dd>
             <dt className="text-ink-2">Enviado</dt>
             <dd>{formatearFechaHora(m.enviadoEn)}</dd>
+            {m.adjuntos.length > 0 && (
+              <>
+                <dt className="text-ink-2">Adjuntos</dt>
+                <dd>{m.adjuntos.map((a) => `${a.nombre} (${Math.ceil(a.bytes / 1024)} KB)`).join(", ")}</dd>
+              </>
+            )}
           </dl>
           {/* sandbox="": the email's HTML can't run scripts or navigate this page. */}
           <iframe

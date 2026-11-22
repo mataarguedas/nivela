@@ -294,6 +294,11 @@ export const TEXTOS_ENVIO = {
   resumenErrores: (n: number) => (n === 1 ? "1 correo no se pudo enviar." : `${n} correos no se pudieron enviar.`),
   errorEnvio: "No se pudieron enviar los resultados. Intente de nuevo.",
   sinEvaluaciones: "Ese participante aún no tiene evaluaciones.",
+  // v1.16: the general report as a PDF (attached to the email; the docente downloads it here).
+  descargarPdf: "Descargar PDF",
+  adjuntoAyuda: "El correo lleva adjunto este mismo reporte en PDF.",
+  pdfParticipante: "Indique un participante válido.",
+  pdfError: "No se pudo generar el PDF. Intente de nuevo.",
   // The "Correo" column of the Reporte general (PRD §11.2).
   columna: "Correo",
   estados: { enviado: "Enviado", error: "Error", pendiente: "Pendiente" },

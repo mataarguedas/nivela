@@ -15,11 +15,25 @@ const correo = vi.hoisted(() => ({ enviarCorreo: vi.fn() }));
 const envios = vi.hoisted(() => ({ registrarEnvio: vi.fn(), leerUltimosEnvios: vi.fn() }));
 vi.mock("@/lib/correo", async (original) => ({ ...(await original<typeof import("@/lib/correo")>()), ...correo }));
 vi.mock("@/lib/db/envios", () => envios);
+// The real PDF, except for the participant named in `pdf.fallar` (a generation failure).
+const pdf = vi.hoisted(() => ({ fallar: null as string | null }));
+vi.mock("@/lib/pdf/resultadosPdf", async (original) => {
+  const real = await original<typeof import("@/lib/pdf/resultadosPdf")>();
+  return {
+    ...real,
+    resultadosPdf: async (...args: Parameters<typeof real.resultadosPdf>) => {
+      if (args[0].nombre === pdf.fallar) throw new Error("fallo simulado");
+      return real.resultadosPdf(...args);
+    },
+  };
+});
 vi.mock("@/lib/db/participantes", () => ({ obtenerParticipantes: vi.fn(), obtenerCorreosParticipantes: vi.fn() }));
 vi.mock("@/lib/db/reportes", () => ({ leerEntradasConsolidado: vi.fn() }));
 
 const { ErrorCorreo } = await import("@/lib/correo");
-const { contextoEnvio, enviarPrueba, enviarResultados, plantillaParaParticipante } = await import("@/lib/envioResultados");
+const { contextoEnvio, enviarPrueba, enviarResultados, pdfParaParticipante, plantillaParaParticipante } = await import(
+  "@/lib/envioResultados"
+);
 type ContextoEnvio = import("@/lib/envioResultados").ContextoEnvio;
 
 const competencia = obtenerCompetencia("manana", "adaptabilidad")!;
@@ -75,6 +89,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.resetAllMocks();
+  pdf.fallar = null;
 });
 
 describe("enviarResultados", () => {
@@ -91,6 +106,10 @@ describe("enviarResultados", () => {
     });
     expect(primero.texto).toContain("Hola, Persona 1:");
     expect(primero.texto).not.toContain("Evaluadora Uno");
+    // v1.16: the general report goes attached as a PDF.
+    expect(primero.adjuntos).toHaveLength(1);
+    expect(primero.adjuntos[0]).toMatchObject({ nombre: "nivela-reporte-general.pdf", tipo: "application/pdf" });
+    expect(new TextDecoder().decode(primero.adjuntos[0].contenido.slice(0, 5))).toBe("%PDF-");
     expect(envios.registrarEnvio.mock.calls).toEqual([
       ["manana", "consolidado", "P01", "enviado", null],
       ["manana", "consolidado", "P02", "enviado", null],
@@ -158,6 +177,27 @@ describe("enviarResultados", () => {
   });
 });
 
+describe("PDF del reporte general (v1.16)", () => {
+  it("es el mismo archivo para los mismos datos; sin evaluaciones no hay", async () => {
+    const a = await pdfParaParticipante(contexto(), "P01");
+    const b = await pdfParaParticipante(contexto(), "P01");
+    expect(a && Buffer.from(a).equals(Buffer.from(b!))).toBe(true);
+    expect(await pdfParaParticipante(contexto(), "P05")).toBeNull();
+    expect(await pdfParaParticipante(contexto(), "P77")).toBeNull();
+  });
+
+  it("si no se puede generar, ese participante falla (registrado) y los demás se envían", async () => {
+    pdf.fallar = "Persona 1"; // P01
+    const resultado = await enviarResultados(contexto(), ["P01", "P02"], false, opciones);
+    expect(resultado).toEqual({ enviados: 1, errores: [{ participanteId: "P01", motivo: "desconocido" }] });
+    expect(correo.enviarCorreo).toHaveBeenCalledTimes(1);
+    expect(envios.registrarEnvio.mock.calls.map((c) => [c[2], c[3]])).toEqual([
+      ["P01", "error"],
+      ["P02", "enviado"],
+    ]);
+  });
+});
+
 describe("vista previa y prueba", () => {
   it("la vista previa es el mismo correo; sin evaluaciones no hay", () => {
     const plantilla = plantillaParaParticipante(contexto(), "P03")!;
@@ -172,6 +212,7 @@ describe("vista previa y prueba", () => {
     const [enviado] = correo.enviarCorreo.mock.calls[0];
     expect(enviado).toMatchObject({ para: "docente@ejemplo.test", asunto: "[Prueba] Su reporte general de competencias · Nivela" });
     expect(enviado.idempotencia).toBeUndefined();
+    expect(enviado.adjuntos?.[0]?.tipo).toBe("application/pdf");
     expect(envios.registrarEnvio).not.toHaveBeenCalled();
     expect(await enviarPrueba(contexto(), "P05", "docente@ejemplo.test")).toBe(false);
   });

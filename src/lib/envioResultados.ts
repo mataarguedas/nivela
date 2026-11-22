@@ -1,15 +1,17 @@
 import "server-only";
 import { nombreJornada, type JornadaId } from "@/config/jornadas";
-import { enviarCorreo, ErrorCorreo, type TipoErrorCorreo } from "@/lib/correo";
+import { enviarCorreo, ErrorCorreo, type AdjuntoCorreo, type TipoErrorCorreo } from "@/lib/correo";
 import { PLANTILLA_RESULTADOS, resultados } from "@/lib/correos/resultados";
 import type { PlantillaCorreo } from "@/lib/correos/plantilla";
 import { leerUltimosEnvios, registrarEnvio } from "@/lib/db/envios";
 import { obtenerCorreosParticipantes } from "@/lib/db/participantes";
 import { leerEntradasConsolidado } from "@/lib/db/reportes";
+import { NOMBRE_ADJUNTO, resultadosPdf } from "@/lib/pdf/resultadosPdf";
 import { agregarConsolidado, type EntradaConsolidado, type ReporteConsolidado } from "@/lib/reportes";
 import {
   claveIdempotencia,
   datosResultados,
+  type DatosResultados,
   ENVIO_CONSOLIDADO,
   motivoOmision,
   seleccionarDestinatarios,
@@ -82,18 +84,40 @@ export async function cargarContextoEnvio(jornada: JornadaId): Promise<ContextoE
   return contextoEnvio(jornada, participantes, entradas, correos, envios);
 }
 
+/** The participant's report data, or null without evaluations (or unknown). */
+function datosParticipante(contexto: ContextoEnvio, participanteId: string): DatosResultados | null {
+  if (!contexto.nombres.has(participanteId)) return null;
+  return datosResultados(contexto.entradas, participanteId, {
+    nombre: contexto.nombres.get(participanteId) ?? null,
+    jornada: nombreJornada(contexto.jornada),
+  });
+}
+
 /** The exact email a participant would receive, or null if they get none (no evaluations, or unknown). */
 export function plantillaParaParticipante(
   contexto: ContextoEnvio,
   participanteId: string,
   { prueba = false }: { prueba?: boolean } = {},
 ): PlantillaCorreo | null {
-  if (!contexto.nombres.has(participanteId)) return null;
-  const datos = datosResultados(contexto.entradas, participanteId, {
-    nombre: contexto.nombres.get(participanteId) ?? null,
-    jornada: nombreJornada(contexto.jornada),
-  });
+  const datos = datosParticipante(contexto, participanteId);
   return datos && resultados(datos, { prueba });
+}
+
+/**
+ * The participant's general report as a PDF (v1.16), the attachment of their
+ * email and the docente's download; null without evaluations (or unknown).
+ * Dated by their latest evaluation, so the same data gives the same bytes.
+ */
+export async function pdfParaParticipante(contexto: ContextoEnvio, participanteId: string): Promise<Uint8Array | null> {
+  const datos = datosParticipante(contexto, participanteId);
+  const actualizadoEn = ultimaEvaluacion(contexto.entradas, participanteId);
+  if (!datos || !actualizadoEn) return null;
+  return resultadosPdf(datos, { fecha: new Date(actualizadoEn) });
+}
+
+/** The email's attachment list for `pdf`. */
+function adjuntoPdf(pdf: Uint8Array): AdjuntoCorreo[] {
+  return [{ nombre: NOMBRE_ADJUNTO, tipo: "application/pdf", contenido: pdf }];
 }
 
 export type MotivoError = MotivoOmision | "ya-enviado" | "no-existe" | TipoErrorCorreo;
@@ -138,6 +162,14 @@ export async function enviarResultados(
       resultado.errores.push({ participanteId, motivo: "sin-evaluaciones" });
       continue;
     }
+    // The email says the PDF is attached, so a PDF that can't be built fails
+    // that participant (recorded, reported) instead of sending without it.
+    const pdf = await pdfParaParticipante(contexto, participanteId).catch(() => null);
+    if (!pdf) {
+      await registrarEnvio(contexto.jornada, ENVIO_CONSOLIDADO, participanteId, "error", "desconocido");
+      resultado.errores.push({ participanteId, motivo: "desconocido" });
+      continue;
+    }
 
     if (intentos > 0) await dormir(pausaMs);
     intentos += 1;
@@ -145,6 +177,7 @@ export async function enviarResultados(
       plantilla: PLANTILLA_RESULTADOS,
       para,
       ...plantilla,
+      adjuntos: adjuntoPdf(pdf),
       idempotencia: claveIdempotencia(contexto.jornada, participanteId, actualizadoEn, ultimo?.enviados ?? 0),
     };
     const fallo = await enviarConReintento(correo, dormir);
@@ -181,7 +214,8 @@ async function enviarConReintento(
  */
 export async function enviarPrueba(contexto: ContextoEnvio, participanteId: string, para: string): Promise<boolean> {
   const plantilla = plantillaParaParticipante(contexto, participanteId, { prueba: true });
-  if (!plantilla) return false;
-  await enviarCorreo({ plantilla: `${PLANTILLA_RESULTADOS}-prueba`, para, ...plantilla });
+  const pdf = plantilla && (await pdfParaParticipante(contexto, participanteId));
+  if (!plantilla || !pdf) return false;
+  await enviarCorreo({ plantilla: `${PLANTILLA_RESULTADOS}-prueba`, para, ...plantilla, adjuntos: adjuntoPdf(pdf) });
   return true;
 }

@@ -27,7 +27,13 @@ function principal(page: Page) {
   return page.locator("main").filter({ visible: true });
 }
 
-type Mensaje = { asunto: string; texto: string; html: string; plantilla: string };
+type Mensaje = {
+  asunto: string;
+  texto: string;
+  html: string;
+  plantilla: string;
+  adjuntos: { nombre: string; tipo: string; bytes: number }[];
+};
 
 async function ultimoCorreo(page: Page, para: string): Promise<Mensaje> {
   const respuesta = await page.request.get(`/api/dev/correos?para=${encodeURIComponent(para)}`);
@@ -96,6 +102,32 @@ test.describe("como docente", () => {
         expect(prueba.html).not.toContain(integrante.nombre);
       }
     }
+    // v1.16: the general report goes attached as a PDF.
+    expect(prueba.adjuntos).toEqual([{ nombre: "nivela-reporte-general.pdf", tipo: "application/pdf", bytes: expect.any(Number) }]);
+    expect(prueba.texto).toContain("Adjuntamos estos resultados en PDF para que pueda guardarlos o imprimirlos.");
+  });
+
+  test("«Descargar PDF» baja el reporte general del participante de la vista previa", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(RUTA);
+    const enlace = principal(page).getByRole("link", { name: /^Descargar PDF/ }).last();
+    await expect(enlace).toHaveAttribute("href", /\/api\/reportes\/consolidado\/pdf\?participante=P\d{2}$/);
+    const [descarga] = await Promise.all([page.waitForEvent("download"), enlace.click()]);
+    expect(descarga.suggestedFilename()).toMatch(/^nivela-reporte-general-[a-z0-9-]+\.pdf$/);
+    const ruta = await descarga.path();
+    const { readFileSync } = await import("node:fs");
+    expect(readFileSync(ruta).subarray(0, 5).toString("latin1")).toBe("%PDF-");
+    await sinDesborde(page);
+  });
+
+  test("quien no tiene correo pero sí evaluaciones también tiene su PDF", async ({ page }) => {
+    await page.goto(RUTA);
+    const omitidos = principal(page).getByRole("list", { name: /^No se les enviará/ });
+    const enlace = omitidos.getByRole("listitem").filter({ hasText: "Sin correo" }).first().getByRole("link", { name: /^Descargar PDF/ });
+    const href = await enlace.getAttribute("href");
+    const respuesta = await page.request.get(href!);
+    expect(respuesta.status()).toBe(200);
+    expect(respuesta.headers()["content-type"]).toBe("application/pdf");
   });
 
   test("el Reporte general lleva al mismo envío de todas las competencias", async ({ page }) => {
@@ -134,8 +166,10 @@ test.describe("como docente", () => {
     expect(mensaje.asunto).toBe(ASUNTO);
     expect(mensaje.plantilla).toBe("resultados");
     expect(mensaje.texto).toContain("Resultado general:");
+    expect(mensaje.adjuntos.map((a) => a.tipo)).toEqual(["application/pdf"]);
     await page.goto("/dev/correos");
     await expect(page.getByText(ASUNTO).first()).toBeVisible();
+    await expect(page.getByText(/nivela-reporte-general\.pdf \(\d+ KB\)/).first()).toBeVisible();
 
     // Reporte general of any competencia: the "Correo" column shows the general report's status.
     await page.goto("/reportes/adaptabilidad");
@@ -149,6 +183,7 @@ test("el rol evaluador no accede al envío de resultados", async ({ page }) => {
   await iniciarSesion(page, "evaluador");
   const api = await page.request.post("/api/reportes/consolidado/enviar", { data: { participantes: ["P01"] } });
   expect(api.status()).toBe(403);
+  expect((await page.request.get("/api/reportes/consolidado/pdf?participante=P01")).status()).toBe(403);
   await page.goto(RUTA);
   await expect(page).toHaveURL(/\/acceso\?/);
 });

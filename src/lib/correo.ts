@@ -15,7 +15,8 @@ import "server-only";
 // "resend": a "consola" there would silently swallow every activation code.
 //
 // Logging: only the template name, transport, outcome, HTTP status, Resend's
-// error slug and latency. Never the recipient, the subject or the body.
+// error slug, the number of attachments and latency. Never the recipient, the
+// subject, the body or an attachment.
 
 export type ModoCorreo = "resend" | "consola";
 
@@ -35,6 +36,9 @@ export class ErrorCorreo extends Error {
   }
 }
 
+/** A file sent with the email (v1.16: the results PDF). Its name and bytes are never logged. */
+export type AdjuntoCorreo = { nombre: string; tipo: "application/pdf"; contenido: Uint8Array };
+
 export type Correo = {
   /** Template name, the only content-related field that is logged. */
   plantilla: string;
@@ -44,9 +48,13 @@ export type Correo = {
   texto: string;
   /** Same key → Resend sends at most once (24 h window). */
   idempotencia?: string;
+  adjuntos?: AdjuntoCorreo[];
 };
 
-export type MensajeBuzon = Omit<Correo, "idempotencia"> & { id: string; enviadoEn: string };
+/** An attachment as the "consola" outbox keeps it: its name, type and size, not its bytes. */
+export type AdjuntoBuzon = { nombre: string; tipo: string; bytes: number };
+
+export type MensajeBuzon = Omit<Correo, "idempotencia" | "adjuntos"> & { id: string; enviadoEn: string; adjuntos: AdjuntoBuzon[] };
 
 export const URL_RESEND = "https://api.resend.com/emails";
 export const TIEMPO_LIMITE_MS = 10_000;
@@ -63,7 +71,7 @@ export async function enviarCorreo(correo: Correo): Promise<{ id: string }> {
   const modo = modoCorreo();
   try {
     const resultado = modo === "resend" ? await enviarPorResend(correo) : guardarEnBuzon(correo);
-    registrar({ plantilla: correo.plantilla, modo, estado: "enviado", ms: Date.now() - inicio });
+    registrar({ plantilla: correo.plantilla, modo, estado: "enviado", adjuntos: correo.adjuntos?.length ?? 0, ms: Date.now() - inicio });
     return resultado;
   } catch (error) {
     const fallo = error instanceof ErrorCorreo ? error : new ErrorCorreo("desconocido");
@@ -73,6 +81,7 @@ export async function enviarCorreo(correo: Correo): Promise<{ id: string }> {
       estado: fallo.tipo,
       status: fallo.status,
       motivo: error instanceof ErrorResend ? error.motivo : undefined,
+      adjuntos: correo.adjuntos?.length ?? 0,
       ms: Date.now() - inicio,
     });
     throw fallo;
@@ -114,6 +123,15 @@ async function enviarPorResend(correo: Correo): Promise<{ id: string }> {
         subject: correo.asunto,
         html: correo.html,
         text: correo.texto,
+        ...(correo.adjuntos?.length
+          ? {
+              attachments: correo.adjuntos.map((a) => ({
+                filename: a.nombre,
+                content: Buffer.from(a.contenido).toString("base64"),
+                content_type: a.tipo,
+              })),
+            }
+          : {}),
       }),
       signal: AbortSignal.timeout(TIEMPO_LIMITE_MS),
       cache: "no-store",
@@ -163,7 +181,7 @@ function buzon(): MensajeBuzon[] {
   return global[CLAVE_BUZON];
 }
 
-function guardarEnBuzon({ plantilla, para, asunto, html, texto }: Correo): { id: string } {
+function guardarEnBuzon({ plantilla, para, asunto, html, texto, adjuntos = [] }: Correo): { id: string } {
   const mensaje: MensajeBuzon = {
     id: `consola-${crypto.randomUUID()}`,
     plantilla,
@@ -171,6 +189,7 @@ function guardarEnBuzon({ plantilla, para, asunto, html, texto }: Correo): { id:
     asunto,
     html,
     texto,
+    adjuntos: adjuntos.map((a) => ({ nombre: a.nombre, tipo: a.tipo, bytes: a.contenido.byteLength })),
     enviadoEn: new Date().toISOString(),
   };
   const mensajes = buzon();
@@ -203,6 +222,8 @@ function registrar(datos: {
   estado: "enviado" | TipoErrorCorreo;
   status?: number;
   motivo?: string;
+  /** How many files were attached; never their names or contents. */
+  adjuntos: number;
   ms: number;
 }) {
   const { plantilla, ...resto } = datos;

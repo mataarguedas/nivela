@@ -82,6 +82,14 @@ describe("transporte consola", () => {
     expect(mensaje).toMatchObject({ id, para: "persona.prueba@ejemplo.test", asunto: "Asunto secreto", texto: "cuerpo secreto" });
   });
 
+  it("guarda de cada adjunto el nombre, el tipo y el tamaño, no su contenido", async () => {
+    const contenido = new Uint8Array(2048);
+    await enviarCorreo({ ...CORREO, adjuntos: [{ nombre: "reporte.pdf", tipo: "application/pdf", contenido }] });
+    const mensaje = ultimoCorreoPara("persona.prueba@ejemplo.test")!;
+    expect(mensaje.adjuntos).toEqual([{ nombre: "reporte.pdf", tipo: "application/pdf", bytes: 2048 }]);
+    expect(mensaje).not.toHaveProperty("adjuntos.0.contenido");
+  });
+
   it("guarda solo los últimos mensajes, el más reciente primero", async () => {
     for (let i = 0; i < MAXIMO_BUZON + 5; i++) await enviarCorreo({ ...CORREO, asunto: `n.º ${i}` });
     const buzon = leerBuzon();
@@ -130,6 +138,20 @@ describe("transporte resend", () => {
     expect(TIEMPO_LIMITE_MS).toBe(10_000);
     // Resend mode keeps nothing in memory.
     expect(leerBuzon()).toEqual([]);
+  });
+
+  it("adjuntos (v1.16): van en base64 con nombre y tipo; sin adjuntos no hay campo attachments", async () => {
+    // A new Response per call: a body can be read only once.
+    const fetchSimulado = vi.fn<typeof fetch>(async () => respuesta(200, { id: "re-adj" }));
+    vi.stubGlobal("fetch", fetchSimulado);
+    const contenido = new TextEncoder().encode("%PDF-1.7 prueba");
+    await enviarCorreo({ ...CORREO, adjuntos: [{ nombre: "reporte.pdf", tipo: "application/pdf", contenido }] });
+    const cuerpo = JSON.parse(String((fetchSimulado.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(cuerpo.attachments).toEqual([
+      { filename: "reporte.pdf", content: Buffer.from(contenido).toString("base64"), content_type: "application/pdf" },
+    ]);
+    await enviarCorreo(CORREO);
+    expect(JSON.parse(String((fetchSimulado.mock.calls[1] as [string, RequestInit])[1].body))).not.toHaveProperty("attachments");
   });
 
   it("sin clave de idempotencia no envía ese encabezado", async () => {
@@ -203,6 +225,7 @@ describe("registro", () => {
       estado: "rechazado",
       status: 422,
       motivo: "validation_error",
+      adjuntos: 0,
       ms: expect.any(Number),
     });
     const todo = lineasDeLog();

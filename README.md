@@ -155,6 +155,8 @@ En **Reportes → Uso de la aplicación** el docente ve, para todos los equipos 
 4. Si quiere verlo en su bandeja, use **Enviarme una prueba** con su propio correo (no se guarda; el asunto empieza con «[Prueba]»).
 5. Toque **Enviar a {n} participantes** y confirme. Los envíos van de uno en uno, al ritmo que permite Resend.
 
+Cada correo lleva **adjunto el mismo reporte en PDF** (`nivela-reporte-general.pdf`) para que el participante lo guarde o lo imprima. Con **Descargar PDF** usted baja ese archivo para el participante de la vista previa y, en la lista de omitidos, para cada persona *Sin correo* que sí tiene evaluaciones, por si quiere imprimírselo.
+
 Cada participante recibe **un solo correo** con su reporte general: el resultado general (el promedio entre competencias, de 0 a 100: Básico 0–25, Intermedio 26–50, Avanzado 51–75, Experto 76–100, con su nivel y cuánto le falta para el siguiente), un resumen con el puntaje de cada competencia y, por cada competencia evaluada, el puntaje, el nivel, cuántas evaluaciones recibió y, por indicador, el puntaje, el nivel, cuánto le falta para el siguiente y qué conducta describe ese nivel. Si aún faltan competencias por evaluar, el correo incluye solo las evaluadas. **Nunca** incluye nombres de evaluadores, calificaciones individuales, datos de la IA ni las observaciones. Cada envío queda registrado; la columna **Correo** del Reporte general de cada competencia muestra el estado de ese correo general: Enviado, Error o Pendiente. A quien ya lo recibió no se le envía de nuevo, salvo que marque **Reenviar**; un envío con error se reintenta solo la próxima vez. El plan gratuito de Resend permite unos 100 correos al día.
 
 ## Dominio de correo

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { BarraInferior } from "@/components/ui/BarraInferior";
-import { Boton } from "@/components/ui/Boton";
+import { Boton, clasesBoton } from "@/components/ui/Boton";
 import { Campo } from "@/components/ui/Campo";
 import { Chip } from "@/components/ui/Chip";
 import { Dialogo } from "@/components/ui/Dialogo";
@@ -22,12 +22,17 @@ import type { CuerpoEnvioResultados } from "@/lib/validacion";
 // labelled by carnet, like every report; the preview shows the email as the
 // participant will receive it. The client only names participants: the
 // server recomputes every result. Already-sent participants are left out
-// unless "Reenviar" is ticked for them.
+// unless "Reenviar" is ticked for them. v1.16: every email attaches the
+// report as a PDF; "Descargar PDF" gets that file for the previewed recipient
+// and for evaluated participants without an email (to print it).
 
 export type VistaPrevia = { participanteId: string; etiqueta: string; para: string; asunto: string; html: string };
 
 const RUTA_PAGINA = "/reportes/consolidado/enviar";
 const RUTA_API = "/api/reportes/consolidado/enviar";
+
+/** v1.16: the participant's general report as a PDF, the same file their email attaches. */
+const rutaPdf = (participanteId: string) => `/api/reportes/consolidado/pdf?participante=${encodeURIComponent(participanteId)}`;
 
 type Props = {
   destinatarios: FilaEnvio[];
@@ -170,8 +175,19 @@ export function EnvioResultados({ destinatarios, omitidos, previa, competencias 
           ) : (
             <ul aria-labelledby="omitidos-titulo" className="flex flex-col">
               {omitidos.map((o) => (
-                <li key={o.id} className="flex min-h-11 items-center gap-3 px-2 py-2 even:bg-canvas">
+                <li key={o.id} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-2 py-2 even:bg-canvas">
                   <span className="min-w-0 flex-1">{o.etiqueta}</span>
+                  {/* Evaluated but without an email: the docente can print the report instead. */}
+                  {o.motivo === "sin-correo" && (
+                    <a
+                      href={rutaPdf(o.id)}
+                      download
+                      className={clasesBoton({ variante: "texto" })}
+                    >
+                      {TEXTOS_ENVIO.descargarPdf}
+                      <span className="sr-only"> {o.etiqueta}</span>
+                    </a>
+                  )}
                   <Chip tono={o.motivo === "ausente" ? "ausente" : "suave"}>{TEXTOS_ENVIO.motivos[o.motivo]}</Chip>
                 </li>
               ))}
@@ -206,7 +222,17 @@ export function EnvioResultados({ destinatarios, omitidos, previa, competencias 
             <div className={`mt-4 text-[14px] text-ink-3 ${cambiandoPrevia ? "opacity-60" : ""}`}>
               <p className="break-all">{TEXTOS_ENVIO.para(previa.para)}</p>
               <p>{TEXTOS_ENVIO.asunto(previa.asunto)}</p>
+              <p className="mt-1">{TEXTOS_ENVIO.adjuntoAyuda}</p>
             </div>
+            {/* A plain <a download>: a file, not a page (Next's Link would try to route to it). */}
+            <a
+              href={rutaPdf(previa.participanteId)}
+              download
+              className={clasesBoton({ variante: "secundario", className: "mt-3" })}
+            >
+              {TEXTOS_ENVIO.descargarPdf}
+              <span className="sr-only"> {previa.etiqueta}</span>
+            </a>
             {/* sandbox="": the email's HTML can't run scripts or navigate this page. */}
             <iframe
               title={TEXTOS_ENVIO.marcoPrevia(previa.etiqueta)}

@@ -31,6 +31,7 @@ Peer competency-rating PWA for AGRH 315 Psicología 2 / AGRH 613. **Read `PRD.md
 - **zod** for every request body and query.
 - **jose** for HMAC-signed session cookies. It's Edge-compatible, so it works in `proxy.ts`.
 - **@typesafe-ai/sdk** for Jev (server only).
+- **pdf-lib** for the results PDF (v1.16, server only: `src/lib/pdf/`). Standard Helvetica fonts, so nothing is read from disk; text outside WinAnsi is folded with `aWinAnsi`. Never import it from a client component.
 - **Vitest** for unit tests, **Playwright** for e2e.
 - Deploy on **Vercel**. Route handlers use `export const runtime = "nodejs"`.
 
@@ -117,6 +118,7 @@ src/
     api/reportes/[competencia]/csv/route.ts
     api/reportes/consolidado/csv/route.ts           # v1.5: consolidated CSV (PRD §10)
     api/reportes/consolidado/enviar/route.ts        # v1.13: results email, one per participant (replaces api/reportes/[competencia]/enviar)
+    api/reportes/consolidado/pdf/route.ts           # v1.16: a participant's general report as a PDF (the email's attachment), docente only
   proxy.ts                  # session check + role gating (middleware.ts on Next < 16)
   config/
     jornadas.ts             # manana | noche (PRD §5.11)
@@ -133,7 +135,8 @@ src/
     acceso.ts               # v1.2: shared by /api/acceso/* (schemas, failure delay, code email after the response)
     importarCuentas.ts      # v1.2: CSV validation for cuentas:importar
     correo.ts               # v1.2, server-only: send email (Resend | consola)
-    correos/                # v1.2: email templates { asunto, html, texto } (codigoVerificacion, resultados)
+    correos/                # v1.2: email templates { asunto, html, texto } (codigoVerificacion, resultados; modeloResultados feeds the email and the PDF)
+    pdf/resultadosPdf.ts    # v1.16, server-only: the general report as a PDF (pdf-lib), attached to the results email
     resultados.ts           # v1.2: pure parts of the results email (data, recipients, idempotency key); v1.13: one general report over every competencia, recorded as ENVIO_CONSOLIDADO
     envioResultados.ts      # v1.2, server-only: load, preview and send results (paced, recorded)
     db/{index.ts,schema.ts,participantes.ts,cuentas.ts,envios.ts}  # participantes.ts: the admin's list per jornada (emails read apart); cuentas.ts: account statements; envios.ts: envios_resultados

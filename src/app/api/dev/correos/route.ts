@@ -27,6 +27,6 @@ export async function GET(request: Request) {
   if (!mensaje) {
     return NextResponse.json({ error: "No hay correos para esa dirección." }, { status: 404, headers: SIN_CACHE });
   }
-  const { id, plantilla, para, asunto, texto, html, enviadoEn } = mensaje;
-  return NextResponse.json({ id, plantilla, para, asunto, texto, html, enviadoEn }, { headers: SIN_CACHE });
+  const { id, plantilla, para, asunto, texto, html, adjuntos, enviadoEn } = mensaje;
+  return NextResponse.json({ id, plantilla, para, asunto, texto, html, adjuntos, enviadoEn }, { headers: SIN_CACHE });
 }

@@ -228,7 +228,7 @@ describe("Puntaje del grupo por competencia (título y barras)", () => {
 // → group 2,00 → 33. Promedios: P01 2,75 → 58 · P02 (2 + 1) / 2 = 1,50 → 17 (Básico) · P03 3,00 → 67.
 // Group (2,75 + 1,5 + 3) / 3 = 2,4167 → 47 Intermedio, 3 to Avanzado. P02 is Básico in Pensamiento crítico (0).
 describe("tableroConsolidado y «En pocas palabras»", () => {
-  it("nombra la competencia más fuerte y la más débil y lista a quienes tienen alguna competencia en Básico", () => {
+  it("nombra la competencia más fuerte y la más débil, sin señalar a quienes están en Básico (v1.11)", () => {
     const reporte = construir({ conBasico: true });
     const tablero = tableroConsolidado(reporte);
     expect(tablero.masFuertes).toEqual([{ id: "adaptabilidad", nombre: "Adaptabilidad", puntaje: expect.closeTo(pts(2.75), 10) }]);
@@ -236,27 +236,17 @@ describe("tableroConsolidado y «En pocas palabras»", () => {
       { id: "pensamiento-critico", nombre: "Pensamiento crítico y analítico", puntaje: expect.closeTo(pts(2), 10) },
     ]);
     expect(tablero.conteoNiveles).toEqual({ 1: 1, 2: 0, 3: 2, 4: 0 });
-    expect(tablero.atencion).toEqual([
-      {
-        id: "P02",
-        etiqueta: "Participante 02",
-        promedio: expect.closeTo(pts(1.5), 10),
-        nivel: 1,
-        competencias: [{ id: "pensamiento-critico", nombre: "Pensamiento crítico y analítico", puntaje: 0 }],
-      },
-    ]);
+    // No "Requieren atención" list: the report never singles out the lowest scores.
+    expect(Object.keys(tablero).sort()).toEqual(["conteoNiveles", "masDebiles", "masFuertes"]);
     expect(parrafoConsolidado(reporte, tablero)).toBe(
       "El grupo alcanzó un nivel Intermedio (47) como promedio entre competencias. Le faltan 4 puntos para Avanzado. " +
-        "La competencia más fuerte es «Adaptabilidad» (58) y la que más necesita refuerzo es «Pensamiento crítico y analítico» (33). " +
-        "1 participante tiene al menos una competencia en nivel Básico.",
+        "La competencia más fuerte es «Adaptabilidad» (58) y la que más necesita refuerzo es «Pensamiento crítico y analítico» (33).",
     );
   });
 
-  it("sin nadie en Básico lo dice, y sin puntajes usa una frase neutra", () => {
+  it("el párrafo nunca cuenta participantes en Básico, y sin puntajes usa una frase neutra", () => {
     const reporte = construir();
-    const tablero = tableroConsolidado(reporte);
-    expect(tablero.atencion).toEqual([]);
-    expect(parrafoConsolidado(reporte, tablero).endsWith(" Ningún participante tiene competencias en nivel Básico.")).toBe(true);
+    expect(parrafoConsolidado(reporte, tableroConsolidado(reporte))).not.toMatch(/nivel Básico/);
     const vacio = agregarConsolidado(participantes, [{ id: "orientacion-detalle", nombre: "Orientación al detalle", reporte: null }]);
     expect(parrafoConsolidado(vacio, tableroConsolidado(vacio))).toBe("Aún no hay puntajes para calcular el promedio entre competencias.");
   });

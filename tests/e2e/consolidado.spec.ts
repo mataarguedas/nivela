@@ -106,7 +106,8 @@ test.describe("como docente", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto(RUTA);
 
-    // Dashboard (PRD §11.4): a plain-language summary, the level map and who needs attention.
+    // Dashboard (PRD §11.4): a plain-language summary and the level map. Since v1.11 there is
+    // no "Requieren atención" list and the summary never counts participants in Básico.
     await expect(
       principal(page).getByText(/^El grupo alcanzó un nivel (Básico|Intermedio|Avanzado|Experto) \(\d{1,3}\) como promedio entre competencias\./),
     ).toBeVisible();
@@ -116,7 +117,8 @@ test.describe("como docente", () => {
     expect(filas).toBeGreaterThan(1);
     // Every colored cell also shows its score (color never carries the level alone).
     await expect(mapa.getByRole("cell").first()).toHaveText(/^(\d{1,3} · (Básico|Intermedio|Avanzado|Experto)|—|Aus\.Ausente)$/);
-    await expect(principal(page).getByRole("heading", { level: 2, name: "Requieren atención" })).toBeVisible();
+    await expect(principal(page).getByRole("heading", { name: "Requieren atención" })).toHaveCount(0);
+    await expect(principal(page).getByText(/al menos una competencia en nivel Básico/)).toHaveCount(0);
     await sinDesborde(page);
 
     // The first row of the map is the highest promedio; its carnet opens the Reporte del participante.

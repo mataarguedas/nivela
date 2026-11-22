@@ -184,23 +184,12 @@ export const TEXTOS_REPORTES = {
       iguales: (valor: string) => `Todas las competencias tienen el mismo puntaje (${valor}).`,
       /** "«Adaptabilidad» (70)" */
       competencia: (nombre: string, valor: string) => `«${nombre}» (${valor})`,
-      atencion: (n: number) =>
-        n === 0
-          ? "Ningún participante tiene competencias en nivel Básico."
-          : n === 1
-            ? "1 participante tiene al menos una competencia en nivel Básico."
-            : `${n} participantes tienen al menos una competencia en nivel Básico.`,
     },
     mapaNiveles: "Mapa de niveles",
     mapaNivelesMensaje: "Cada fila es un participante y cada columna una competencia",
     mapaNivelesNota: "Cada celda muestra el puntaje general; el color indica el nivel. Ordenado por promedio entre competencias.",
     celdaMapa: (competencia: string, valor: string, nivel: string) => `${competencia}: ${valor} · ${nivel}`,
     ausenteCorto: "Aus.",
-    atencionTitulo: "Requieren atención",
-    atencionNota: "Participantes con al menos una competencia en nivel Básico, del promedio más bajo al más alto.",
-    atencionVacio: "Ningún participante tiene competencias en nivel Básico.",
-    basicoEn: "Básico en:",
-    promedioValor: (valor: string, nivel: string) => `Promedio ${valor} · ${nivel}`,
     // Reporte del participante (PRD §11.5).
     participante: {
       titulo: "Reporte del participante",

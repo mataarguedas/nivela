@@ -255,7 +255,7 @@ export function fraseFuertesDebiles(
   return `${fuerte} y ${debil}.`;
 }
 
-/** The consolidated report's "En pocas palabras": the group's level, its gap, the strongest/weakest competencias and how many need attention. */
+/** The consolidated report's "En pocas palabras": the group's level, its gap, the strongest/weakest competencias (v1.11: no count of participants in Básico). */
 export function parrafoConsolidado(reporte: Pick<ReporteConsolidado, "kpis" | "competencias">, tablero: TableroConsolidado): string {
   const p = TEXTOS_REPORTES.consolidado.parrafo;
   const { promedioGrupo, nivelGrupo, brechaGrupo } = reporte.kpis;
@@ -265,7 +265,6 @@ export function parrafoConsolidado(reporte: Pick<ReporteConsolidado, "kpis" | "c
   const conPuntaje = reporte.competencias.filter((c) => c.puntaje !== null).length;
   const extremos = fraseFuertesDebiles(tablero.masFuertes, tablero.masDebiles, conPuntaje);
   if (extremos) frases.push(extremos);
-  frases.push(p.atencion(tablero.atencion.length));
   return frases.join(" ");
 }
 

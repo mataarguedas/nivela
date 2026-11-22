@@ -740,24 +740,14 @@ export function agregarConsolidado(
 /** A competencia named in a dashboard sentence, with its score. */
 export type CompetenciaDestacada = { id: string; nombre: string; puntaje: number };
 
-/** A participant with at least one competencia in nivel Básico ("Requieren atención"). */
-export type ParticipanteAtencion = {
-  id: string;
-  etiqueta: string;
-  promedio: number | null;
-  nivel: NivelValor | null;
-  /** The competencias where their puntaje general is Básico, in config order. */
-  competencias: CompetenciaDestacada[];
-};
-
 export type TableroConsolidado = {
   /** The competencias with the highest and lowest puntaje del grupo (ties kept); empty without scores. */
   masFuertes: CompetenciaDestacada[];
   masDebiles: CompetenciaDestacada[];
   /** Participants by nivel of their promedio entre competencias. */
   conteoNiveles: Record<NivelValor, number>;
-  /** Lowest promedio first, then id. */
-  atencion: ParticipanteAtencion[];
+  // v1.11: no "Requieren atención" list. The docente asked that the report
+  // never single out the participants with the lowest scores or in Básico.
 };
 
 function destacadas(candidatas: readonly { id: string; nombre: string; puntaje: number | null }[]) {
@@ -770,24 +760,9 @@ function destacadas(candidatas: readonly { id: string; nombre: string; puntaje: 
 /** The dashboard figures, from the consolidated report alone (no new math: levels come from puntajes.ts). */
 export function tableroConsolidado(reporte: ReporteConsolidado): TableroConsolidado {
   const disponibles = reporte.competencias.filter((c) => c.disponible);
-  const atencion = reporte.participantes
-    .map((p) => ({
-      id: p.id,
-      etiqueta: p.etiqueta,
-      promedio: p.promedio,
-      nivel: p.nivel,
-      competencias: p.celdas.flatMap((celda, i) =>
-        celda?.puntaje != null && celda.nivel === 1
-          ? [{ id: reporte.competencias[i].id, nombre: reporte.competencias[i].nombre, puntaje: celda.puntaje }]
-          : [],
-      ),
-    }))
-    .filter((p) => p.competencias.length > 0)
-    .sort((a, b) => redondearPuntos(a.promedio ?? 0) - redondearPuntos(b.promedio ?? 0) || a.id.localeCompare(b.id));
   return {
     ...destacadas(disponibles),
     conteoNiveles: distribucion(reporte.participantes.flatMap((p) => (p.nivel === null ? [] : [p.nivel]))),
-    atencion,
   };
 }
 

@@ -12,7 +12,7 @@ import {
 import type { JornadaId } from "@/config/jornadas";
 import { registrarError } from "@/lib/registro";
 import { getDb } from "./index";
-import { evaluaciones, participantes } from "./schema";
+import { asistencia, evaluaciones, participantes } from "./schema";
 import type * as schema from "./schema";
 
 // Reads and writes of the evaluados the admin manages (PRD §9.2), one list
@@ -169,6 +169,40 @@ export function sentenciaContarEvaluaciones<B extends Bd>(db: B, jornada: Jornad
     .select({ total: count() })
     .from(evaluaciones)
     .where(and(eq(evaluaciones.jornada, jornada), inArray(evaluaciones.participanteId, [...ids])));
+}
+
+/** Attendance marks (any competencia) on these participants of the jornada. */
+export function sentenciaContarAsistencia<B extends Bd>(db: B, jornada: JornadaId, ids: readonly string[]) {
+  return db
+    .select({ total: count() })
+    .from(asistencia)
+    .where(and(eq(asistencia.jornada, jornada), inArray(asistencia.participanteId, [...ids])));
+}
+
+/**
+ * v1.17 (`participantes:agregar`, PRD §5.10): append new participants as
+ * P{inicio}… with their names and one group, active, no carnet or email.
+ * A plain insert: if any of those ids is already stored (a hidden row) it
+ * fails instead of writing over it. The plan (lib/agregarParticipantes.ts)
+ * refuses that case before getting here.
+ */
+export function sentenciaAgregarParticipantes<B extends Bd>(
+  db: B,
+  jornada: JornadaId,
+  inicio: number,
+  nombres: readonly string[],
+  grupo: number,
+) {
+  return db.insert(participantes).values(
+    nombres.map((nombre, i) => ({
+      jornada,
+      id: idParticipante(inicio + i),
+      numero: inicio + i,
+      nombre,
+      grupo,
+      activo: true,
+    })),
+  );
 }
 
 /** The list the admin saves: names, carnets, groups and emails aligned by position (P01 first). */

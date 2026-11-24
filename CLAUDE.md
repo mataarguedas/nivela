@@ -57,6 +57,7 @@ npm run jev:evaluar    # golden-set accuracy check against live Jev, every rubri
 npm run correo:prueba -- --para <correo>   # v1.2 (Prompt 13): send a sample email through Resend
 npm run cuentas:importar -- --archivo privado/correos-evaluadores.csv [--produccion]   # v1.2: load evaluator emails (prints counts and host, never emails)
 npm run participantes:importar -- --archivo privado/<hoja>.xlsx --jornada manana|noche [--simular] [--produccion]   # v1.8: a COFI distribution sheet → the jornada's list (names + groups), or only the groups when names exist; prints counts and positions, never names
+npm run participantes:agregar -- --archivo privado/<hoja>.xlsx --jornada manana|noche [--grupo N] [--simular] [--produccion]   # v1.17: one column of names (first name first) appended after the active list as P{n+1}…, in one new group; prints counts and positions, never names
 npm run participantes:matricula -- --jornada manana|noche --archivo privado/matricula/<lista>.pdf [--archivo …] [--simular] [--produccion]   # v1.9: the university's enrollment lists → carnets + emails of an already named list, matched by name (pdftotext -layout); prints counts and positions only
 npm run evaluadores:retirados -- [--eliminar] [--produccion]   # v1.15: data (account, evaluations, attendance) of evaluators no longer in equipos.ts; counts only without --eliminar; production asks for a typed "sí"; prints counts and host only
 npm run cuentas:prueba # dev/e2e: reset every evaluator account to <id>@ejemplo.test + E2E_CONTRASENA, and give every stored participant participante-NN.<jornada>@ejemplo.test except P02 (the e2e global setup runs it)
@@ -155,6 +156,7 @@ scripts/
   evaluar-jev.ts
   importar-cuentas.ts       # v1.2
   importar-matricula.ts     # v1.9: enrollment list PDFs → carnets + emails (lib/matricula.ts)
+  agregar-participantes.ts  # v1.17: participantes:agregar, extra students after a set list (lib/agregarParticipantes.ts)
   importar-participantes.ts # v1.8: COFI distribution sheet (.xlsx) → participants + groups (lib/distribucion.ts); xlsx.ts reads the sheet, no dependency
   cuentas-prueba.ts         # v1.2, dev/e2e: fake accounts (cuentasPrueba.ts); entornoDesarrollo.ts guards dev-only writes
   eliminar-retirados.ts     # v1.15: evaluadores:retirados, deletes the DB data of evaluators removed from config (lib/db/retirados.ts)

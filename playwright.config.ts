@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // Load the same env files `next dev` reads (.env.local wins over .env), so
@@ -11,6 +14,17 @@ for (const archivo of [".env.local", ".env"]) {
     // File not present: fine.
   }
 }
+
+// macOS 26+ denies one app access to another app's data, and Firefox reads
+// `~/Library/Application Support/Firefox` at startup even when it is given
+// `-profile`. On a Mac that has Firefox installed, Playwright's own build
+// dies there with "Could not find profile folder" and no test can run.
+// CFFIXED_USER_HOME gives it an empty home of its own, so it never looks at
+// the installed Firefox's data. Only macOS needs it; CI can set its own.
+const hogarFirefox =
+  process.platform === "darwin"
+    ? { CFFIXED_USER_HOME: process.env.CFFIXED_USER_HOME ?? mkdtempSync(join(tmpdir(), "nivela-firefox-")) }
+    : {};
 
 const ADMIN = /admin\.spec\.ts$/;
 const PORT = 3000;
@@ -40,7 +54,11 @@ export default defineConfig({
       // Firefox doesn't support isMobile, so emulate a phone-sized viewport only.
       name: "Firefox",
       testIgnore: ADMIN,
-      use: { ...devices["Desktop Firefox"], viewport: { width: 390, height: 844 } },
+      use: {
+        ...devices["Desktop Firefox"],
+        viewport: { width: 390, height: 844 },
+        launchOptions: { env: { ...process.env, ...hogarFirefox } },
+      },
     },
     // The docente reads reports on a laptop; the whole flow must work there too.
     { name: "Desktop Chrome", testIgnore: ADMIN, use: { ...devices["Desktop Chrome"] } },

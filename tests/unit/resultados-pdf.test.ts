@@ -102,6 +102,19 @@ describe("resultadosPdf", () => {
     expect(texto).not.toMatch(/evaluador|observaci|confianza|\bIA\b/i);
   });
 
+  it("v1.20: la escala de puntos, los cuatro niveles con sus rangos", () => {
+    expect(modeloResultados(UNA).escala).toEqual({
+      titulo: "Escala de puntos",
+      introduccion: "Cada nivel corresponde a un rango de puntos en la escala de 0 a 100:",
+      filas: [
+        { nivel: "Básico", rango: "de 0 a 25 puntos" },
+        { nivel: "Intermedio", rango: "de 26 a 50 puntos" },
+        { nivel: "Avanzado", rango: "de 51 a 75 puntos" },
+        { nivel: "Experto", rango: "de 76 a 100 puntos" },
+      ],
+    });
+  });
+
   // Not an assertion: leaves a sample next to the test run for a visual check.
   it("muestra", async () => {
     if (process.env.NIVELA_PDF_MUESTRA) writeFileSync(process.env.NIVELA_PDF_MUESTRA, await resultadosPdf(TODAS, { fecha: FECHA }));

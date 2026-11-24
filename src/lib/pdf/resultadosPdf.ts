@@ -89,7 +89,7 @@ export function envolver(texto: string, fuente: PDFFont, tamano: number, ancho: 
 }
 
 /** A paragraph laid out for a width: its lines and height. */
-type Parrafo = { lineas: string[]; estilo: Estilo; centrado: boolean; antes: number };
+type Parrafo = { lineas: string[]; estilo: Estilo; centrado: boolean; antes: number; derecha?: { texto: string; estilo: Estilo } };
 
 class Lienzo {
   private pagina!: PDFPage;
@@ -99,6 +99,7 @@ class Lienzo {
   constructor(
     private readonly doc: PDFDocument,
     private readonly admitidos: ReadonlySet<number>,
+    private readonly regular: PDFFont,
   ) {
     this.nuevaPagina();
   }
@@ -114,9 +115,19 @@ class Lienzo {
     if (this.y - alto < MARGEN + PIE && this.y < ALTO_PAGINA - MARGEN) this.nuevaPagina();
   }
 
-  parrafo(texto: string, estilo: Estilo, { ancho = ANCHO_UTIL, centrado = false, antes = 0 } = {}): Parrafo {
+  /**
+   * `derecha` (v1.20, the scale's ranges): a short text right-aligned on the
+   * paragraph's first line, in the regular weight of the same size.
+   */
+  parrafo(
+    texto: string,
+    estilo: Estilo,
+    { ancho = ANCHO_UTIL, centrado = false, antes = 0, derecha }: { ancho?: number; centrado?: boolean; antes?: number; derecha?: string } = {},
+  ): Parrafo {
     const limpio = aWinAnsi(texto, this.admitidos);
-    return { lineas: envolver(limpio, estilo.fuente, estilo.tamano, ancho), estilo, centrado, antes };
+    const p: Parrafo = { lineas: envolver(limpio, estilo.fuente, estilo.tamano, ancho), estilo, centrado, antes };
+    if (derecha !== undefined) p.derecha = { texto: aWinAnsi(derecha, this.admitidos), estilo: { ...estilo, fuente: this.regular } };
+    return p;
   }
 
   static alto(p: Parrafo): number {
@@ -125,13 +136,24 @@ class Lienzo {
 
   private dibujar(p: Parrafo, x: number, ancho: number) {
     this.y -= p.antes;
-    for (const linea of p.lineas) {
+    p.lineas.forEach((linea, i) => {
       const { fuente, tamano, color } = p.estilo;
       this.y -= tamano * INTERLINEA;
       const desplazamiento = p.centrado ? (ancho - fuente.widthOfTextAtSize(linea, tamano)) / 2 : 0;
       // Baseline a little above the bottom of the line box.
       this.pagina.drawText(linea, { x: x + desplazamiento, y: this.y + tamano * 0.3, size: tamano, font: fuente, color });
-    }
+      if (i === 0 && p.derecha) {
+        const d = p.derecha.estilo;
+        const anchoDerecha = d.fuente.widthOfTextAtSize(p.derecha.texto, d.tamano);
+        this.pagina.drawText(p.derecha.texto, {
+          x: x + ancho - anchoDerecha,
+          y: this.y + d.tamano * 0.3,
+          size: d.tamano,
+          font: d.fuente,
+          color: d.color,
+        });
+      }
+    });
   }
 
   /** Free-flowing text: a long paragraph may continue on the next page, line by line. */
@@ -212,7 +234,7 @@ export async function resultadosPdf(datos: DatosResultados, { fecha }: { fecha: 
   const normal = await doc.embedFont(StandardFonts.Helvetica);
   const negrita = await doc.embedFont(StandardFonts.HelveticaBold);
   const admitidos = new Set(normal.getCharacterSet());
-  const lienzo = new Lienzo(doc, admitidos);
+  const lienzo = new Lienzo(doc, admitidos, normal);
 
   const e = (fuente: PDFFont, tamano: number, color = TINTA): Estilo => ({ fuente, tamano, color });
   const marca = e(negrita, 13);
@@ -246,6 +268,19 @@ export async function resultadosPdf(datos: DatosResultados, { fecha }: { fecha: 
     lienzo.parrafo(g.cobertura, secundario, centrado),
   ]);
   lienzo.texto(lienzo.parrafo(m.evaluaciones, cuerpo, { antes: 2 }));
+
+  // v1.20: the point scale, a tile with one row per level (level left, range right-aligned).
+  const tituloEscala = lienzo.parrafo(m.escala.titulo, h2, { antes: 18 });
+  const filasEscala = [
+    lienzo.parrafo(m.escala.introduccion, secundario, { ancho: anchoTile }),
+    ...m.escala.filas.map((fila) =>
+      lienzo.parrafo(fila.nivel, cuerpoNegrita, { ancho: anchoTile, antes: 4, derecha: fila.rango }),
+    ),
+  ];
+  lienzo.reservar(Lienzo.alto(tituloEscala) + 8 + Lienzo.altoBloque(filasEscala));
+  lienzo.juntos([tituloEscala]);
+  lienzo.espacio(8);
+  lienzo.bloque(filasEscala);
 
   // Summary: one tile with a row per competencia.
   // Headings never end a page: each reserves room for what follows it.

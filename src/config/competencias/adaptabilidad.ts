@@ -5,7 +5,7 @@ import type { DefinicionCompetencia, Rubrica } from "./index";
 // Appendix A.1) with only the minimal corrections listed there. Keep it
 // verbatim: it is also the rubric sent to Jev. Ids are positional
 // (adaptabilidad-1 = Indicador 1); the v1.2 template reordered the indicators
-// before any real evaluation existed. The v1.18 revision reworded two levels
+// before any real evaluation existed. The v1.21 revision reworded two levels
 // under the same ids (PRD §9.1).
 const RUBRICA_MANANA: Rubrica = {
   definicion:

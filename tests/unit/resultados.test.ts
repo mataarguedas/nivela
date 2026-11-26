@@ -253,6 +253,25 @@ describe("plantilla del reporte general", () => {
     expect(correo.html).toContain('<html lang="es-CR">');
   });
 
+  it("v1.20: la escala de puntos, después del resultado general y antes del resumen, en texto y HTML", () => {
+    const filas = [
+      "- Básico: de 0 a 25 puntos",
+      "- Intermedio: de 26 a 50 puntos",
+      "- Avanzado: de 51 a 75 puntos",
+      "- Experto: de 76 a 100 puntos",
+    ];
+    expect(correo.texto).toContain(
+      ["Escala de puntos", "Cada nivel corresponde a un rango de puntos en la escala de 0 a 100:", ...filas].join("\n"),
+    );
+    const t = correo.texto;
+    expect(t.indexOf("Promedio entre competencias")).toBeLessThan(t.indexOf("Escala de puntos"));
+    expect(t.indexOf("Escala de puntos")).toBeLessThan(t.indexOf("Resumen por competencia"));
+    expect(correo.html).toContain(">Escala de puntos</h2>");
+    for (const rango of ["de 0 a 25 puntos", "de 26 a 50 puntos", "de 51 a 75 puntos", "de 76 a 100 puntos"]) {
+      expect(correo.html).toContain(`>${rango}</td>`);
+    }
+  });
+
   it("varias competencias: el detalle de cada una, en el orden de la configuración", () => {
     const ambos = resultados(datosResultados(ENTRADAS, "P01", { ...JORNADA, nombre: "Ana Lucía Mora Solís" })!);
     expect(ambos.texto).toContain("Resultado general: Experto");

@@ -18,6 +18,8 @@
     "cuentas:importar": "tsx --conditions=react-server scripts/importar-cuentas.ts",
     "cuentas:prueba": "tsx --conditions=react-server scripts/cuentas-prueba.ts",
     "evaluadores:retirados": "tsx --conditions=react-server scripts/eliminar-retirados.ts",
+    "participantes:agregar": "tsx --conditions=react-server scripts/agregar-participantes.ts",
+    "participantes:conservar": "tsx --conditions=react-server scripts/conservar-participantes.ts",
     "participantes:importar": "tsx --conditions=react-server scripts/importar-participantes.ts",
     "participantes:matricula": "tsx --conditions=react-server scripts/importar-matricula.ts"
   },
@@ -38,7 +40,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@electric-sql/pglite": "^0.5.11",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

@@ -3,7 +3,7 @@ import type { DefinicionCompetencia } from "./index";
 // Morning team's template (Equipo 1, plantillas_dia/"Herramienta 4_Plantilla
 // sistematizada_ Pensamiento analitico y critico.xlsx", PRD Appendix A.2) with
 // only the minimal corrections listed there. Keep it verbatim: it is also the
-// rubric sent to Jev. The v1.18 revision reworded Indicador 2 under the same
+// rubric sent to Jev. The v1.21 revision reworded Indicador 2 under the same
 // ids (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 3,
 // plantillas_noche/"Plantilla_sistematizada Pensamiento Crítico y Analítico.xlsx", PRD Appendix A.7),

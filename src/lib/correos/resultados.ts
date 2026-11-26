@@ -39,6 +39,11 @@ export const TEXTOS_RESULTADOS = {
     `Con evaluaciones en ${formatearEntero(n)} de ${formatearEntero(total)} ${total === 1 ? "competencia" : "competencias"}.`,
   evaluaciones: (n: number) =>
     n === 1 ? "Recibió 1 evaluación de sus pares en total." : `Recibió ${formatearEntero(n)} evaluaciones de sus pares en total.`,
+  // v1.20: the point scale, its own tile right after the overall result, so the
+  // participant reads every score against the four bands (from puntajes.ts).
+  escalaTitulo: "Escala de puntos",
+  escalaIntroduccion: "Cada nivel corresponde a un rango de puntos en la escala de 0 a 100:",
+  escalaRango: (min: number, max: number) => `de ${min} a ${max} puntos`,
   resumen: "Resumen por competencia",
   puntajeNivel: (puntaje: string, nivel: string) => `${puntaje} de 100 · ${nivel}`,
   sinEvaluaciones: "Sin evaluaciones",
@@ -70,6 +75,8 @@ export type ModeloResultados = {
   introduccion: string;
   general: { etiqueta: string; nivel: string; promedio: string; brecha: string; cobertura: string };
   evaluaciones: string;
+  /** v1.20: the four level bands, Básico first. */
+  escala: { titulo: string; introduccion: string; filas: { nivel: string; rango: string }[] };
   resumenTitulo: string;
   /** One row per competencia with a rubric; `evaluada` false shows it muted. */
   resumen: { nombre: string; linea: string; evaluada: boolean }[];
@@ -111,6 +118,14 @@ export function modeloResultados(datos: DatosResultados): ModeloResultados {
       cobertura: t.competenciasEvaluadas(datos.competenciasEvaluadas, datos.competenciasDisponibles),
     },
     evaluaciones: t.evaluaciones(datos.evaluaciones),
+    escala: {
+      titulo: t.escalaTitulo,
+      introduccion: t.escalaIntroduccion,
+      filas: NIVELES.map((n) => ({
+        nivel: n.etiqueta,
+        rango: t.escalaRango(RANGOS_PUNTOS[n.valor].min, RANGOS_PUNTOS[n.valor].max),
+      })),
+    },
     resumenTitulo: t.resumen,
     resumen: datos.competencias.map((comp) => ({ nombre: comp.nombre, linea: lineaResumen(comp), evaluada: comp.resultado !== null })),
     detalleTitulo: t.detalle,
@@ -163,6 +178,16 @@ ${m.resumen
   .join("\n")}
 </table>`;
 
+  // The scale: one row per level, the level on the left and its range on the right (short enough for a phone).
+  const escala = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;background:${c.lienzo};border-radius:12px;">
+<tr><td colspan="2" style="padding:16px 16px 6px 16px;"><p style="margin:0;font-size:14px;line-height:1.43;color:${c.tinta2};">${escaparHtml(m.escala.introduccion)}</p></td></tr>
+${m.escala.filas
+  .map(
+    (fila, i) => `<tr><td style="padding:4px 8px ${i === m.escala.filas.length - 1 ? "16px" : "4px"} 16px;font-size:15px;line-height:1.4;font-weight:600;color:${c.tinta};">${escaparHtml(fila.nivel)}</td><td align="right" style="padding:4px 16px ${i === m.escala.filas.length - 1 ? "16px" : "4px"} 8px;font-size:15px;line-height:1.4;color:${c.tinta};">${escaparHtml(fila.rango)}</td></tr>`,
+  )
+  .join("\n")}
+</table>`;
+
   const bloqueIndicador = (i: IndicadorTexto) => `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 12px 0;background:${c.lienzo};border-radius:12px;">
 <tr><td style="padding:16px;">
 <p style="margin:0 0 6px 0;font-size:15px;line-height:1.4;font-weight:600;color:${c.tinta};">${escaparHtml(i.titulo)}</p>
@@ -187,6 +212,8 @@ ${d.indicadores.map(bloqueIndicador).join("\n")}`,
     parrafo(escaparHtml(m.introduccion)),
     destacado,
     parrafo(escaparHtml(m.evaluaciones)),
+    h2(m.escala.titulo),
+    escala,
     h2(m.resumenTitulo),
     resumen,
     h2(m.detalleTitulo),
@@ -210,6 +237,10 @@ ${d.indicadores.map(bloqueIndicador).join("\n")}`,
     g.cobertura,
     "",
     m.evaluaciones,
+    "",
+    m.escala.titulo,
+    m.escala.introduccion,
+    ...m.escala.filas.map((fila) => `- ${fila.nivel}: ${fila.rango}`),
     "",
     m.resumenTitulo,
     ...m.resumen.map((fila) => `- ${fila.nombre}: ${fila.linea}`),

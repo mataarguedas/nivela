@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, like, sql } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { connection } from "next/server";
 import {
@@ -12,7 +12,7 @@ import {
 import type { JornadaId } from "@/config/jornadas";
 import { registrarError } from "@/lib/registro";
 import { getDb } from "./index";
-import { evaluaciones, participantes } from "./schema";
+import { asistencia, enviosResultados, evaluaciones, participantes } from "./schema";
 import type * as schema from "./schema";
 
 // Reads and writes of the evaluados the admin manages (PRD §9.2), one list
@@ -171,6 +171,46 @@ export function sentenciaContarEvaluaciones<B extends Bd>(db: B, jornada: Jornad
     .where(and(eq(evaluaciones.jornada, jornada), inArray(evaluaciones.participanteId, [...ids])));
 }
 
+/** Attendance marks (any competencia) on these participants of the jornada. */
+export function sentenciaContarAsistencia<B extends Bd>(db: B, jornada: JornadaId, ids: readonly string[]) {
+  return db
+    .select({ total: count() })
+    .from(asistencia)
+    .where(and(eq(asistencia.jornada, jornada), inArray(asistencia.participanteId, [...ids])));
+}
+
+/**
+ * v1.17 (`participantes:agregar`, PRD §5.10): append new participants as
+ * P{inicio}… with their names, groups and (optional) emails and carnets,
+ * active. A plain insert: if any of those ids is already stored (a hidden
+ * row) it fails instead of writing over it. The plan
+ * (lib/agregarParticipantes.ts) refuses that case before getting here.
+ */
+export function sentenciaAgregarParticipantes<B extends Bd>(
+  db: B,
+  jornada: JornadaId,
+  inicio: number,
+  nuevos: {
+    nombres: readonly string[];
+    grupos: readonly (number | null)[];
+    correos?: readonly (string | null)[];
+    carnets?: readonly (string | null)[];
+  },
+) {
+  return db.insert(participantes).values(
+    nuevos.nombres.map((nombre, i) => ({
+      jornada,
+      id: idParticipante(inicio + i),
+      numero: inicio + i,
+      nombre,
+      grupo: nuevos.grupos[i] ?? null,
+      correo: nuevos.correos?.[i] ?? null,
+      carnet: nuevos.carnets?.[i] ?? null,
+      activo: true,
+    })),
+  );
+}
+
 /** The list the admin saves: names, carnets, groups and emails aligned by position (P01 first). */
 export type ListaParticipantes = {
   nombres: readonly (string | null)[];
@@ -283,4 +323,65 @@ export function sentenciasAsignarMatricula<B extends Bd>(
       .set(correo === null ? { carnet, updatedAt: sql`now()` } : { carnet, correo, updatedAt: sql`now()` })
       .where(and(eq(participantes.jornada, jornada), eq(participantes.numero, numero))),
   );
+}
+
+/** Every stored row of the jornada, all columns (emails included): only for participantes:conservar. */
+export function sentenciaLeerFilasCompletas<B extends Bd>(db: B, jornada: JornadaId) {
+  return db.select().from(participantes).where(eq(participantes.jornada, jornada)).orderBy(asc(participantes.numero));
+}
+
+const PREFIJO_TEMPORAL = "~";
+
+/**
+ * v1.19 (`participantes:conservar`, PRD §5.10): renumber the jornada's list,
+ * for one transaction (a neon-http batch). `filas` is every stored row
+ * (sentenciaLeerFilasCompletas) and `mapa` gives each its new numero and
+ * whether it stays visible. Evaluations, attendance marks and sent-email
+ * records move with their participant: first to "~P07", then the prefix is
+ * stripped, so a swap never collides with the unique keys on the way. The
+ * participant rows are rewritten (deleted and inserted again with every
+ * column) because (jornada, numero) is unique and can't be permuted in place;
+ * nothing is lost: names, carnets, emails and groups go to the new number.
+ */
+export function sentenciasRenumerar<B extends Bd>(
+  db: B,
+  jornada: JornadaId,
+  filas: readonly (typeof participantes.$inferSelect)[],
+  mapa: readonly { de: number; a: number; activo: boolean }[],
+) {
+  const destino = new Map(mapa.map((m) => [m.de, m]));
+  if (filas.length !== mapa.length || filas.some((f) => !destino.has(f.numero))) {
+    throw new Error("sentenciasRenumerar: el mapa no cubre exactamente las filas guardadas.");
+  }
+  const cambios = mapa.filter((m) => m.de !== m.a);
+  const tablas = [evaluaciones, asistencia, enviosResultados] as const;
+  const mover = tablas.flatMap((tabla) =>
+    cambios.map((m) =>
+      db
+        .update(tabla)
+        .set({ participanteId: PREFIJO_TEMPORAL + idParticipante(m.a) })
+        .where(and(eq(tabla.jornada, jornada), eq(tabla.participanteId, idParticipante(m.de)))),
+    ),
+  );
+  const quitarPrefijo = tablas.map((tabla) =>
+    db
+      .update(tabla)
+      .set({ participanteId: sql`substr(${tabla.participanteId}, 2)` })
+      .where(and(eq(tabla.jornada, jornada), like(tabla.participanteId, `${PREFIJO_TEMPORAL}%`))),
+  );
+  const borrar = db.delete(participantes).where(eq(participantes.jornada, jornada));
+  const insertar = db.insert(participantes).values(
+    filas.map((f) => {
+      const m = destino.get(f.numero)!;
+      const cambia = m.a !== f.numero || m.activo !== f.activo;
+      return {
+        ...f,
+        id: idParticipante(m.a),
+        numero: m.a,
+        activo: m.activo,
+        updatedAt: cambia ? new Date() : f.updatedAt,
+      };
+    }),
+  );
+  return [...mover, ...quitarPrefijo, borrar, insertar] as const;
 }

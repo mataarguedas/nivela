@@ -47,7 +47,7 @@ const CONFLICTO_DESDE_FINAL = 2;
 type BancoObservaciones = Record<number, Record<number, string[]>>;
 
 // Hand-written observations per indicator number and level, matching the
-// morning Adaptabilidad rubric in PRD Appendix A.1 (revised v1.18). No names, only
+// morning Adaptabilidad rubric in PRD Appendix A.1 (revised v1.21). No names, only
 // observable behavior, as the rating screen asks. The other rubrics take
 // theirs from their Jev golden set (bancoObservaciones).
 const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {

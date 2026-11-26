@@ -124,7 +124,7 @@ export const EQUIPOS: readonly Equipo[] = [
       { id: "anna-sevilla-lopez", nombre: "Anna Sevilla López", curso: SEMINARIO },
       { id: "ricardo-mendez-ubeda", nombre: "Ricardo Méndez Ubeda", curso: SEMINARIO },
       { id: "maria-celeste-vega-zamora", nombre: "María Celeste Vega Zamora", curso: SEMINARIO },
-      { id: "brenda-alfaro-torres", nombre: "Brenda Alfaro Torres", curso: SEMINARIO }, // v1.17
+      { id: "brenda-alfaro", nombre: "Brenda Alfaro Torres", curso: SEMINARIO }, // v1.18
     ],
   },
   {

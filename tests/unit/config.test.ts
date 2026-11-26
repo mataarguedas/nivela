@@ -340,9 +340,9 @@ describe("equipos por jornada", () => {
     const noche = equipoDeCompetencia("noche", "adaptabilidad")!;
     expect([manana.numero, manana.integrantes.length]).toEqual([4, 7]);
     expect([noche.numero, noche.integrantes.length]).toEqual([1, 7]);
-    // Joined night Adaptabilidad in v1.17 (PRD Appendix B).
-    expect(obtenerEvaluador("noche", "adaptabilidad", "brenda-alfaro-torres")?.curso).toBe(CURSOS[1]);
-    expect(obtenerEvaluador("manana", "adaptabilidad", "brenda-alfaro-torres")).toBeUndefined();
+    // Joined night Adaptabilidad in v1.18 (PRD Appendix B).
+    expect(obtenerEvaluador("noche", "adaptabilidad", "brenda-alfaro")?.curso).toBe(CURSOS[1]);
+    expect(obtenerEvaluador("manana", "adaptabilidad", "brenda-alfaro")).toBeUndefined();
     // Removed from the roster in v1.15 (PRD Appendix B).
     for (const retirado of ["sebastian-chaves", "emmanuel-reyes"]) {
       expect(EQUIPOS.some((e) => e.integrantes.some((i) => i.id === retirado))).toBe(false);

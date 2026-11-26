@@ -3,7 +3,7 @@ import type { DefinicionCompetencia } from "./index";
 // Morning team's template (Equipo 2, plantillas_dia/"plantilla sistematizada_
 // Regulación emocional.xlsx", PRD Appendix A.3) with only the minimal
 // corrections listed there. Keep it verbatim: it is also the rubric sent to
-// Jev. The v1.18 revision reworded one level under the same ids (PRD §9.1).
+// Jev. The v1.21 revision reworded one level under the same ids (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 2,
 // plantillas_noche/"Plantilla_sistematizada Autoregulación emocional.xlsx", PRD Appendix A.8),
 // with its own indicator ids ("…-noche-N").

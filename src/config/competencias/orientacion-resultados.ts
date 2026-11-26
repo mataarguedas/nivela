@@ -3,7 +3,7 @@ import type { DefinicionCompetencia } from "./index";
 // Morning team's template (Equipo 5, plantillas_dia/"Herramienta 4 - Indicadores
 // - Orientación a resultados.xlsx", PRD Appendix A.5) with only the minimal
 // corrections listed there. Keep it verbatim: it is also the rubric sent to Jev.
-// The v1.19 file carries the same text as the former "Plantilla Sistematizada
+// The v1.22 file carries the same text as the former "Plantilla Sistematizada
 // Orientación a resultados.xlsx".
 // The night rubric is the night team's own template (Equipo 5,
 // plantillas_noche/"Herramienta 4 Orientación a resultados.xlsx", PRD Appendix A.10),

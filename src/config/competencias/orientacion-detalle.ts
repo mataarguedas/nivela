@@ -3,7 +3,7 @@ import type { DefinicionCompetencia } from "./index";
 // Morning team's template (Equipo 3, plantillas_dia/"Plantilla Sistematizada-
 // Equipo 5-Orientación al Detalle.xlsx", PRD Appendix A.4) with only the minimal
 // corrections listed there. Keep it verbatim: it is also the rubric sent to Jev.
-// The v1.19 revision rewrote every level description under the same ids
+// The v1.22 revision rewrote every level description under the same ids
 // (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 4,
 // plantillas_noche/"Herramienta 4 - Plantilla Sistematizada Orientación al Detalle.xlsx", PRD Appendix A.9),

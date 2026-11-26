@@ -1,5 +1,5 @@
 {
-  "descripcion": "Golden set de Jev para Pensamiento crítico y analítico, jornada mañana (PRD §8.5), según la rúbrica de «Herramienta 4_Plantilla sistematizada.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "descripcion": "Golden set de Jev para Pensamiento crítico y analítico, jornada mañana (PRD §8.5), según la rúbrica de «Herramienta 4_Plantilla sistematizada_ Pensamiento analitico y critico.xlsx» (PRD Apéndice A.2, revisión v1.18). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
   "competenciaId": "pensamiento-critico",
   "jornada": "manana",
   "casos": [
@@ -31,19 +31,19 @@
       "id": "i2-basico",
       "indicadorId": "pensamiento-critico-2",
       "nivelEsperado": 1,
-      "texto": "Describió las diferencias que veía entre los dos informes del caso, pero no mencionó por qué podían haber ocurrido."
+      "texto": "Describió las partes principales del problema que planteaba el caso, como los retrasos y las quejas de los clientes, pero no mencionó por qué podían haber ocurrido."
     },
     {
       "id": "i2-intermedio",
       "indicadorId": "pensamiento-critico-2",
       "nivelEsperado": 2,
-      "texto": "Mencionó dos posibles causas del problema planteado, la falta de comunicación y la carga de trabajo, sin relacionarlas con los datos del caso."
+      "texto": "Después de separar el problema en sus partes, señaló dos posibles causas, la falta de comunicación y la carga de trabajo, aunque no relacionó esas partes entre sí."
     },
     {
       "id": "i2-avanzado",
       "indicadorId": "pensamiento-critico-2",
       "nivelEsperado": 3,
-      "texto": "Relacionó las diferencias entre los resultados de los dos departamentos con posibles causas, apoyándose en las cifras que traía la información del ejercicio."
+      "texto": "Relacionó entre sí las partes del problema, los turnos, la carga de trabajo y los errores de registro, y con las cifras que traía la información del ejercicio estableció posibles causas."
     },
     {
       "id": "i2-experto",

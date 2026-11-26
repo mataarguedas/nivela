@@ -1,5 +1,5 @@
 {
-  "descripcion": "Golden set de Jev para Adaptabilidad (PRD §8.5), según la rúbrica de plantilla.xlsx (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "descripcion": "Golden set de Jev para Adaptabilidad (PRD §8.5), según la rúbrica de «Plantilla sistematizada ADAPTABILIDAD 2y2.xlsx» (PRD Apéndice A.1, revisión v1.18). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
   "competenciaId": "adaptabilidad",
   "casos": [
     {
@@ -30,7 +30,7 @@
       "id": "i2-basico",
       "indicadorId": "adaptabilidad-2",
       "nivelEsperado": 1,
-      "texto": "Aunque se explicó un nuevo procedimiento para registrar las respuestas, siguió usando su forma de siempre. Solo cambió cuando la facilitadora se acercó y le dio instrucciones directas para hacerlo con el método nuevo."
+      "texto": "Cuando se explicó un nuevo procedimiento para registrar las respuestas, mostró disposición a cambiar, pero no supo cómo hacerlo por su cuenta. Ajustó su forma de proceder a medida que la facilitadora lo fue orientando paso a paso."
     },
     {
       "id": "i2-intermedio",

@@ -1,10 +1,12 @@
 import type { DefinicionCompetencia, Rubrica } from "./index";
 
-// Text from the morning team's template (plantilla.xlsx, "Plantilla
-// sistematizada", PRD Appendix A.1) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev. Ids are
-// positional (adaptabilidad-1 = Indicador 1); the v1.2 template reordered the
-// indicators before any real evaluation existed.
+// Text from the morning team's template (plantillas_dia/"Plantilla
+// sistematizada ADAPTABILIDAD 2y2.xlsx", "Plantilla sistematizada", PRD
+// Appendix A.1) with only the minimal corrections listed there. Keep it
+// verbatim: it is also the rubric sent to Jev. Ids are positional
+// (adaptabilidad-1 = Indicador 1); the v1.2 template reordered the indicators
+// before any real evaluation existed. The v1.18 revision reworded two levels
+// under the same ids (PRD §9.1).
 const RUBRICA_MANANA: Rubrica = {
   definicion:
     "La adaptabilidad es la capacidad de modificar el propio comportamiento y responder de manera rápida y adecuada ante diferentes situaciones, personas y exigencias del entorno laboral, ajustándose a los cambios en los procedimientos, las tareas y las prioridades, y buscando soluciones eficaces ante los imprevistos.",
@@ -16,7 +18,7 @@ const RUBRICA_MANANA: Rubrica = {
       titulo: "Actúa de manera rápida y flexible.",
       niveles: {
         1: "Reconoce los cambios, pero tarda en reaccionar y necesita instrucciones.",
-        2: "Responde a cambios sencillos, siguiendo las indicaciones recibidas.",
+        2: "Responde a cambios siguiendo las indicaciones recibidas.",
         3: "Afronta cambios y mantiene la continuidad de sus tareas.",
         4: "Asume situaciones difíciles o inesperadas con rapidez y mantiene un buen desempeño.",
       },
@@ -26,7 +28,7 @@ const RUBRICA_MANANA: Rubrica = {
       numero: 2,
       titulo: "Modifica su forma de actuar ante cambios.",
       niveles: {
-        1: "Mantiene su forma habitual de trabajar ante un cambio hasta recibir instrucciones.",
+        1: "Muestra disposición ante un cambio y actúa con orientación para ajustar su forma de proceder.",
         2: "Acepta la manera de realizar una tarea siguiendo las indicaciones recibidas.",
         3: "Cambia su manera de trabajar ante nuevos procedimientos y los aplica constantemente, sin supervisión.",
         4: "Adapta sus métodos de trabajo a distintos escenarios y mantiene la calidad del resultado.",

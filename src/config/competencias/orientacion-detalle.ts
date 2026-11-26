@@ -1,8 +1,10 @@
 import type { DefinicionCompetencia } from "./index";
 
-// Morning team's template (Equipo 3, "Plantilla Sistematizada Orientación al
-// Detalle.xlsx", PRD Appendix A.4) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev.
+// Morning team's template (Equipo 3, plantillas_dia/"Plantilla Sistematizada-
+// Equipo 5-Orientación al Detalle.xlsx", PRD Appendix A.4) with only the minimal
+// corrections listed there. Keep it verbatim: it is also the rubric sent to Jev.
+// The v1.19 revision rewrote every level description under the same ids
+// (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 4,
 // plantillas_noche/"Herramienta 4 - Plantilla Sistematizada Orientación al Detalle.xlsx", PRD Appendix A.9),
 // with its own indicator ids ("…-noche-N").
@@ -12,7 +14,7 @@ export const orientacionDetalle: DefinicionCompetencia = {
   rubricas: {
     manana: {
       definicion:
-        "La Orientación al detalle “es la capacidad de notar, procesar y completar con precisión todos los aspectos de una tarea sin omitir elementos pequeños pero significativos”. “Es la habilidad de procesar información detallada con efectividad y consistencia de manera minuciosa y exacta a partir de grandes volúmenes de información o datos”.\nConsiste en realizar una tarea con minuciosidad y precisión. Implica supervisar y verificar el trabajo o la información, así como planificar y organizar el tiempo y los recursos de manera eficiente.",
+        "La atención al detalle “es la capacidad de notar, procesar y completar con precisión todos los aspectos de una tarea sin omitir elementos pequeños pero significativos”. “Es la habilidad de procesar información detallada con efectividad y consistencia de manera minuciosa y exacta a partir de grandes volúmenes de información o datos”.\nConsiste en realizar una tarea con minuciosidad y precisión. Implica supervisar y verificar el trabajo o la información, así como planificar y organizar el tiempo y los recursos de manera eficiente.",
       fuente:
         "Bermúdez, N., 2023, párr. 1; Kim, K., 2026, párr. 1; Government of the Northwest Territories, s. f.; Syracuse University Performance Partnership, s. f.",
       indicadores: [
@@ -21,10 +23,10 @@ export const orientacionDetalle: DefinicionCompetencia = {
           numero: 1,
           titulo: "Verifica aspectos minuciosos.",
           niveles: {
-            1: "Revisa detalles específicos de una tarea siguiendo indicaciones para determinar si son correctos.",
-            2: "Contrasta los detalles de una tarea con las indicaciones establecidas para reconocer pequeñas diferencias.",
-            3: "Inspecciona minuciosamente los elementos de una tarea para detectar errores que puedan afectar su exactitud.",
-            4: "Corrobora la exactitud de los detalles menos perceptibles, asegurando que todos cumplan con los criterios establecidos.",
+            1: "Observa los detalles más evidentes de una tarea.",
+            2: "Localiza elementos pequeños que requieren mayor atención.",
+            3: "Inspecciona cuidadosamente los distintos elementos, sin descuidar información importante.",
+            4: "Comprueba aspectos poco perceptibles que podrían pasar desapercibidos para otras personas, manteniendo un alto nivel de precisión.",
           },
         },
         {
@@ -32,10 +34,10 @@ export const orientacionDetalle: DefinicionCompetencia = {
           numero: 2,
           titulo: "Comprueba cambios significativos.",
           niveles: {
-            1: "Confirma que los cambios más evidentes de una tarea correspondan con las indicaciones recibidas.",
-            2: "Compara los cambios realizados con los resultados esperados para determinar si son importantes y coherentes.",
-            3: "Examina los cambios significativos de una tarea para determinar si mantienen consistencia con las condiciones establecidas.",
-            4: "Valida que los cambios significativos sean consistentes entre sí y cumplan con todos los criterios establecidos, incluso cuando presentan diferencias difíciles de detectar.",
+            1: "Percibe modificaciones evidentes durante el desarrollo de una tarea.",
+            2: "Distingue los cambios que se presentan en diferentes situaciones.",
+            3: "Evalúa las modificaciones e identifica cuáles tienen mayor importancia.",
+            4: "Analiza el impacto de los cambios y determina cuáles requieren mayor atención.",
           },
         },
         {
@@ -43,10 +45,10 @@ export const orientacionDetalle: DefinicionCompetencia = {
           numero: 3,
           titulo: "Organiza recursos correctos y completos.",
           niveles: {
-            1: "Ordena los recursos necesarios para una tarea siguiendo indicaciones sobre su uso y verificando que estén completos.",
-            2: "Selecciona y prepara los recursos adecuados, asegurándose de que correspondan con lo solicitado.",
-            3: "Distribuye los recursos según las necesidades de la tarea, comprobando que sean correctos y suficientes.",
-            4: "Optimiza la organización y el procesamiento de los recursos, anticipando posibles errores o faltantes para asegurar su uso adecuado.",
+            1: "Ordena los recursos disponibles siguiendo indicaciones generales.",
+            2: "Selecciona los recursos necesarios para realizar una tarea de manera organizada.",
+            3: "Distribuye los bloques conforme a las figuras y patrones de forma adecuada, asegurándose de que no falten elementos importantes.",
+            4: "Optimiza la organización utilizando los bloques y identificando correctamente los colores, las figuras y los patrones, gestionando el tiempo de forma eficiente y anticipando posibles errores para completar la actividad con precisión y autonomía.",
           },
         },
         {
@@ -54,10 +56,10 @@ export const orientacionDetalle: DefinicionCompetencia = {
           numero: 4,
           titulo: "Controla cambios con precisión y exactitud.",
           niveles: {
-            1: "Aplica cambios sencillos siguiendo instrucciones específicas para mantener la exactitud de una tarea.",
-            2: "Registra las modificaciones realizadas y comprueba que correspondan con las indicaciones establecidas.",
-            3: "Ajusta las modificaciones necesarias, evitando que se generen errores en los demás elementos de la tarea.",
-            4: "Supervisa las modificaciones realizadas, detectando y corrigiendo inconsistencias para garantizar la precisión del resultado final.",
+            1: "Señala las modificaciones evidentes que se presentan durante una tarea.",
+            2: "Registra los cambios realizados de manera ordenada y siguiendo las instrucciones.",
+            3: "Ajusta los elementos necesarios ante una modificación, manteniendo la precisión de la tarea.",
+            4: "Corrige las inconsistencias provocadas por los cambios y evita que afecten el resultado final.",
           },
         },
       ],

@@ -1,5 +1,5 @@
 {
-  "descripcion": "Golden set de Jev para Orientación al detalle, jornada mañana (PRD §8.5), según la rúbrica de «Plantilla Sistematizada Orientación al Detalle.xlsx» (PRD Apéndice A). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
+  "descripcion": "Golden set de Jev para Orientación al detalle, jornada mañana (PRD §8.5), según la rúbrica de «Plantilla Sistematizada-Equipo 5-Orientación al Detalle.xlsx» (PRD Apéndice A.4, revisión v1.19). Observaciones escritas a mano, sin nombres: una por indicador × nivel, más 4 textos fuera de tema. Pendiente de revisión docente.",
   "competenciaId": "orientacion-detalle",
   "jornada": "manana",
   "casos": [
@@ -7,97 +7,97 @@
       "id": "i1-basico",
       "indicadorId": "orientacion-detalle-1",
       "nivelEsperado": 1,
-      "texto": "Revisó los nombres y las fechas del formulario siguiendo la lista que le dio el facilitador, para confirmar que estuvieran correctos."
+      "texto": "Notó que a la hoja de trabajo le faltaba el título, que era lo más visible, pero no revisó ningún otro detalle de la tarea."
     },
     {
       "id": "i1-intermedio",
       "indicadorId": "orientacion-detalle-1",
       "nivelEsperado": 2,
-      "texto": "Comparó los datos del documento con las instrucciones y notó pequeñas diferencias, como una fecha escrita en otro formato."
+      "texto": "Localizó elementos pequeños que pedían más atención, como una pieza de un color muy parecido a otra y un número escrito en letra diminuta en la consigna."
     },
     {
       "id": "i1-avanzado",
       "indicadorId": "orientacion-detalle-1",
       "nivelEsperado": 3,
-      "texto": "Revisó con minuciosidad cada parte del informe y detectó dos errores de cálculo que afectaban la exactitud de los totales."
+      "texto": "Revisó con cuidado cada uno de los elementos del ejercicio, uno por uno, sin pasar por alto ninguna información importante de la consigna."
     },
     {
       "id": "i1-experto",
       "indicadorId": "orientacion-detalle-1",
       "nivelEsperado": 4,
-      "texto": "Confirmó la exactitud de detalles que nadie más notó, como un decimal mal colocado y una tilde en un apellido, y verificó que todo cumpliera los criterios establecidos."
+      "texto": "Comprobó detalles casi imperceptibles que el resto del equipo no había notado, como una diferencia mínima de tono entre dos piezas, y mantuvo la precisión durante toda la tarea."
     },
     {
       "id": "i2-basico",
       "indicadorId": "orientacion-detalle-2",
       "nivelEsperado": 1,
-      "texto": "Confirmó que el cambio más visible, el nuevo título del documento, coincidiera con lo que se le había indicado."
+      "texto": "Se dio cuenta de que la facilitadora cambió el modelo a mitad del ejercicio, porque el cambio era muy visible."
     },
     {
       "id": "i2-intermedio",
       "indicadorId": "orientacion-detalle-2",
       "nivelEsperado": 2,
-      "texto": "Comparó los cambios que hizo el equipo con el resultado esperado para decidir si eran importantes y coherentes con la tarea."
+      "texto": "En cada una de las tres rondas distinguió qué había cambiado: en una el modelo, en otra el tiempo disponible y en la última la cantidad de piezas."
     },
     {
       "id": "i2-avanzado",
       "indicadorId": "orientacion-detalle-2",
       "nivelEsperado": 3,
-      "texto": "Examinó los cambios importantes de la segunda versión del informe para verificar que siguieran siendo consistentes con las condiciones de la actividad."
+      "texto": "Valoró las modificaciones de la consigna y señaló cuál era la más importante para el resultado: el nuevo orden de los colores."
     },
     {
       "id": "i2-experto",
       "indicadorId": "orientacion-detalle-2",
       "nivelEsperado": 4,
-      "texto": "Validó que todos los cambios importantes fueran consistentes entre sí y cumplieran cada criterio; incluso detectó una diferencia difícil de ver entre dos tablas que parecían iguales."
+      "texto": "Analizó cómo afectaba cada cambio al resultado final y determinó que el cambio de patrón requería más atención que los demás, así que el equipo lo revisó primero."
     },
     {
       "id": "i3-basico",
       "indicadorId": "orientacion-detalle-3",
       "nivelEsperado": 1,
-      "texto": "Ordenó los materiales de la actividad siguiendo las indicaciones sobre su uso y revisó que no faltara ninguno."
+      "texto": "Acomodó en la mesa los materiales que había disponibles, siguiendo las indicaciones generales de la facilitadora."
     },
     {
       "id": "i3-intermedio",
       "indicadorId": "orientacion-detalle-3",
       "nivelEsperado": 2,
-      "texto": "Escogió y preparó los materiales adecuados para la tarea y revisó que correspondieran con lo solicitado."
+      "texto": "Escogió solo los materiales que necesitaba para la tarea y los separó de forma ordenada antes de empezar."
     },
     {
       "id": "i3-avanzado",
       "indicadorId": "orientacion-detalle-3",
       "nivelEsperado": 3,
-      "texto": "Distribuyó los materiales entre los integrantes según lo que necesitaba cada parte de la tarea y comprobó que fueran correctos y suficientes."
+      "texto": "Distribuyó los bloques según las figuras y el patrón del modelo, y revisó que no faltara ninguna pieza importante."
     },
     {
       "id": "i3-experto",
       "indicadorId": "orientacion-detalle-3",
       "nivelEsperado": 4,
-      "texto": "Organizó los recursos del equipo de la forma más eficiente y anticipó que faltarían hojas de respuesta, así que preparó copias antes de que se necesitaran."
+      "texto": "Organizó los bloques de la forma más eficiente, identificó sin errores los colores, las figuras y los patrones, administró bien el tiempo y anticipó posibles errores, de modo que completó la actividad con precisión y sin ayuda."
     },
     {
       "id": "i4-basico",
       "indicadorId": "orientacion-detalle-4",
       "nivelEsperado": 1,
-      "texto": "Aplicó el cambio sencillo que se le indicó en la tabla, siguiendo las instrucciones al pie de la letra para no cometer errores."
+      "texto": "Cuando apareció el nuevo modelo, señaló al equipo que la consigna había cambiado, aunque no hizo ningún ajuste."
     },
     {
       "id": "i4-intermedio",
       "indicadorId": "orientacion-detalle-4",
       "nivelEsperado": 2,
-      "texto": "Anotó cada modificación que hizo en el documento y comprobó que correspondiera con las indicaciones."
+      "texto": "Anotó en orden cada cambio que hizo el equipo, tal como lo pedían las instrucciones."
     },
     {
       "id": "i4-avanzado",
       "indicadorId": "orientacion-detalle-4",
       "nivelEsperado": 3,
-      "texto": "Ajustó las cifras que había que modificar y revisó que esos cambios no generaran errores en el resto del informe."
+      "texto": "Cuando cambió el modelo, ajustó solo las piezas que debían moverse y mantuvo la precisión del resto de la construcción."
     },
     {
       "id": "i4-experto",
       "indicadorId": "orientacion-detalle-4",
       "nivelEsperado": 4,
-      "texto": "Supervisó todas las modificaciones del equipo, detectó y corrigió dos inconsistencias entre secciones y garantizó que el resultado final fuera preciso."
+      "texto": "Detectó que el cambio de patrón había dejado dos piezas inconsistentes con el modelo, las corrigió y evitó que afectaran el resultado final."
     }
   ],
   "fueraDeTema": [

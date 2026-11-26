@@ -1,8 +1,9 @@
 import type { DefinicionCompetencia } from "./index";
 
-// Morning team's template (Equipo 2, "Plantilla sistematizada autorregulación
-// emocional.xlsx", PRD Appendix A.3) with only the minimal corrections listed
-// there. Keep it verbatim: it is also the rubric sent to Jev.
+// Morning team's template (Equipo 2, plantillas_dia/"plantilla sistematizada_
+// Regulación emocional.xlsx", PRD Appendix A.3) with only the minimal
+// corrections listed there. Keep it verbatim: it is also the rubric sent to
+// Jev. The v1.18 revision reworded one level under the same ids (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 2,
 // plantillas_noche/"Plantilla_sistematizada Autoregulación emocional.xlsx", PRD Appendix A.8),
 // with its own indicator ids ("…-noche-N").
@@ -54,7 +55,7 @@ export const autorregulacionEmocional: DefinicionCompetencia = {
           titulo: "Maneja eficazmente situaciones de alta exigencia emocional respondiendo con resiliencia ante los desafíos.",
           niveles: {
             1: "Revela dificultades para gestionar sus emociones en situaciones de alta exigencia, afectando su desempeño.",
-            2: "Valora las circunstancias emocionalmente exigentes, pero necesita tiempo, orientación e instrucciones específicas para la adaptación.",
+            2: "Valora las circunstancias emocionalmente exigentes, pero necesita tiempo, orientación e instrucciones específicas para superarlas.",
             3: "Remodela el desafío como situaciones temporales y manejables, manteniendo la calma y actúa proactivamente.",
             4: "Afronta con resiliencia situaciones críticas e inesperadas, adaptando estrategias ante la adversidad y asegurando la continuidad de los procesos.",
           },

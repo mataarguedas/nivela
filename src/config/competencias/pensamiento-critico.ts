@@ -1,8 +1,10 @@
 import type { DefinicionCompetencia } from "./index";
 
-// Morning team's template (Equipo 1, "Herramienta 4_Plantilla sistematizada.xlsx",
-// PRD Appendix A.2) with only the minimal corrections listed there. Keep it
-// verbatim: it is also the rubric sent to Jev.
+// Morning team's template (Equipo 1, plantillas_dia/"Herramienta 4_Plantilla
+// sistematizada_ Pensamiento analitico y critico.xlsx", PRD Appendix A.2) with
+// only the minimal corrections listed there. Keep it verbatim: it is also the
+// rubric sent to Jev. The v1.18 revision reworded Indicador 2 under the same
+// ids (PRD §9.1).
 // The night rubric is the night team's own template (Equipo 3,
 // plantillas_noche/"Plantilla_sistematizada Pensamiento Crítico y Analítico.xlsx", PRD Appendix A.7),
 // with its own indicator ids ("…-noche-N").
@@ -31,9 +33,9 @@ export const pensamientoCritico: DefinicionCompetencia = {
           numero: 2,
           titulo: "Analiza la información para establecer posibles causas dividiendo un problema en partes.",
           niveles: {
-            1: "Describe las diferencias observadas.",
-            2: "Identifica posibles causas del problema.",
-            3: "Relaciona las diferencias con posibles causas utilizando la información disponible.",
+            1: "Describe las partes principales del problema en la información.",
+            2: "Identifica posibles causas del problema a partir de sus partes.",
+            3: "Relaciona las partes del problema para establecer posibles causas a partir de la información disponible.",
             4: "Formula explicaciones fundamentadas sobre el origen del problema, considerando la interacción y la influencia de sus diferentes componentes.",
           },
         },

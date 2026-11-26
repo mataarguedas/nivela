@@ -47,7 +47,7 @@ const CONFLICTO_DESDE_FINAL = 2;
 type BancoObservaciones = Record<number, Record<number, string[]>>;
 
 // Hand-written observations per indicator number and level, matching the
-// morning Adaptabilidad rubric in PRD Appendix A.1 (plantilla.xlsx). No names, only
+// morning Adaptabilidad rubric in PRD Appendix A.1 (revised v1.18). No names, only
 // observable behavior, as the rating screen asks. The other rubrics take
 // theirs from their Jev golden set (bancoObservaciones).
 const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {
@@ -58,7 +58,7 @@ const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {
       "Se dio cuenta del cambio de consigna, aunque no actuó hasta que la facilitadora le indicó qué hacer.",
     ],
     2: [
-      "Ante un cambio sencillo en la consigna, respondió siguiendo las indicaciones que se le dieron.",
+      "Ante un cambio en la consigna, respondió siguiendo las indicaciones que se le dieron.",
       "Ajustó su parte del ejercicio cuando cambió el formato, apoyándose en las instrucciones recibidas.",
     ],
     3: [
@@ -73,8 +73,8 @@ const OBSERVACIONES_ADAPTABILIDAD: BancoObservaciones = {
   // Indicador 2. Modifica su forma de actuar ante cambios.
   2: {
     1: [
-      "Siguió trabajando con el método anterior hasta que alguien le indicó el nuevo procedimiento.",
-      "Mantuvo su forma habitual de organizar el material pese al cambio, hasta recibir instrucciones.",
+      "Mostró disposición a usar el nuevo procedimiento y lo fue aplicando con la orientación de la facilitadora.",
+      "Aceptó el cambio de buena gana, aunque necesitó que le orientaran para ajustar su forma de organizar el material.",
     ],
     2: [
       "Aceptó la nueva manera de completar el registro siguiendo las indicaciones de la facilitadora.",

@@ -291,6 +291,7 @@ Rules for this module:
 - Debounce writes by 300 ms. Flush on `visibilitychange` → hidden. iOS doesn't reliably fire `beforeunload`.
 - "Borrar todo" removes only keys prefixed `nivela:v1:`.
 - Server "sent" status is merged by participant id. A local `modificadoEn` later than `enviadoEn` means status "Completado" (re-send needed).
+- The server decides what is sent: once `GET /api/evaluaciones` answers, a local entry with `enviadoEn` that the server doesn't list was deleted there and is dropped (`descartarEnviosBorrados`), so it reads "Pendiente" (PRD §5.4, v1.23). Never drop anything when that request fails. In e2e, a mocked successful POST needs a GET mock that lists it.
 
 ## PWA
 

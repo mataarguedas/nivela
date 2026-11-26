@@ -92,7 +92,7 @@ test("de mañana, una competencia nueva muestra su propia rúbrica", async ({ pa
   await page.goto("/orientacion-detalle/P01");
   const indicador = page.getByRole("radiogroup", { name: /^Indicador 1\. Verifica aspectos minuciosos\./ });
   await expect(indicador).toBeVisible();
-  await expect(indicador.getByText(/Corrobora la exactitud de los detalles menos perceptibles/)).toBeVisible();
+  await expect(indicador.getByText(/Comprueba aspectos poco perceptibles/)).toBeVisible();
   // Never another competencia's rubric.
   await expect(page.getByText("Actúa de manera rápida y flexible.")).toHaveCount(0);
 });
@@ -178,6 +178,30 @@ test("los estados reflejan el borrador local", async ({ page }) => {
   await expect(fila(page, "Participante 01").getByText("En progreso")).toBeVisible();
   await expect(fila(page, "Participante 02").getByText("Completado")).toBeVisible();
   await expect(fila(page, "Participante 03").getByText("Pendiente")).toBeVisible();
+});
+
+test("una evaluación enviada que se borró del servidor vuelve a Pendiente (PRD §5.4)", async ({ page }) => {
+  await elegirEvaluador(page, EVALUADORA);
+  await expect(page).toHaveURL(/\/adaptabilidad$/);
+  // The server still has P02 only: P01's evaluation was deleted (test data cleared).
+  await page.route(/\/api\/evaluaciones(\?|$)/, async (ruta) => {
+    if (ruta.request().method() !== "GET") return ruta.fallback();
+    await ruta.fulfill({ json: { evaluaciones: [{ participanteId: "P02", actualizadoEn: "2026-10-25T10:00:01.000Z" }], ausentes: [] } });
+  });
+  await page.evaluate((clave) => {
+    const nivel = (n: number) => ({ nivel: n, origen: "manual" });
+    const completa = { "adaptabilidad-1": nivel(1), "adaptabilidad-2": nivel(2), "adaptabilidad-3": nivel(3), "adaptabilidad-4": nivel(4) };
+    const enviada = { modificadoEn: "2026-10-25T10:00:00.000Z", enviadoEn: "2026-10-25T10:00:00.000Z", calificaciones: completa };
+    localStorage.setItem(clave, JSON.stringify({ version: 1, participantes: { P01: enviada, P02: enviada } }));
+  }, CLAVE_BORRADOR);
+  await page.reload();
+
+  await expect(fila(page, "Participante 01").getByText("Pendiente")).toBeVisible();
+  await expect(fila(page, "Participante 02").getByText("Enviado")).toBeVisible();
+  // The old ratings leave the stored draft too, so the rating screen starts empty.
+  await expect
+    .poll(() => page.evaluate((clave) => Object.keys(JSON.parse(localStorage.getItem(clave) ?? "{}").participantes ?? {}), CLAVE_BORRADOR))
+    .toEqual(["P02"]);
 });
 
 test("Borrar todo limpia los borradores y el evaluador, y vuelve a Inicio", async ({ page }) => {

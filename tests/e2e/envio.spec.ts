@@ -101,11 +101,19 @@ test.describe("con el envío simulado", () => {
 
   test("un fallo conserva las respuestas y ofrece Reintentar", async ({ page }) => {
     let intentos = 0;
+    let actualizadoEn: string | null = null;
     await page.route("**/api/evaluaciones", async (ruta) => {
       if (ruta.request().method() !== "POST") return ruta.fallback();
       intentos += 1;
       if (intentos === 1) return ruta.fulfill({ status: 500, json: { error: "No se pudo guardar la evaluación." } });
-      await ruta.fulfill({ json: { id: "simulada", actualizadoEn: new Date().toISOString() } });
+      actualizadoEn = new Date().toISOString();
+      await ruta.fulfill({ json: { id: "simulada", actualizadoEn } });
+    });
+    // Once the send succeeds the server lists it, as the real one does: a local
+    // send the server doesn't list reads as deleted there (PRD §5.4).
+    await page.route(/\/api\/evaluaciones\?/, async (ruta) => {
+      const evaluaciones = actualizadoEn ? [{ participanteId: "P07", actualizadoEn }] : [];
+      await ruta.fulfill({ json: { evaluaciones, ausentes: [] } });
     });
 
     await page.setViewportSize({ width: 375, height: 667 });

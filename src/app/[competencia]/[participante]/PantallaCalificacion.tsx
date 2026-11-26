@@ -20,6 +20,7 @@ import {
   conCalificacion,
   conObservacion,
   contarCalificados,
+  descartarEnviosBorrados,
   marcarEnviado,
   nivelManual,
   useBorrador,
@@ -55,26 +56,39 @@ import { consultarEnviadas, cuerpoEvaluacion, enviarEvaluacion } from "@/lib/env
  * /api/evaluaciones on mount. `conocido` is false until the server answers;
  * if it can't, the screen behaves as "present" and the server still refuses
  * to accept an evaluation for an absent participant (409).
+ *
+ * `envios` is that same answer's sends (null if the server couldn't answer),
+ * so the screen can drop a local send record the server no longer has
+ * (descartarEnviosBorrados, PRD §5.4).
  */
 function useAsistencia(competenciaId: string, evaluadorId: string | null, participanteId: string) {
   const clave = evaluadorId ? `${competenciaId}:${evaluadorId}:${participanteId}` : null;
-  const [estado, setEstado] = useState<{ clave: string; ausente: boolean } | null>(null);
+  const [estado, setEstado] = useState<{
+    clave: string;
+    ausente: boolean;
+    envios: { enviadas: Record<string, string>; consultadoEn: Date } | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!evaluadorId || !clave) return;
     const control = new AbortController();
+    const consultadoEn = new Date();
     consultarEnviadas(competenciaId, evaluadorId, control.signal).then((datos) => {
       if (control.signal.aborted) return;
-      setEstado({ clave, ausente: datos?.ausentes.includes(participanteId) ?? false });
+      setEstado({
+        clave,
+        ausente: datos?.ausentes.includes(participanteId) ?? false,
+        envios: datos ? { enviadas: datos.enviadas, consultadoEn } : null,
+      });
     });
     return () => control.abort();
   }, [competenciaId, evaluadorId, participanteId, clave]);
 
   const actual = estado && estado.clave === clave ? estado : null;
   const fijar = (ausente: boolean) => {
-    if (clave) setEstado({ clave, ausente });
+    if (clave) setEstado((previo) => ({ clave, ausente, envios: previo?.clave === clave ? previo.envios : null }));
   };
-  return { ausente: actual?.ausente ?? false, conocido: actual !== null, fijar };
+  return { ausente: actual?.ausente ?? false, conocido: actual !== null, envios: actual?.envios ?? null, fijar };
 }
 
 type PantallaCalificacionProps = {
@@ -98,12 +112,26 @@ export function PantallaCalificacion({
 }: PantallaCalificacionProps) {
   const router = useRouter();
   const { evaluadorId, leido } = useEvaluadorActivo(competencia.id, evaluadorIds, evaluadorSesion);
-  const { borrador, actualizar } = useBorrador(competencia.id, evaluadorId);
+  const { borrador: guardado, actualizar } = useBorrador(competencia.id, evaluadorId);
+  const asistencia = useAsistencia(competencia.id, evaluadorId, participante.id);
   const rutaLista = `/${competencia.id}`;
 
   useEffect(() => {
     if (leido && !evaluadorId) router.replace(`${rutaLista}/evaluador`);
   }, [leido, evaluadorId, rutaLista, router]);
+
+  // An evaluation deleted on the server (PRD §5.4): the old ratings leave the
+  // screen at once and the stored draft right after, so it starts empty.
+  const envios = asistencia.envios;
+  const borrador =
+    guardado && envios
+      ? descartarEnviosBorrados(guardado, envios.enviadas, [participante.id], envios.consultadoEn)
+      : guardado;
+  const hayDescarte = borrador !== guardado;
+  useEffect(() => {
+    if (!hayDescarte || !envios) return;
+    actualizar((actual) => descartarEnviosBorrados(actual, envios.enviadas, [participante.id], envios.consultadoEn));
+  }, [hayDescarte, envios, participante.id, actualizar]);
 
   const entrada = evaluadorId ? borrador?.participantes[participante.id] : undefined;
   const indicadorIds = competencia.indicadores.map((i) => i.id);
@@ -111,7 +139,6 @@ export function PantallaCalificacion({
   const { mostrar } = useToast();
   const [envio, setEnvio] = useState<"inactivo" | "enviando" | "error">("inactivo");
   const [panelAbierto, setPanelAbierto] = useState<string | null>(null);
-  const asistencia = useAsistencia(competencia.id, evaluadorId, participante.id);
   const [guardandoAsistencia, setGuardandoAsistencia] = useState(false);
   const [confirmandoAusente, setConfirmandoAusente] = useState(false);
 

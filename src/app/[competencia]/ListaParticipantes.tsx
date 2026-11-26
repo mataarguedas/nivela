@@ -9,7 +9,7 @@ import { Dialogo } from "@/components/ui/Dialogo";
 import { IconoChevron } from "@/components/ui/iconos";
 import { etiquetaGrupo } from "@/config/participantes";
 import { TEXTOS } from "@/config/textos";
-import { borrarTodo, estadoParticipante, useBorrador, useEvaluadorActivo } from "@/lib/borrador";
+import { borrarTodo, descartarEnviosBorrados, estadoParticipante, useBorrador, useEvaluadorActivo } from "@/lib/borrador";
 import { consultarEnviadas, type EstadoServidor } from "@/lib/envio";
 
 type ListaParticipantesProps = {
@@ -33,25 +33,29 @@ type ListaParticipantesProps = {
  * participanteId and the participants they marked absent, from one GET
  * /api/evaluaciones each time the list mounts. estadoParticipante() merges
  * the sends with the local drafts; an absent mark overrides every status.
- * If the request fails the list just shows the local statuses: sends
+ * Once the server has answered, local send records it no longer has are
+ * dropped (descartarEnviosBorrados): those evaluations were deleted on the
+ * server. If the request fails the list just shows the local statuses: sends
  * recorded on this device still read "Enviado".
  */
-function useEstadoServidor(competenciaId: string, evaluadorId: string | null): EstadoServidor {
-  const [estado, setEstado] = useState<{ clave: string; datos: EstadoServidor } | null>(null);
+function useEstadoServidor(competenciaId: string, evaluadorId: string | null): RespuestaServidor | null {
+  const [estado, setEstado] = useState<{ clave: string; respuesta: RespuestaServidor } | null>(null);
   const clave = evaluadorId ? `${competenciaId}:${evaluadorId}` : null;
 
   useEffect(() => {
     if (!evaluadorId || !clave) return;
     const control = new AbortController();
+    const consultadoEn = new Date();
     consultarEnviadas(competenciaId, evaluadorId, control.signal).then((datos) => {
-      if (datos && !control.signal.aborted) setEstado({ clave, datos });
+      if (datos && !control.signal.aborted) setEstado({ clave, respuesta: { datos, consultadoEn } });
     });
     return () => control.abort();
   }, [competenciaId, evaluadorId, clave]);
 
   // Ignore a previous evaluator's answer until the new one arrives.
-  return estado && estado.clave === clave ? estado.datos : SIN_DATOS;
+  return estado && estado.clave === clave ? estado.respuesta : null;
 }
+type RespuestaServidor = { datos: EstadoServidor; consultadoEn: Date };
 const SIN_DATOS: EstadoServidor = { enviadas: {}, ausentes: [] };
 
 type Estado = ReturnType<typeof estadoParticipante> | "ausente" | undefined;
@@ -131,8 +135,9 @@ export function ListaParticipantes({
 }: ListaParticipantesProps) {
   const router = useRouter();
   const { evaluadorId, leido } = useEvaluadorActivo(competenciaId, evaluadorIds, evaluadorSesion);
-  const { borrador } = useBorrador(competenciaId, evaluadorId);
-  const servidor = useEstadoServidor(competenciaId, evaluadorId);
+  const { borrador: borradorGuardado, actualizar } = useBorrador(competenciaId, evaluadorId);
+  const respuesta = useEstadoServidor(competenciaId, evaluadorId);
+  const servidor = respuesta?.datos ?? SIN_DATOS;
   const [confirmando, setConfirmando] = useState(false);
   // Borrar todo also clears the evaluator; don't bounce to the evaluator step then.
   const saliendo = useRef(false);
@@ -140,6 +145,21 @@ export function ListaParticipantes({
   useEffect(() => {
     if (leido && !evaluadorId && !saliendo.current) router.replace(`/${competenciaId}/evaluador`);
   }, [leido, evaluadorId, competenciaId, router]);
+
+  // Evaluations deleted on the server read "Pendiente" right away (`borrador`
+  // is the draft without them) and leave the stored draft too.
+  const ids = participantes.map((p) => p.id);
+  const borrador =
+    borradorGuardado && respuesta
+      ? descartarEnviosBorrados(borradorGuardado, respuesta.datos.enviadas, ids, respuesta.consultadoEn)
+      : borradorGuardado;
+  const hayDescartes = borrador !== borradorGuardado;
+  useEffect(() => {
+    if (!hayDescartes || !respuesta) return;
+    actualizar((actual) => descartarEnviosBorrados(actual, respuesta.datos.enviadas, ids, respuesta.consultadoEn));
+    // `ids` follows `participantes`; re-running only when a drop is pending.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hayDescartes, respuesta, actualizar]);
 
   const listo = evaluadorId !== null && borrador !== undefined;
   const ausentes = new Set(servidor.ausentes);

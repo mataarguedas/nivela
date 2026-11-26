@@ -178,6 +178,54 @@ describe("marcarEnviado", () => {
   });
 });
 
+describe("descartarEnviosBorrados (PRD §5.4, v1.23)", () => {
+  const CONSULTA = new Date("2026-10-26T08:00:00.000Z");
+  const ENVIADA = { enviadoEn: "2026-10-25T10:00:00.000Z" };
+
+  it("una evaluación enviada que el servidor ya no tiene vuelve a Pendiente, sin sus calificaciones", async () => {
+    const { descartarEnviosBorrados, estadoParticipante } = await cargar();
+    // The test data was cleared on the server: P01 and P02 were sent, the server lists only P02.
+    const original = borradorCon({ P01: entrada([1, 2, 3, 4], ENVIADA), P02: entrada([4, 4, 4, 4], ENVIADA) });
+    const resultado = descartarEnviosBorrados(original, { P02: "2026-10-25T10:00:01.000Z" }, ["P01", "P02"], CONSULTA);
+    expect(resultado.participantes.P01).toBeUndefined();
+    expect(resultado.participantes.P02).toBe(original.participantes.P02);
+    expect(estadoParticipante(resultado.participantes.P01, INDICADORES)).toBe("pendiente");
+    expect(original.participantes.P01).toBeDefined(); // pure
+  });
+
+  it("también descarta una evaluación editada después del envío", async () => {
+    const { descartarEnviosBorrados } = await cargar();
+    const editada = borradorCon({ P01: entrada([1, 2, 3, 4], { ...ENVIADA, modificadoEn: "2026-10-25T11:00:00.000Z" }) });
+    expect(descartarEnviosBorrados(editada, {}, ["P01"], CONSULTA).participantes.P01).toBeUndefined();
+  });
+
+  it("nunca toca los borradores sin enviar", async () => {
+    const { descartarEnviosBorrados } = await cargar();
+    const original = borradorCon({ P01: entrada([1, 2]), P02: entrada([1, 2, 3, 4]) });
+    expect(descartarEnviosBorrados(original, {}, ["P01", "P02"], CONSULTA)).toBe(original);
+  });
+
+  it("conserva un envío posterior a la consulta (respuesta más vieja que el envío)", async () => {
+    const { descartarEnviosBorrados } = await cargar();
+    const original = borradorCon({ P01: entrada([1, 2, 3, 4], { enviadoEn: "2026-10-26T08:00:05.000Z" }) });
+    expect(descartarEnviosBorrados(original, {}, ["P01"], CONSULTA)).toBe(original);
+  });
+
+  it("solo mira los participantes indicados", async () => {
+    const { descartarEnviosBorrados } = await cargar();
+    // P09 is hidden (not on the list): its entry stays.
+    const original = borradorCon({ P01: entrada([1, 2, 3, 4], ENVIADA), P09: entrada([1, 2, 3, 4], ENVIADA) });
+    const resultado = descartarEnviosBorrados(original, {}, ["P01"], CONSULTA);
+    expect(Object.keys(resultado.participantes)).toEqual(["P09"]);
+  });
+
+  it("devuelve el mismo objeto cuando no hay nada que descartar", async () => {
+    const { descartarEnviosBorrados } = await cargar();
+    const original = borradorCon({ P01: entrada([1, 2, 3, 4], ENVIADA) });
+    expect(descartarEnviosBorrados(original, { P01: "2026-10-25T10:00:01.000Z" }, ["P01"], CONSULTA)).toBe(original);
+  });
+});
+
 describe("edición de calificaciones", () => {
   const AHORA = new Date("2026-10-25T12:00:00.000Z");
   const IA = { nivelSugerido: 3, probabilidades: { "1": 0.05, "2": 0.17, "3": 0.78, "4": 0 }, confianza: 0.71, modelo: "jev-1.13.0" };

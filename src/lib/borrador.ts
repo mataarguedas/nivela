@@ -259,7 +259,8 @@ export type EstadoParticipante = "pendiente" | "enProgreso" | "completado" | "en
  * from the same device clock, while comparing a device time with the server's
  * time would let clock skew mark freshly edited work as sent. The server time
  * is used only without a local send record (sent from another device, or the
- * drafts were cleared with "Borrar todo").
+ * drafts were cleared with "Borrar todo"). A local send record the server no
+ * longer backs is removed first, with descartarEnviosBorrados().
  */
 export function estadoParticipante(
   entrada: EntradaParticipante | undefined,
@@ -273,6 +274,35 @@ export function estadoParticipante(
   if (calificados === 0) return "pendiente";
   if (calificados < indicadorIds.length) return "enProgreso";
   return "completado";
+}
+
+/**
+ * Drops the local entries of evaluations the server no longer has (PRD §5.4,
+ * §9.3, v1.23): an entry with a local `enviadoEn` for a participant that
+ * GET /api/evaluaciones doesn't list was deleted on the server (e.g. the test
+ * data was cleared), so it starts over as "Pendiente" instead of reading
+ * "Enviado" from the old send record, and its old ratings aren't offered for
+ * re-sending. Only call it with an answer the server actually gave.
+ *
+ * `participanteIds` limits it to the participants on screen. `consultadoEn` is
+ * when that request left, on this device's clock like `enviadoEn`: an entry
+ * sent after it is newer than the answer and is kept. Unsent drafts are never
+ * touched. Returns the same object when nothing is dropped.
+ */
+export function descartarEnviosBorrados(
+  borrador: Borrador,
+  enviadasServidor: Readonly<Record<string, string>>,
+  participanteIds: readonly string[],
+  consultadoEn: Date,
+): Borrador {
+  const descartar = participanteIds.filter((id) => {
+    const enviadoEn = borrador.participantes[id]?.enviadoEn;
+    return enviadoEn !== undefined && !(id in enviadasServidor) && Date.parse(enviadoEn) < consultadoEn.getTime();
+  });
+  if (descartar.length === 0) return borrador;
+  const participantes = { ...borrador.participantes };
+  for (const id of descartar) delete participantes[id];
+  return { ...borrador, participantes };
 }
 
 // ---------------------------------------------------------------------------
